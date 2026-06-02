@@ -24,13 +24,15 @@ services:
     volumes:
       # Mount our curated plugin config over the bundled one (plugin CODE stays in the image).
       - ./gateway/plugins/config.yaml:/app/plugins/config.yaml:ro
+      # Custom plugin on the import path (/app is the gateway working dir).
+      - ./gateway/custom/finbyte_guard.py:/app/finbyte_guard.py:ro
     depends_on:
       - opa
     restart: unless-stopped
 
   opa:
     image: openpolicyagent/opa:0.70.0
-    command: ["run", "--server", "--addr=0.0.0.0:8181", "--log-level=info", "/policies"]
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "--log-level=info", "--set=decision_logs.console=true", "/policies"]
     volumes:
       - ./gateway/policies:/policies:ro
     restart: unless-stopped
