@@ -5,7 +5,7 @@ SECRET := demo-only-change-me-0123456789abcdef
 MINT := DATABASE_URL=sqlite:///./.tokmint.db uv run --with mcp-contextforge-gateway -- python -m mcpgateway.utils.create_jwt_token
 COMPOSE := docker compose
 
-.PHONY: help up up-full down seed token token-bob bob-config bob-install bob-config-operator bob-install-operator companion logs verify-controls demo-reset ps demo
+.PHONY: help up up-full down seed token token-bob bob-config bob-install bob-config-operator bob-install-operator companion logs verify-controls demo-reset ps demo quickstart monitor inspect-mcp inspect-a2a
 
 help:
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n",$$1,$$2}'
@@ -68,8 +68,40 @@ companion: ## Run the browser companion dashboard on :7070 (watch the control pl
 	echo "Companion → http://localhost:7070  (FinOps $$UUID)"; \
 	GATEWAY_TOKEN=$$ADMIN FINOPS_UUID=$$UUID uv run --with flask --with httpx python companion/app.py
 
+quickstart: .env ## ONE command: preflight → stack → seed → Bob → verify → walkthrough card
+	@bash scripts/quickstart.sh
+
 demo: ## Stage-gated end-to-end demo (cold start → register → scenarios → proof), pauses each stage
 	@bash scripts/demo.sh
+
+monitor: ## Open the ContextForge monitor (Admin UI: catalog + observability + logs)
+	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
+	echo "ContextForge Admin UI → http://localhost:4444/admin"; \
+	echo "  login: admin@finbyte.demo / $$(grep -E '^PLATFORM_ADMIN_PASSWORD=' .env | cut -d= -f2-)"; \
+	echo "  observability: /admin (Overview, Metrics, Logs tabs)"; \
+	(open http://localhost:4444/admin 2>/dev/null || xdg-open http://localhost:4444/admin 2>/dev/null || true)
+
+inspect-mcp: ## Launch MCP Inspector pointed at the gateway's FinOps server (shows the governed tools)
+	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
+	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if s.get('name')=='FinOps']" 2>/dev/null | head -1); \
+	if [ -z "$$UUID" ]; then echo "FinOps server not found — run 'make seed' first" >&2; exit 1; fi; \
+	echo "MCP Inspector opening… In the UI, connect with:"; \
+	echo "  Transport      : Streamable HTTP"; \
+	echo "  URL            : http://localhost:4444/servers/$$UUID/mcp"; \
+	echo "  Auth header    : Authorization: Bearer $$ADMIN"; \
+	echo "(you should see 8 tools — note erp-payments-wire is ABSENT: least-privilege)"; \
+	npx -y @modelcontextprotocol/inspector
+
+inspect-a2a: ## Launch the A2A Inspector (clone+build first time) to validate the agent cards
+	@echo "A2A Inspector (a2aproject/a2a-inspector) on http://localhost:8090"; \
+	echo "  point it at:  http://host.docker.internal:9001  (Python Auditor)  ·  :3000 (Rust Payments)"; \
+	if ! docker image inspect a2a-inspector >/dev/null 2>&1; then \
+	  echo "building a2a-inspector image (first run, ~1-2 min)…"; \
+	  tmp=$$(mktemp -d); git clone --depth 1 https://github.com/a2aproject/a2a-inspector "$$tmp/ai" >/dev/null 2>&1 \
+	    && docker buildx build --load -t a2a-inspector "$$tmp/ai" >/dev/null 2>&1 || { echo "build failed — see the a2a-inspector README"; exit 1; }; \
+	fi; \
+	docker rm -f a2a-inspector >/dev/null 2>&1 || true; \
+	docker run --rm --name a2a-inspector -p 8090:8080 a2a-inspector
 
 verify-controls: ## Run the money-shot proof suite (assert block/allow)
 	@bash scripts/money-shots/run-all.sh
