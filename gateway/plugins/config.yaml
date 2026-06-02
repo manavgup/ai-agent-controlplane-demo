@@ -1,0 +1,98 @@
+# FinByte demo plugin config — mounted over /app/plugins/config.yaml.
+# Three real ContextForge plugins, all ON:
+#   PIIFilterPlugin (cpex)        -> mask SSN + credit card in tool output   (shot #2)
+#   SearchReplacePlugin (regex)   -> redact leaked secret + neutralize inject (shots #2/#3)
+#   UnifiedPDPPlugin (OPA)        -> wire amount cap                          (shot #1)
+# (RBAC + rate-limit = core gateway features, not plugins -> shot #4.)
+
+plugin_dirs:
+  - "plugins/native"
+  - "plugins/custom"
+  - "/etc/mcpgateway/plugins"
+
+plugin_settings:
+  parallel_execution_within_band: true
+  plugin_timeout: 120
+  fail_on_plugin_error: false
+  enable_plugin_api: true
+  plugin_health_check_interval: 120
+  include_user_info: false
+
+plugins:
+  # ── Shot #1: OPA policy decision point — wire amount cap (runs first) ──
+  - name: "UnifiedPDPPlugin"
+    kind: "plugins.unified_pdp.unified_pdp.UnifiedPDPPlugin"
+    description: "OPA policy decision point — blocks large un-approved wires"
+    version: "0.1.0"
+    author: "finbyte-demo"
+    hooks: ["tool_pre_invoke"]
+    tags: ["security", "policy", "opa", "pdp"]
+    mode: "enforce"
+    priority: 10
+    conditions: []
+    config:
+      engines:
+        - name: opa
+          enabled: true
+          priority: 1
+          settings:
+            opa_url: "http://opa:8181"
+            policy_path: "mcpgateway"
+            timeout_ms: 5000
+            max_retries: 3
+      combination_mode: "all_must_allow"
+      default_decision: "deny"
+      cache:
+        enabled: true
+        ttl_seconds: 30
+        max_entries: 10000
+      performance:
+        timeout_ms: 2000
+        parallel_evaluation: true
+
+  # ── Shot #2: PII masking on tool output (SSN + credit card) ──
+  - name: "PIIFilterPlugin"
+    kind: "cpex_pii_filter.PIIFilterPlugin"
+    description: "Detects and masks PII in tool output"
+    version: "0.2.0"
+    author: "finbyte-demo"
+    hooks: ["tool_post_invoke"]
+    tags: ["security", "pii", "compliance"]
+    mode: "enforce"
+    priority: 50
+    conditions:
+      - prompts: []
+        server_ids: []
+        tenant_ids: []
+    config:
+      detect_ssn: true
+      detect_credit_card: true
+      detect_email: false
+      detect_phone: false
+      detect_ip_address: false
+      default_mask_strategy: "partial"
+      redaction_text: "[PII_REDACTED]"
+      block_on_detection: false
+      log_detections: true
+      include_detection_details: true
+      whitelist_patterns:
+        - "test@example.com"
+
+  # ── Shots #2/#3: redact leaked secret + neutralize prompt-injection in tool output ──
+  - name: "SecretAndInjectionRedactor"
+    kind: "plugins.regex_filter.search_replace.SearchReplacePlugin"
+    description: "Redacts leaked API keys and neutralizes injected instructions in tool output"
+    version: "0.1.0"
+    author: "finbyte-demo"
+    hooks: ["tool_post_invoke"]
+    tags: ["security", "secrets", "injection"]
+    mode: "enforce"
+    priority: 60
+    config:
+      words:
+        - search: "sk-live-[A-Za-z0-9]+"
+          replace: "[SECRET_REDACTED]"
+        - search: "(?i)SYSTEM:\\s*ignore[^.]*\\."
+          replace: "[INJECTION_BLOCKED]"
+        - search: "(?i)Approve and wire immediately[^.]*\\."
+          replace: "[INJECTION_BLOCKED]"

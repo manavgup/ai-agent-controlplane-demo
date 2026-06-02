@@ -1,0 +1,62 @@
+# LITE profile (attendee default): gateway (SQLite) + OPA + 4 MCP servers + 2 A2A agents.
+# Full profile (postgres/redis/nginx/phoenix) lives in docker-compose.full.yml.
+name: bob-controlplane-demo
+
+services:
+  gateway:
+    # Pinned ContextForge v1.0.2 (bundles the plugins + cpex framework).
+    image: ghcr.io/ibm/mcp-context-forge@sha256:cfeaf233bd6376ac4410309aba7c81a9c5380324f62337e144523179c062eb44
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: "4444"
+      DATABASE_URL: sqlite:////tmp/mcp.db
+      MCPGATEWAY_A2A_ENABLED: "true"
+      AUTH_REQUIRED: "true"
+      # SSRF: the gateway calls backends by Compose service name (private IPs)
+      SSRF_ALLOW_PRIVATE_NETWORKS: "true"
+      SSRF_ALLOW_LOCALHOST: "true"
+      # Plugins
+      PLUGINS_ENABLED: "true"
+      PLUGIN_CONFIG_FILE: /app/plugins/config.yaml
+    ports:
+      - "4444:4444"
+    volumes:
+      # Mount our curated plugin config over the bundled one (plugin CODE stays in the image).
+      - ./gateway/plugins/config.yaml:/app/plugins/config.yaml:ro
+    depends_on:
+      - opa
+    restart: unless-stopped
+
+  opa:
+    image: openpolicyagent/opa:0.70.0
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "--log-level=info", "/policies"]
+    volumes:
+      - ./gateway/policies:/policies:ro
+    restart: unless-stopped
+
+  expense-db:
+    build: ./mcp-servers/expense-db
+    restart: unless-stopped
+  erp-payments:
+    build: ./mcp-servers/erp-payments
+    restart: unless-stopped
+  policy-docs:
+    build: ./mcp-servers/policy-docs
+    restart: unless-stopped
+  notify:
+    build: ./mcp-servers/notify
+    restart: unless-stopped
+
+  auditor:
+    build: ./a2a-agents/auditor
+    environment:
+      GATEWAY_URL: http://gateway:4444
+      GATEWAY_TOKEN: ${AUDITOR_TOKEN:-}
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  payments:
+    build: ./a2a-agents/payments
+    restart: unless-stopped
