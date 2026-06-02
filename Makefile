@@ -49,9 +49,11 @@ companion: ## Run the browser companion dashboard on :7070 (watch the control pl
 verify-controls: ## Run the money-shot proof suite (assert block/allow)
 	@bash scripts/money-shots/run-all.sh
 
-demo-reset: ## Reset fixtures + clear rate-limit lockouts between runs
-	$(COMPOSE) restart gateway expense-db
-	@echo "reset done"
+demo-reset: ## Clean-reset the gateway to a known-good state (recreate + reseed)
+	$(COMPOSE) up -d --force-recreate gateway
+	@for i in $$(seq 1 30); do curl -sf localhost:4444/health >/dev/null 2>&1 && break || sleep 2; done
+	@$(MAKE) seed
+	@echo "reset done — run 'make verify-controls' to confirm 16/16"
 
 logs: ## Tail gateway logs
 	$(COMPOSE) logs -f gateway
