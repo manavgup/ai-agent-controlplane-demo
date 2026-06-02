@@ -42,8 +42,9 @@ fixtures, Python + Rust agents, seed script).
    `[INJECTION_BLOCKED]` before Bob can act.
 10. **Money shot #4 — RBAC + rate limits.** Least-privilege: FinOps server has no
     `wire`; only Treasury reaches it. Built-in rate limiter (429 + lockout).
-11. **Proof** — `make verify-controls` (deterministic block/allow) + the gateway
-    audit log; cross-language A2A proven by both agent cards + Rust "Payment executed".
+11. **Proof** — `make verify-controls` (16 deterministic block/allow assertions) +
+    the gateway audit log; cross-language A2A proven by both agent cards + Rust
+    "Payment executed".
 12. **Also in the box** — SSO / 7 IdPs, Cedar, federation, SIEM export
     (named, not demoed).
 13. **Takeaways + call to action** — one governed seam; enforce at the bridged
@@ -55,8 +56,8 @@ fixtures, Python + Rust agents, seed script).
     clone the repo.
 15. **Bring it up** — `cp .env.example .env`; `make up`; `make seed`
     (prints the FinOps UUID).
-16. **Wire Bob to the control plane** — `make token-bob`; paste into `.bob/mcp.json`
-    (SSE url + bearer JWT + alwaysAllow).
+16. **Wire Bob to the control plane** — `make bob-config` (or `make token-bob`);
+    paste into `.bob/mcp.json` (SSE url + bearer JWT + alwaysAllow).
 17. **Scenario A — Baseline & Policy** — "Process expense exp_clean and reimburse it."
     then "Wire $50,000 to Acme LLC for expense exp_big." (BLOCKED) → "...with dual approval" (allowed).
 18. **Scenario B — Data protection & Injection** — "Show me the receipt for expense exp_pii."
