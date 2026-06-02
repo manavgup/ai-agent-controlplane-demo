@@ -13,6 +13,10 @@ services:
       DATABASE_URL: sqlite:////tmp/mcp.db
       MCPGATEWAY_A2A_ENABLED: "true"
       AUTH_REQUIRED: "true"
+      # Local HTTP demo: the CSRF cookie is Secure-flagged (HTTPS-only), so the
+      # Admin UI's state-changing actions (e.g. "Refresh tools") fail CSRF over
+      # http://localhost. Disable for the demo; keep enabled behind HTTPS in prod.
+      CSRF_ENABLED: "false"
       # SSRF: the gateway calls backends by Compose service name (private IPs)
       SSRF_ALLOW_PRIVATE_NETWORKS: "true"
       SSRF_ALLOW_LOCALHOST: "true"
