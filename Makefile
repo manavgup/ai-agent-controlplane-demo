@@ -52,6 +52,9 @@ companion: ## Run the browser companion dashboard on :7070 (watch the control pl
 	echo "Companion → http://localhost:7070  (FinOps $$UUID)"; \
 	GATEWAY_TOKEN=$$ADMIN FINOPS_UUID=$$UUID uv run --with flask --with httpx python companion/app.py
 
+demo: ## Stage-gated end-to-end demo (cold start → register → scenarios → proof), pauses each stage
+	@bash scripts/demo.sh
+
 verify-controls: ## Run the money-shot proof suite (assert block/allow)
 	@bash scripts/money-shots/run-all.sh
 
