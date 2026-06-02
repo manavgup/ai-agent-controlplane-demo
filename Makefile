@@ -5,7 +5,7 @@ SECRET := demo-only-change-me-0123456789abcdef
 MINT := DATABASE_URL=sqlite:///./.tokmint.db uv run --with mcp-contextforge-gateway -- python -m mcpgateway.utils.create_jwt_token
 COMPOSE := docker compose
 
-.PHONY: help up up-full down seed token token-bob bob-config bob-install bob-config-operator bob-install-operator companion logs verify-controls demo-reset ps demo quickstart monitor inspect-mcp inspect-a2a
+.PHONY: help up up-full down seed token token-bob bob-config bob-install bob-config-operator bob-install-operator companion logs verify-controls demo-reset ps demo quickstart monitor inspect-mcp inspect-a2a fxrates-convert fxrates-reset
 
 help:
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n",$$1,$$2}'
@@ -73,6 +73,16 @@ quickstart: .env ## ONE command: preflight → stack → seed → Bob → verify
 
 demo: ## Stage-gated end-to-end demo (cold start → register → scenarios → proof), pauses each stage
 	@bash scripts/demo.sh
+
+fxrates-convert: ## Showcase fallback: apply the finished fx-rates (with convert) + rebuild
+	cp mcp-servers/fx-rates/server_with_convert.py mcp-servers/fx-rates/server.py
+	$(COMPOSE) up -d --build fx-rates
+	@echo "fx-rates now has 'convert' — re-register via Bob's operator persona to govern it"
+
+fxrates-reset: ## Restore the base fx-rates (no convert) so the 'Bob builds it' beat repeats
+	git checkout mcp-servers/fx-rates/server.py
+	$(COMPOSE) up -d --build fx-rates
+	@echo "fx-rates restored to base (get_fx_rate + list_currencies)"
 
 monitor: ## Open the ContextForge monitor (Admin UI: catalog + observability + logs)
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
