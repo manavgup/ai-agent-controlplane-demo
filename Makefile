@@ -33,7 +33,14 @@ seed: ## Register servers/agents + build FinOps/Treasury virtual servers
 	@ADMIN_TOKEN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET)) \
 	  uv run --with httpx python gateway/seed/seed.py
 
-verify-controls: ## Run the 4 money-shot proof scripts (assert block/allow)
+bob-config: ## Print the .bob/mcp.json to paste into IBM Bob (live FinOps UUID + token)
+	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
+	BOB=$$($(MINT) -u bob@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
+	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if s.get('name')=='FinOps']" 2>/dev/null | head -1); \
+	if [ -z "$$UUID" ]; then echo "FinOps server not found — run 'make seed' first" >&2; exit 1; fi; \
+	sed -e "s|REPLACE_FINOPS_UUID|$$UUID|" -e "s|REPLACE_BOB_TOKEN|$$BOB|" bob/mcp.json.template
+
+verify-controls: ## Run the money-shot proof suite (assert block/allow)
 	@bash scripts/money-shots/run-all.sh
 
 demo-reset: ## Reset fixtures + clear rate-limit lockouts between runs

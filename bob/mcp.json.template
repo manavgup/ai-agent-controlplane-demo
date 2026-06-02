@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "finbyte-gateway": {
+      "url": "http://localhost:4444/servers/REPLACE_FINOPS_UUID/sse",
+      "headers": {
+        "Authorization": "Bearer REPLACE_BOB_TOKEN"
+      },
+      "alwaysAllow": [
+        "expense-db-list-pending-expenses",
+        "expense-db-get-expense",
+        "expense-db-get-receipt",
+        "erp-payments-approve",
+        "erp-payments-reimburse",
+        "policy-docs-get-policy",
+        "policy-docs-wire-limit",
+        "a2a-auditor"
+      ],
+      "disabled": false
+    }
+  }
+}
