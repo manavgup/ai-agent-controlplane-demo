@@ -1,0 +1,10 @@
+### MCP Inspector (@modelcontextprotocol/inspector --cli) vs expense-db MCP server
+$ npx @modelcontextprotocol/inspector --cli http://localhost:8011/mcp --transport http --method tools/list
+--- tools (names + descriptions) ---
+ - list_pending_expenses — Return all expenses currently awaiting approval.
+ - get_expense — Fetch a single expense by its id.
+ - get_receipt — Fetch the raw text of a receipt by its receipt id (e.g. 'rcpt_pii').
+
+$ ... --method tools/call --tool-name get_receipt --tool-arg id=rcpt_clean
+--- tool result ---
+Coffee and pastries for the team standup. Total $18.50.
