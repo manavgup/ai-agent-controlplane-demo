@@ -30,6 +30,7 @@ Folded in the Codex review of the first draft. Material changes:
 | 3 | **Controls enforced via ContextForge** over MCP and A2A | Four headline controls: Policy (OPA via `unified_pdp`), Data protection (PII/PCI + secrets), Prompt-injection (tool-output content filter), RBAC + rate limits — all enforced at the gateway's tool hooks, including on the bridged A2A tool |
 | 4 | **Proof the controls work** | Per-control proof surface (one chosen screen each) + `make verify-controls` deterministic assertion suite attendees can re-run |
 | — | Attendees **use IBM Bob and follow along** | Turnkey **lite** compose profile + a tested `.bob/mcp.json` recipe; attendees drive Bob against their own local stack |
+| — | A **finished PowerPoint deck** that walks the audience through the talk and each scenario, doubling as **attendee follow-along support** for driving Bob | Built with the `pptx` skill from `slides/outline.md`; presenter narrative slides + a per-scenario follow-along section with the exact Bob prompts, `.bob/mcp.json` setup, and expected allowed/blocked results |
 
 ### Non-goals (YAGNI / out of scope)
 - Production hardening as a deliverable (full SSRF lockdown, security headers, container hardening) — *mentioned* on a slide, not built/demoed.
@@ -157,6 +158,34 @@ Pick **one reliable proof surface per control** (chosen above) instead of assumi
 
 **30-minute fallback:** money shots **#1 (Policy)** and **#3 (Injection)**; trim baseline; keep proof + repo handoff.
 
+### 7.1 Slide deck (finished PPTX — presenter narrative + attendee follow-along)
+
+One finished `slides/bob-controlplane-talk.pptx`, built with the `pptx` skill from `slides/outline.md` (source of truth), serves both the room and the hands-on attendees.
+
+**Part A — the talk (presenter narrative), ~12–15 slides:**
+1. Title + one-line thesis.
+2. The problem: agents got tools (MCP); now agents get each other (A2A) — who's in charge?
+3. MCP vs A2A in one diagram (vertical model→tools vs horizontal agent→agent).
+4. The cast: IBM Bob + ContextForge + the FinByte mesh (the architecture diagram).
+5. The control-plane idea: one governed seam; enforcement at the bridged `a2a_<name>` tool hook.
+6–9. One slide per money shot (Policy / Data protection / Injection / RBAC+rate): the dangerous moment → the control → before/after.
+10. Proof: per-control proof surface + `make verify-controls`.
+11. Also in the box (SSO, Cedar, federation, SIEM) — named, not demoed.
+12. Takeaways + call to action + repo QR.
+
+**Part B — follow-along support for using Bob (hands-on appendix), ~6–8 slides:**
+- Prereqs: sign up for the Bob 30-day trial **in advance**; install Bob; `git clone`; `docker compose up` (lite).
+- The exact `.bob/mcp.json` entry to paste (the M0-confirmed schema) + bearer token + `alwaysAllow`.
+- One slide per scenario with the **exact prompt to type into Bob** and **what you should see**, so attendees reproduce each money shot:
+  - Baseline → reimbursed.
+  - Policy: wire $50k → BLOCKED (Rego reason).
+  - Data protection: open a receipt → PII/secrets masked.
+  - Injection: process the poisoned expense → blocked.
+  - RBAC/rate: switch to the viewer token / spam a tool → 403 / 429.
+- Troubleshooting (token expired, port in use, Bob not listing tools).
+
+The deck is exported to `.pptx` and committed; speaker notes carry the verbatim talk track and the exact commands.
+
 ---
 
 ## 8. Repo layout
@@ -181,6 +210,9 @@ bob-controlplane-demo/
 ├─ scripts/money-shots/{ms1-policy,ms2-pii,ms3-injection,ms4-rbac-rate}.sh
 ├─ docs/{RUNBOOK.md, ARCHITECTURE.md}
 └─ slides/
+   ├─ bob-controlplane-talk.pptx   # the finished deck (presenter narrative + attendee follow-along)
+   ├─ outline.md                   # slide-by-slide outline + speaker notes (source of truth)
+   └─ assets/                      # architecture diagram, logos, per-money-shot screenshots
 ```
 
 ---
