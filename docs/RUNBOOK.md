@@ -18,7 +18,13 @@
   2. *Data protection*: *"Show me the receipt for expense exp_pii."* → SSN/card masked, key `[SECRET_REDACTED]`.
   3. *Injection*: *"Process expense exp_injection."* → the embedded "SYSTEM: ignore…" is `[INJECTION_BLOCKED]`.
   4. *Least-privilege*: *"Wire funds directly."* → Bob has no `wire` tool (FinOps excludes it).
-- **Proof** (5 min): `make verify-controls` → 16/16 green. Hand off the repo + `make bob-config`.
+- **Act 2 — Bob operates the control plane** (~5 min): switch Bob to the privileged operator persona — `make bob-install-operator`, restart Bob (the analyst persona deliberately has no operator tools — RBAC made concrete). Then, in Bob:
+  1. *"List everything ContextForge is governing."* → `list_control_plane` (federated servers, A2A agents, virtual-server tool scopes).
+  2. *"Would a $50,000 wire be allowed? What about with dual approval?"* → `evaluate_policy` (Bob interrogates OPA live: deny + reason, then allow).
+  3. *"Finance just shipped an fx-rates service at http://fx-rates:8000/mcp — register it."* → `register_mcp_server`; fx-rates joins the catalog and its tools are now governed (re-run `list_control_plane` to show it).
+  4. *"Show me what got blocked today."* → `recent_blocks` (the audit trail).
+  Reset between runs: `make seed` un-registers fx-rates so the register beat repeats.
+- **Proof** (5 min): `make verify-controls` → 16/16 green. Hand off the repo + `make bob-install`.
 - **Q&A** (5 min).
 
 ## Reset between runs

@@ -11,3 +11,6 @@ target/
 
 # dedicated venv for the Bob mcpgateway.wrapper bridge (local, per-machine)
 .wrapper-venv/
+
+# PowerPoint lock/owner files
+slides/~$*
