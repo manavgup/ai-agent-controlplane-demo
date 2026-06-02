@@ -33,17 +33,21 @@ seed: ## Register servers/agents + build FinOps/Treasury virtual servers
 	@ADMIN_TOKEN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET)) \
 	  uv run --with httpx python gateway/seed/seed.py
 
-bob-config: ## Print the Bob MCP config (mcpgateway.wrapper, live FinOps UUID + token)
+# NOTE: the token must be for a REGISTERED gateway user. admin@finbyte.demo is
+# the seeded platform admin; a bob@finbyte.demo token is signed correctly but the
+# gateway 401s it (no such user). Least-privilege is enforced by the FinOps
+# virtual server (the UUID in MCP_SERVER_URL exposes 8 tools, hides wire), not by
+# the token identity — so the admin-subject token is the right choice here.
+bob-config: ## Print the Bob MCP config (mcpgateway.wrapper, live FinOps UUID + admin token)
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
-	BOB=$$($(MINT) -u bob@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
 	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if s.get('name')=='FinOps']" 2>/dev/null | head -1); \
 	if [ -z "$$UUID" ]; then echo "FinOps server not found — run 'make seed' first" >&2; exit 1; fi; \
-	sed -e "s|REPLACE_FINOPS_UUID|$$UUID|" -e "s|REPLACE_BOB_TOKEN|$$BOB|" bob/mcp.json.template
+	sed -e "s|REPLACE_FINOPS_UUID|$$UUID|" -e "s|REPLACE_GATEWAY_TOKEN|$$ADMIN|" bob/mcp.json.template
 
 bob-install: ## Write the fresh config to .bob/mcp.json so Bob connects (run after seed/demo-reset)
 	@mkdir -p .bob; \
 	$(MAKE) -s bob-config > .bob/mcp.json && \
-	echo "wrote .bob/mcp.json (FinOps UUID + Bob token refreshed). Restart Bob, then: bob mcp list"; \
+	echo "wrote .bob/mcp.json (FinOps UUID + admin token refreshed). Restart Bob, then: bob mcp list"; \
 	echo "Note: 'bob mcp list' shows 'Disconnected' until a live session — that is just static status."
 
 companion: ## Run the browser companion dashboard on :7070 (watch the control plane while using Bob)

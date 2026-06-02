@@ -8,3 +8,6 @@ __pycache__/
 *.pyc
 node_modules/
 target/
+
+# dedicated venv for the Bob mcpgateway.wrapper bridge (local, per-machine)
+.wrapper-venv/
