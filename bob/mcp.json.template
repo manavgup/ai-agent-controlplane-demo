@@ -1,9 +1,13 @@
 {
   "mcpServers": {
     "finbyte-gateway": {
-      "url": "http://localhost:4444/servers/REPLACE_FINOPS_UUID/sse",
-      "headers": {
-        "Authorization": "Bearer REPLACE_BOB_TOKEN"
+      "command": "uvx",
+      "args": ["--from", "mcp-contextforge-gateway", "python", "-m", "mcpgateway.wrapper"],
+      "env": {
+        "MCP_SERVER_URL": "http://localhost:4444/servers/REPLACE_FINOPS_UUID/sse",
+        "MCP_AUTH": "Bearer REPLACE_BOB_TOKEN",
+        "DATABASE_URL": "sqlite:////tmp/mcpwrapper.db",
+        "MCP_WRAPPER_LOG_LEVEL": "OFF"
       },
       "alwaysAllow": [
         "expense-db-list-pending-expenses",

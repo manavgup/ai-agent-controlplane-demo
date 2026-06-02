@@ -3,7 +3,8 @@
 ## Before the talk
 1. `cp .env.example .env && make up && make seed` — wait for "gateway healthy" + the FinOps/Treasury UUIDs.
 2. `make verify-controls` → confirm **16 passed, 0 failed**. (This is your safety net: if live Bob misbehaves on stage, run this instead — it proves every control.)
-3. `make bob-config` → paste into `~/.bob/mcp_settings.json`; start Bob; confirm Bob lists the FinByte tools.
+3. `make bob-install` → writes `.bob/mcp.json` (the project config Bob reads from this dir) with the current FinOps UUID + Bob token. **Re-run after every `make seed`/`make demo-reset` — the FinOps UUID changes on each reseed, and a stale UUID is the #1 cause of "Bob can't connect".** Start Bob from the repo dir; ask it to list its tools. (`bob mcp list` shows "Disconnected" until a live session — that status line is static, not a failure.)
+   - Bob connects through the `mcpgateway.wrapper` stdio bridge (`uvx --from mcp-contextforge-gateway python -m mcpgateway.wrapper`). The wrapper **must** have `DATABASE_URL` set to a writable path (the template uses `sqlite:////tmp/mcpwrapper.db`) or it crashes on startup importing `mcpgateway.config` (`OSError: Read-only file system: '/data'`). `make bob-config` bakes this in — that startup crash, not auth, was the old "Bob won't connect" bug.
 4. Open three windows: (a) Bob, (b) `make logs` (gateway), (c) a terminal for `verify-controls` / curl.
 5. Record a screen capture of each money shot as a backup.
 
@@ -22,12 +23,13 @@
 
 ## Reset between runs
 - `make demo-reset` — restarts the gateway + expense-db (clears rate-limit lockouts, restores fixtures).
-- Tokens expired? `make token` / `make bob-config` again (tokens last 7 days).
+- Tokens expired? `make token` / `make bob-install` again (tokens last 7 days). Always re-run `make bob-install` after a reseed (UUID changes).
 
 ## Recovery
 | Symptom | Fix |
 |---|---|
-| Bob lists no tools | re-run `make bob-config`, re-paste, restart Bob; confirm `curl -s localhost:4444/health` = 200 |
+| Bob lists no tools | re-run `make bob-install` (refreshes the FinOps UUID), restart Bob; confirm `curl -s localhost:4444/health` = 200 |
+| Bob server "Disconnected" / wrapper exits | ensure `.bob/mcp.json` has `DATABASE_URL` in `env` (writable path); stale FinOps UUID → `make bob-install` |
 | `make seed` warns "tool not found" | backends still starting; wait 5s and re-run `make seed` (idempotent) |
 | Port 4444 in use | another gateway running: `make down`, or `pkill -f mcpgateway.main` (a host instance) |
 | OPA shot not blocking | `docker compose ps opa` up? `make demo-reset`; check `gateway/policies/finops.rego` mounted |
