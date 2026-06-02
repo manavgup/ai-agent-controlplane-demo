@@ -62,6 +62,13 @@ def get_receipt(id: str) -> str:
     return _RECEIPTS.get(id, f"not_found: {id}")
 
 
+@mcp.custom_route("/health", methods=["GET"])
+async def health(request):
+    """Plain REST health probe (for the gateway's connectivity test + containers)."""
+    from starlette.responses import JSONResponse
+    return JSONResponse({"status": "ok", "server": "expense-db"})
+
+
 if __name__ == "__main__":
     # FastMCP v3: transport "http" == streamable HTTP, served at /mcp.
     mcp.run(transport="http", host="0.0.0.0", port=8000)

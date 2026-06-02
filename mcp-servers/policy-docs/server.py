@@ -26,5 +26,12 @@ def wire_limit() -> dict:
     return {"auto_approve_under": 10000, "currency": "USD", "dual_approval_at_or_above": 10000}
 
 
+@mcp.custom_route("/health", methods=["GET"])
+async def health(request):
+    """Plain REST health probe (for the gateway's connectivity test + containers)."""
+    from starlette.responses import JSONResponse
+    return JSONResponse({"status": "ok", "server": "policy-docs"})
+
+
 if __name__ == "__main__":
     mcp.run(transport="http", host="0.0.0.0", port=8000)

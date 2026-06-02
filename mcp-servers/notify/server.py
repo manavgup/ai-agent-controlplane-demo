@@ -14,5 +14,12 @@ def notify(channel: str, message: str) -> dict:
     return {"status": "sent", **entry}
 
 
+@mcp.custom_route("/health", methods=["GET"])
+async def health(request):
+    """Plain REST health probe (for the gateway's connectivity test + containers)."""
+    from starlette.responses import JSONResponse
+    return JSONResponse({"status": "ok", "server": "notify"})
+
+
 if __name__ == "__main__":
     mcp.run(transport="http", host="0.0.0.0", port=8000)

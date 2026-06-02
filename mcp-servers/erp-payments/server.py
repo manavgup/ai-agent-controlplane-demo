@@ -26,5 +26,12 @@ def wire(payee: str, amount: float, approval: bool = False) -> dict:
     return {"status": "wired", "payee": payee, "amount": amount, "approval": approval}
 
 
+@mcp.custom_route("/health", methods=["GET"])
+async def health(request):
+    """Plain REST health probe (for the gateway's connectivity test + containers)."""
+    from starlette.responses import JSONResponse
+    return JSONResponse({"status": "ok", "server": "erp-payments"})
+
+
 if __name__ == "__main__":
     mcp.run(transport="http", host="0.0.0.0", port=8000)
