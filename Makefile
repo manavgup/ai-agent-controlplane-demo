@@ -20,13 +20,13 @@ token-bob: ## Print Bob's JWT (paste into .bob/mcp.json)
 	@$(MINT) -u bob@finbyte.demo --admin -e 10080 -s $(SECRET)
 
 up: .env ## Build + start the lite stack
-	@echo "AUDITOR_TOKEN=$$($(MINT) -u auditor@finbyte.demo --admin -e 10080 -s $(SECRET))" > .env.tokens
+	@echo "AUDITOR_TOKEN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET))" > .env.tokens
 	$(COMPOSE) --env-file .env.tokens up -d --build
 	@echo "waiting for gateway health..."; \
 	for i in $$(seq 1 40); do curl -sf localhost:4444/health >/dev/null 2>&1 && { echo "gateway healthy"; break; } || sleep 2; done
 
 up-full: .env ## Start the full presenter stack (postgres/redis/nginx/phoenix)
-	@echo "AUDITOR_TOKEN=$$($(MINT) -u auditor@finbyte.demo --admin -e 10080 -s $(SECRET))" > .env.tokens
+	@echo "AUDITOR_TOKEN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET))" > .env.tokens
 	$(COMPOSE) --env-file .env.tokens -f docker-compose.yml -f docker-compose.full.yml up -d --build
 
 seed: ## Register servers/agents + build FinOps/Treasury virtual servers

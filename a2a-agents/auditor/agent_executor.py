@@ -62,7 +62,13 @@ def parse_payee(text: str) -> str:
 
 
 class AuditorAgent:
-    """Calls the gateway `a2a_payments` tool and reports the outcome."""
+    """Calls the gateway `a2a-payments` tool and reports the outcome.
+
+    Honesty matters for the demo: only a genuine POLICY violation is reported as
+    "BLOCKED by control-plane policy". Auth (401/403), transport, and
+    tool-resolution errors are surfaced as plain ERRORs so they can never
+    masquerade as a policy decision.
+    """
 
     async def audit(self, payee: str, amount: float, approval: bool) -> str:
         """Call the gateway tool over HTTP. Never raises; returns a message."""
@@ -73,7 +79,7 @@ class AuditorAgent:
             'id': 1,
             'method': 'tools/call',
             'params': {
-                'name': 'a2a_payments',
+                'name': 'a2a-payments',
                 'arguments': {
                     'payee': payee,
                     'amount': amount,
@@ -85,36 +91,44 @@ class AuditorAgent:
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(url, json=body, headers=headers)
-        except Exception as exc:  # noqa: BLE001 - any transport error -> BLOCKED
-            return f'BLOCKED by control plane: {exc}'
+        except Exception as exc:  # noqa: BLE001 - transport failure, NOT a policy decision
+            return f'ERROR (transport, not a policy decision): {exc}'
 
-        # Non-2xx status -> blocked by the control plane.
+        # Non-2xx -> auth/transport error, NOT a policy block.
         if response.status_code < 200 or response.status_code >= 300:
             detail = _short(response.text) or f'HTTP {response.status_code}'
-            return f'BLOCKED by control plane: {detail}'
+            kind = 'auth' if response.status_code in (401, 403) else f'transport {response.status_code}'
+            return f'ERROR ({kind}, not a policy decision): {detail}'
 
         # Parse the JSON-RPC response body.
         try:
             data = response.json()
         except Exception:  # noqa: BLE001
-            return f'Payment requested: {_short(response.text)}'
+            return f'Payment executed: {_short(response.text)}'
 
-        # JSON-RPC level error.
+        # JSON-RPC level error: only a policy violation is a "block"; anything
+        # else (e.g. -32601 tool-not-found) is a misconfiguration, not policy.
         if isinstance(data, dict) and data.get('error'):
-            return f'BLOCKED by control plane: {_short(str(data["error"]))}'
+            err = data['error']
+            msg = err.get('message', '') if isinstance(err, dict) else str(err)
+            if _looks_like_violation(msg):
+                return f'BLOCKED by control-plane policy: {_short(msg)}'
+            return f'ERROR (not a policy decision): {_short(str(err))}'
 
         result = data.get('result', data) if isinstance(data, dict) else data
 
-        # Tool-level policy violation. MCP-style results may carry isError, or
-        # the policy detail may appear in the textual content.
+        # Tool-level policy violation (MCP isError / violation text in output).
         if isinstance(result, dict):
-            if result.get('isError') or result.get('is_error'):
-                return f'BLOCKED by control plane: {_short(_extract_text(result))}'
             text = _extract_text(result)
-            if text and _looks_like_violation(text):
-                return f'BLOCKED by control plane: {_short(text)}'
+            if result.get('isError') or result.get('is_error') or (text and _looks_like_violation(text)):
+                return f'BLOCKED by control-plane policy: {_short(text)}'
+            # The bridged Rust agent echoes its own JSON-RPC; a non-policy error
+            # in there (e.g. bad params) must NOT be reported as a success.
+            if text and _embedded_error(text):
+                return f'ERROR (downstream agent, not a policy decision): {_short(text)}'
+            return f'Payment executed: {_short(text or str(result))}'
 
-        return f'Payment requested: {_short(str(result))}'
+        return f'Payment executed: {_short(str(result))}'
 
 
 def _extract_text(result: dict) -> str:
@@ -138,6 +152,15 @@ def _looks_like_violation(text: str) -> bool:
         kw in lowered
         for kw in ('blocked', 'denied', 'policy', 'violation', 'not allowed', 'forbidden')
     )
+
+
+def _embedded_error(text: str) -> bool:
+    """True if the bridged agent's echoed response carries a non-policy error
+    (so we never report it as a successful payment)."""
+    lowered = text.lower()
+    if 'invalid params' in lowered or 'protojson' in lowered:
+        return True
+    return '"error"' in lowered and '"jsonrpc"' in lowered
 
 
 def _short(text: str, limit: int = 500) -> str:

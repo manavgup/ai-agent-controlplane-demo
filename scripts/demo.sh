@@ -137,7 +137,7 @@ pause
 stage 1 "Bring up ContextForge + 4 MCP servers + 2 A2A agents"
 if [ "$FRESH" = 1 ]; then say "  tearing down (down -v)…"; $COMPOSE down -v --remove-orphans >/dev/null 2>&1 || true; fi
 say "  minting the Auditor's gateway token…"
-printf 'AUDITOR_TOKEN=%s\n' "$(mint auditor@finbyte.demo)" > .env.tokens
+printf 'AUDITOR_TOKEN=%s\n' "$(mint admin@finbyte.demo)" > .env.tokens
 say "  ${DIM}docker compose up -d --build  (pulls the pinned ContextForge image, builds 6 local images)${RST}"
 $COMPOSE --env-file .env.tokens up -d --build || die "compose up failed — inspect with: $COMPOSE logs"
 printf "  waiting for gateway health"
