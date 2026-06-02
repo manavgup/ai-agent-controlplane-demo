@@ -1,0 +1,19 @@
+# Adapted from IBM/mcp-context-forge v1.0.2 docker/compose workflows.
+# Builds the stack, validates compose, smoke-tests the gateway, and (best-effort)
+# scans images. Pin actions to commit SHAs before making the repo public.
+name: docker
+on:
+  push: { branches: [main] }
+  pull_request: {}
+jobs:
+  build-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose build
+      - run: make compose-validate
+      - run: docker compose up -d && sleep 15 && make smoke
+      # image CVE scan — upstream uses osv-scan-image + dockle; trivy shown as requested:
+      - run: make trivy || true
+      - if: always()
+        run: docker compose logs gateway | tail -50

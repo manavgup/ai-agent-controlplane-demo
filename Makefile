@@ -61,3 +61,37 @@ ps: ## Show running services
 
 down: ## Stop the stack
 	$(COMPOSE) down
+
+# ── Quality / security / CI (adapted from IBM/mcp-context-forge v1.0.2) ──
+# Divergence notes: upstream uses detect-secrets (not gitleaks) and osv-scan/dockle
+# (not trivy). `secrets-baseline`/`trivy` reflect that; pick what fits before publishing.
+.PHONY: format lint lint-rust test bandit pip-audit secrets-baseline sbom hadolint compose-validate smoke trivy check
+PY_DIRS := mcp-servers a2a-agents/auditor companion gateway/seed scripts
+IMAGES  ?= ai-agent-controlplane-demo-auditor ai-agent-controlplane-demo-payments
+
+format: ## Auto-fix Python (ruff --fix + black)
+	uvx ruff check --fix $(PY_DIRS); uvx black $(PY_DIRS)
+lint: ## Lint Python (ruff + black --check)
+	uvx ruff check $(PY_DIRS); uvx black --check $(PY_DIRS)
+lint-rust: ## Lint the Rust agent (fmt + clippy)
+	cd a2a-agents/payments && cargo fmt --check && cargo clippy -- -D warnings
+test: ## Run pytest (tolerates "no tests collected")
+	@uv run --with pytest pytest -q $(PY_DIRS) || { c=$$?; [ $$c -eq 5 ] || exit $$c; }
+bandit: ## Python source security scan
+	uvx bandit -r $(PY_DIRS) -ll
+pip-audit: ## Dependency CVE scan
+	uvx pip-audit || true
+secrets-baseline: ## Secret scan (detect-secrets — upstream-faithful)
+	uvx --from detect-secrets detect-secrets scan --update .secrets.baseline
+sbom: ## Generate CycloneDX SBOM
+	uvx --from cyclonedx-bom cyclonedx-py environment --output-format JSON --output-file docs/sbom.json --no-validate $$(command -v python3)
+hadolint: ## Lint Dockerfiles
+	@find . -name Dockerfile -not -path '*/target/*' -exec hadolint {} +
+compose-validate: ## Validate docker-compose.yml
+	$(COMPOSE) config --quiet && echo OK
+smoke: ## Post-up gateway health probe
+	@curl -sf localhost:4444/health && echo OK || exit 1
+trivy: ## Image CVE scan (divergence: upstream uses osv/dockle)
+	@for i in $(IMAGES); do trivy image --severity HIGH,CRITICAL --ignore-unfixed $$i || true; done
+check: lint bandit compose-validate ## Aggregate gate for CI
+	@echo "check passed"

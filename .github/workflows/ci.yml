@@ -1,0 +1,27 @@
+# Adapted from IBM/mcp-context-forge v1.0.2 (lint.yml + pytest.yml + rust.yml),
+# collapsed for this demo. CI just calls `make` so the Makefile is the single
+# source of truth. NOTE: pin actions to commit SHAs before making the repo public.
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request: {}
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: make lint
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: make test
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { components: rustfmt, clippy }
+      - run: make lint-rust

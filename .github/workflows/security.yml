@@ -1,0 +1,18 @@
+# Adapted from IBM/mcp-context-forge v1.0.2 security workflows.
+# Pin actions to commit SHAs before making the repo public.
+name: security
+on:
+  push: { branches: [main] }
+  pull_request: {}
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: make bandit
+      - run: make pip-audit
+      - run: make secrets-baseline   # upstream-faithful (detect-secrets); swap to `make gitleaks` if you add .gitleaks.toml
+      - run: make sbom
+      - uses: actions/upload-artifact@v4
+        with: { name: sbom, path: docs/sbom.* }
