@@ -51,6 +51,11 @@ agents + the operator, registers them, configures Bob, proves all controls
   `http://host.docker.internal:9001` (Python Auditor) and `:3000` (Rust Payments)
   to fetch + validate the cross-language agent cards.
 
+> **Want a 4th pane that proves each control fires in the gateway logs as you
+> prompt Bob?** See **[`docs/LOG-CHEATSHEET.md`](docs/LOG-CHEATSHEET.md)** — the exact
+> prompt → log-line map (`make logs` + `make logs-opa`), including which beat is
+> *supposed* to log nothing.
+
 ---
 
 ## 3. Act 1 — Bob as the FinOps analyst (least-privilege, governed)

@@ -51,7 +51,7 @@ Work down this ladder — the point is that **the demo can never fully fail, bec
   - Python Auditor: `docker compose exec auditor python -c "import urllib.request,json;print(json.load(urllib.request.urlopen('http://localhost:9001/.well-known/agent-card.json'))['name'])"`
   - Rust Payments serves the same well-known path on :3000 (advertised in its agent card).
 - **Baseline** (3 min): in Bob — *"Process expense exp_clean and reimburse it."* → succeeds.
-- **Money shots** (~5 min each), each visible in `make logs`:
+- **Money shots** (~5 min each), each visible in `make logs` — exact prompt→log-line map in [`LOG-CHEATSHEET.md`](LOG-CHEATSHEET.md):
   1. *Policy*: *"Wire $50,000 to Acme LLC for expense exp_big."* → **blocked** with the T&E reason. Then *"…approve and wire $50,000 with dual approval"* → allowed. (Also: the Auditor→Rust `a2a-payments` $50k is blocked the same way — agent-mesh governance.)
   2. *Data protection*: *"Show me the receipt for expense exp_pii."* → SSN/card masked, key `[SECRET_REDACTED]`.
   3. *Injection*: *"Process expense exp_injection."* → the embedded "SYSTEM: ignore…" is `[INJECTION_BLOCKED]`.
