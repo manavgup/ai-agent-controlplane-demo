@@ -42,6 +42,19 @@ make verify-controls     # 16 assertions — all four controls + cross-language 
 
 ## Point IBM Bob at the gateway
 
+The easy path — writes `.bob/mcp.json` and launches Bob from the repo root (cwd-proof):
+
+```bash
+make bob                 # FinOps analyst persona (Act 1)
+make bob-operator        # platform operator persona (Act 2)
+```
+
+> Bob reads `.bob/mcp.json` **relative to its cwd**, so always launch via `make bob`
+> (or run `bob` yourself from the repo root — not a subfolder). `make bob` also
+> refreshes the live FinOps UUID + token on every run, so it's safe after a reseed.
+
+Or just print the config to paste elsewhere:
+
 ```bash
 make bob-config          # prints a ready .bob/mcp.json (live FinOps UUID + a Bob token)
 ```

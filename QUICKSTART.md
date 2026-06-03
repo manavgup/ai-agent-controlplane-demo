@@ -40,7 +40,7 @@ agents + the operator, registers them, configures Bob, proves all controls
 
 | Pane | Command | Shows |
 |---|---|---|
-| **Bob** (terminal) | `bob` (from this folder) | the agent acting |
+| **Bob** (terminal) | `make bob` (cwd-proof launch) | the agent acting |
 | **ContextForge monitor** (browser) | `make monitor` → `/admin` | the catalog + Overview/Metrics/**Logs** (governance, live) |
 | **Inspector** (browser) | `make inspect-mcp` / `make inspect-a2a` | the governed MCP tools / the A2A agent cards |
 
@@ -55,7 +55,10 @@ agents + the operator, registers them, configures Bob, proves all controls
 
 ## 3. Act 1 — Bob as the FinOps analyst (least-privilege, governed)
 
-In Bob (the default persona after `quickstart`):
+Start Bob with **`make bob`** (it launches from the repo root, where the project's
+`.bob/mcp.json` lives, and refreshes the config). Running `bob` by hand from the
+`bob-personas/` subfolder is the #1 "No MCP servers configured" trap. Then, as the
+FinOps analyst persona:
 
 | Prompt | What ContextForge does | Where to watch |
 |---|---|---|
@@ -71,7 +74,8 @@ In Bob (the default persona after `quickstart`):
 ## 4. Act 2 — Bob as the platform operator (Bob operates the control plane)
 
 ```bash
-make bob-install-operator      # swap personas; restart bob
+# quit Bob, then:
+make bob-operator              # swap to the operator persona + relaunch Bob
 ```
 The analyst persona *can't* do any of this — the operator persona can (RBAC):
 
@@ -82,7 +86,7 @@ The analyst persona *can't* do any of this — the operator persona can (RBAC):
 | *"Register the fx-rates service at http://fx-rates:8000/mcp."* | `register_mcp_server` | a NEW server joins the catalog (watch the monitor / re-list) |
 | *"Show me what got blocked today."* | `recent_blocks` | the audit trail |
 
-Swap back to the analyst with `make bob-install`.
+Swap back to the analyst with `make bob`.
 
 ---
 
@@ -91,7 +95,8 @@ Swap back to the analyst with `make bob-install`.
 | Symptom | Fix |
 |---|---|
 | Anything drifts / 16/16 fails | `make demo-reset` → `make verify-controls` |
-| Bob lists no tools / "Disconnected" then connects | the FinOps/Operator UUID changes on reseed → re-run `make bob-install` (or `bob-install-operator`), restart Bob |
+| Bob says **"No MCP servers configured"** / asks you for the UUID & token | you launched `bob` from the wrong directory (e.g. the `bob-personas/` subfolder). Quit it and run **`make bob`** — it launches from the repo root where `.bob/mcp.json` lives |
+| Bob lists no tools / "Disconnected" then connects | the FinOps/Operator UUID changes on reseed → just re-run **`make bob`** (or `make bob-operator`); they rewrite `.bob/mcp.json` with the live UUID before launching |
 | Bob *describes* a result instead of calling a tool | tell it to **use the finbyte-gateway tool**; verify via the monitor Logs (no log = it narrated) |
 | Want the automated walkthrough instead | `make demo` (stage-gated, pauses each step) |
 

@@ -76,19 +76,21 @@ cat <<EOF
 
 ${B}${GRN}✔ Ready.${R}  Your governed agent control plane is live.
 
-${B}① Drive Bob (the agent)${R} — from THIS folder:
-   ${CYN}bob${R}
+${B}① Drive Bob (the agent)${R}:
+   ${CYN}make bob${R}                ${D}← launches Bob from the repo root (cwd-proof)${R}
+   ${D}(prefer ${R}${CYN}make bob${R}${D}. If you run ${R}${CYN}bob${R}${D} directly, do it FROM THIS folder — the repo${R}
+   ${D} root — NOT the bob-personas/ subfolder, or Bob won't find .bob/mcp.json.)${R}
    Then try, as the FinOps analyst:
      • "Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim."   ${D}→ PII/secret redacted${R}
      • "Fetch receipt rcpt_injection."                                        ${D}→ injection neutralized${R}
      • "Ask the auditor agent to pay \$50,000 to Acme LLC."                    ${D}→ blocked by policy (cross-language)${R}
      • "Wire \$50k yourself, directly."                                        ${D}→ you have no wire tool (least-privilege)${R}
-   Switch to the OPERATOR persona for Act 2:  ${CYN}make bob-install-operator${R}  (restart Bob)
+   Switch to the OPERATOR persona for Act 2 (quit Bob, then):  ${CYN}make bob-operator${R}
      • "List everything ContextForge is governing."
      • "Would a \$50,000 wire be allowed? With dual approval?"
      • "Register the fx-rates service at http://fx-rates:8000/mcp."
      • "Show me what got blocked today."
-   ${D}(after any reseed/demo-reset, re-run make bob-install / bob-install-operator)${R}
+   ${D}(make bob / make bob-operator refresh the config every time — safe after any reseed/demo-reset)${R}
 
 ${B}② Watch the control plane (3 ways)${R}:
    • ContextForge monitor : ${CYN}make monitor${R}   → ${GW}/admin  ($ADMIN_EMAIL / $ADMIN_PW)
