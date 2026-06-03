@@ -4,8 +4,10 @@ name: ai-agent-controlplane-demo
 
 services:
   gateway:
-    # Pinned ContextForge v1.0.2 (bundles the plugins + cpex framework).
-    image: ghcr.io/ibm/mcp-context-forge@sha256:cfeaf233bd6376ac4410309aba7c81a9c5380324f62337e144523179c062eb44
+    # Pinned ContextForge v1.0.2 with our config + FinByteGuard baked in
+    # (gateway/Dockerfile). No host bind-mounts → runs from any clone path,
+    # including ones Docker can't share (e.g. /tmp on macOS).
+    build: ./gateway
     env_file: .env
     environment:
       HOST: 0.0.0.0
@@ -25,20 +27,16 @@ services:
       PLUGIN_CONFIG_FILE: /app/plugins/config.yaml
     ports:
       - "4444:4444"
-    volumes:
-      # Mount our curated plugin config over the bundled one (plugin CODE stays in the image).
-      - ./gateway/plugins/config.yaml:/app/plugins/config.yaml:ro
-      # Custom plugin on the import path (/app is the gateway working dir).
-      - ./gateway/custom/finbyte_guard.py:/app/finbyte_guard.py:ro
     depends_on:
       - opa
     restart: unless-stopped
 
   opa:
-    image: openpolicyagent/opa:0.70.0
+    # Rego policies baked in (gateway/Dockerfile.opa) — no host bind-mount.
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile.opa
     command: ["run", "--server", "--addr=0.0.0.0:8181", "--log-level=info", "--set=decision_logs.console=true", "/policies"]
-    volumes:
-      - ./gateway/policies:/policies:ro
     restart: unless-stopped
 
   expense-db:
