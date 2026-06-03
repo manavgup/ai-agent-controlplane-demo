@@ -235,11 +235,16 @@ def evidence(scenario):
         return jsonify({"error": "Run this scenario first, then load evidence."}), 409
     req = info.get("request", {}) or {}
     name, args = req.get("name"), req.get("arguments", {})
+    blocked = bool(info.get("blocked"))
+    # The gateway only logs FAILED/blocked invocations at ERROR; a successful
+    # call logs nothing. So only attach gateway logs for a BLOCKED scenario —
+    # otherwise we'd surface unrelated earlier blocks under an ALLOWED card.
     return jsonify({
         "request": req,
         "response": info.get("raw"),
+        "blocked": blocked,
         "opa_decision": _opa_decision(name, args) if name else None,
-        "gateway_logs": _gateway_logs(name) if name else [],
+        "gateway_logs": _gateway_logs(name) if (blocked and name) else [],
         # for the redaction/injection scenarios the proof is the content diff,
         # not an OPA decision (get_receipt never reaches OPA).
         "before": info.get("before"),
@@ -363,10 +368,13 @@ async function evidence(k){
    h+='<span class="gOk">DELIVERED to LLM:</span> '+esc(e.delivered||'');
    h+='</pre>';
  }
- if(e.gateway_logs&&e.gateway_logs.length){
-   h+='<div class="evh">③ gateway log (control plane)</div><pre>';
+ if(e.blocked && e.gateway_logs && e.gateway_logs.length){
+   h+='<div class="evh">③ gateway log (control plane) — this BLOCK</div><pre>';
    e.gateway_logs.forEach(g=>{h+='['+esc(g.level)+'] '+esc(g.message)+(g.duration_ms?(' ('+g.duration_ms+'ms)'):'')+'\n';});
    h+='</pre>';
+ } else {
+   h+='<div class="evh">③ gateway log (control plane)</div>';
+   h+='<pre class="small">✓ Allowed — successful invocations are not logged at ERROR, so there is no block line here. Proof is the OPA decision (allow:true) above and the response below.</pre>';
  }
  h+='<div class="evh">④ raw response returned to the caller</div><pre>'+esc(JSON.stringify(e.response,null,2))+'</pre>';
  box.innerHTML=h;
