@@ -10,12 +10,19 @@ monitor, **MCP Inspector**, **A2A Inspector**).
 
 | Tool | Why | Get it |
 |---|---|---|
-| **Docker Desktop** (running) | runs the gateway + servers | docker.com |
+| **Docker** (running) | runs the gateway + servers | Docker Desktop on macOS/Windows, **OR** Docker Engine on Linux — docker.com |
 | **uv** | mints the gateway token offline | `https://docs.astral.sh/uv/` |
-| **IBM Bob Shell** (`bob`) | the AI agent you'll drive | your IBM Bob install |
-| **Node.js ≥ 18** (`npx`) | runs MCP Inspector | nodejs.org |
+| **IBM Bob Shell** (`bob`) | the AI agent you'll drive | macOS/Linux: `curl -fsSL https://bob.ibm.com/download/bobshell.sh \| bash` (checks Node ≥ 22.15 first) |
+| **Node.js ≥ 22.15** (`bob`, `npx`) | required by IBM Bob Shell (it's a Node app); also runs MCP Inspector via `npx` | nodejs.org, or `nvm install 22` |
 
 ~5 GB free disk; the ContextForge image (~pinned) pulls once on first run.
+
+> **Runs on Linux too — no Docker Desktop required.** The whole stack comes up on a
+> clean Linux box / VM with native **Docker Engine** (no nested virtualization). On
+> Apple silicon the practical path is a lightweight Linux VM (Multipass/Lima) +
+> Docker Engine; a macOS-guest VM is impractical (~60 GB+ disk). All source images
+> and the OPA image are **multi-arch** and run **natively on arm64 and amd64** (no
+> emulation) — nothing to change for Apple silicon / arm64 Linux.
 
 ---
 
@@ -31,8 +38,23 @@ make quickstart
 agents + the operator, registers them, configures Bob, proves all controls
 (**16/16**), and prints a walkthrough card. Re-run it any time it stalls.
 
-> If a check says MISSING, install that tool and re-run. If anything drifts
-> later: `make demo-reset`, then `make bob-install`.
+**Bob and npx are optional for `make quickstart`** — on a headless box / Linux VM /
+CI without them, preflight just **warns** and the run still ends **16/16 ("16 passed,
+0 failed")**. Bob is only needed to *drive* the demo in Section 3.
+
+> **Fresh-VM Docker BUILD-time DNS gotcha.** On some fresh Docker Engine installs the
+> in-build `RUN` steps (cargo/pip) fail to resolve hostnames — e.g. `Could not resolve
+> host: index.crates.io` — even though image **pulls** succeed (pulls go through the
+> daemon; build-step network uses the build container's resolver, often the dead
+> systemd-resolved `127.0.0.53` stub). **Fix:** create `/etc/docker/daemon.json` with
+> `{"dns":["8.8.8.8","1.1.1.1"]}`, then `sudo systemctl restart docker`, and re-run
+> `make quickstart` (it's idempotent).
+
+> Checks are split: **docker / uv / curl / python3 are required** — if any shows
+> **MISSING**, install it and re-run. **bob / npx are optional** — they show a yellow
+> warning (not MISSING) and never block; you can finish quickstart (16/16) without
+> them and install Bob later only to drive the demo. If anything drifts later:
+> `make demo-reset`, then `make bob-install`.
 
 ---
 
@@ -100,9 +122,11 @@ Swap back to the analyst with `make bob`.
 | Symptom | Fix |
 |---|---|
 | Anything drifts / 16/16 fails | `make demo-reset` → `make verify-controls` |
+| Image **build** fails with **`Could not resolve host`** (e.g. `index.crates.io`) on a fresh VM — yet pulls work | build-time DNS: create `/etc/docker/daemon.json` with `{"dns":["8.8.8.8","1.1.1.1"]}`, then `sudo systemctl restart docker`, and re-run **`make quickstart`** (idempotent) |
 | Bob says **"No MCP servers configured"** / asks you for the UUID & token | you launched `bob` from the wrong directory (e.g. the `bob-personas/` subfolder). Quit it and run **`make bob`** — it launches from the repo root where `.bob/mcp.json` lives |
 | Bob lists no tools / "Disconnected" then connects | the FinOps/Operator UUID changes on reseed → just re-run **`make bob`** (or `make bob-operator`); they rewrite `.bob/mcp.json` with the live UUID before launching |
 | Bob *describes* a result instead of calling a tool | tell it to **use the finbyte-gateway tool**; verify via the monitor Logs (no log = it narrated) |
 | Want the automated walkthrough instead | `make demo` (stage-gated, pauses each step) |
 
 **Prove every control at any time:** `make verify-controls` → `16 passed, 0 failed`.
+**No Bob needed for the proof** — the stack and the 16/16 suite run headless on a Linux VM / CI.

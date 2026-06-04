@@ -1,9 +1,16 @@
 # Presenter RUNBOOK
 
+## Prerequisites
+A fresh machine needs these before step 1 (see the [README Prerequisites table](../README.md#prerequisites) for links):
+- **Docker** — Docker Desktop on macOS/Windows, **OR** Docker Engine on Linux. The demo runs on a clean Linux box / VM, not only Docker Desktop; the OPA image is multi-arch so arm64 (Apple silicon / arm64 Linux) and amd64 both run natively, no emulation.
+- **uv**, **git**, **make**.
+- **Only to DRIVE / inspect Bob:** IBM Bob Shell plus **Node ≥ 22.15** (Bob Shell is a cross-platform Node app; Node also runs the MCP Inspector via `npx`). Install Bob on macOS/Linux with `curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash` (it checks Node ≥22.15 first). On a bleeding-edge distro, use `nvm install 22` to satisfy the Node version. Bob and Node are **not** needed to bring up the stack or prove the controls headlessly (see step 2).
+
 ## Before the talk
 1. `cp .env.example .env && make up && make seed` — wait for "gateway healthy" + the FinOps/Treasury UUIDs.
-2. `make verify-controls` → confirm **16 passed, 0 failed**. (This is your safety net: if live Bob misbehaves on stage, run this instead — it proves every control.)
-3. **`make bob`** → launches Bob as the FinOps analyst. It first (re)writes `.bob/mcp.json` (the project config Bob reads, relative to its cwd) with the current FinOps UUID + admin token, then starts Bob **from the repo root**. This is cwd-proof: launching `bob` by hand from the `bob-personas/` subfolder — or any other dir — makes Bob look for a non-existent `.bob/mcp.json` and print "No MCP servers configured" (then it asks you for the UUID/token). `make bob` also kills the **stale-UUID** failure (the #1 "Bob can't connect" cause) because it refreshes the config on every launch. (`bob mcp list` shows "Disconnected" until a live session — that status line is static, not a failure. `make bob-install` still exists if you only want to write the config without launching.)
+   - On a **fresh Linux VM**, set the Docker daemon DNS *before* the first build (see the build-time-DNS row in the failure matrix below). Image pulls can succeed while in-build `RUN` steps (cargo/pip) fail to resolve hosts; `{"dns":["8.8.8.8","1.1.1.1"]}` in `/etc/docker/daemon.json` + `sudo systemctl restart docker` fixes it.
+2. `make verify-controls` → confirm **16 passed, 0 failed**. (This is your safety net: if live Bob misbehaves on stage, run this instead — it proves every control. `make quickstart` / `make verify-controls` reach 16/16 **without Bob installed** — a headless Linux VM or CI runner proves every control with no Bob needed; Bob is only required to DRIVE the demo.)
+3. **`make bob`** → launches Bob as the FinOps analyst. **Driving Bob requires Node ≥ 22.15** (IBM Bob Shell is a cross-platform Node app; install via `curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash`, and `nvm install 22` on a bleeding-edge distro). On a headless / Linux box the first run needs an IBMid device-code/URL login. `make bob` first (re)writes `.bob/mcp.json` (the project config Bob reads, relative to its cwd) with the current FinOps UUID + admin token, then starts Bob **from the repo root**. This is cwd-proof: launching `bob` by hand from the `bob-personas/` subfolder — or any other dir — makes Bob look for a non-existent `.bob/mcp.json` and print "No MCP servers configured" (then it asks you for the UUID/token). `make bob` also kills the **stale-UUID** failure (the #1 "Bob can't connect" cause) because it refreshes the config on every launch. (`bob mcp list` shows "Disconnected" until a live session — that status line is static, not a failure. `make bob-install` still exists if you only want to write the config without launching. If `bob` isn't installed, `make bob` / `make bob-operator` fail gracefully — they still write `.bob/mcp.json`, print an install hint, and exit 0.)
    - Bob connects through the `mcpgateway.wrapper` stdio bridge (`uvx --from mcp-contextforge-gateway python -m mcpgateway.wrapper`). The wrapper **must** have `DATABASE_URL` set to a writable path (the template uses `sqlite:////tmp/mcpwrapper.db`) or it crashes on startup importing `mcpgateway.config` (`OSError: Read-only file system: '/data'`). `make bob-config` bakes this in — that startup crash, not auth, was the old "Bob won't connect" bug.
 4. Open three windows: (a) Bob, (b) `make logs` (gateway), (c) a terminal for `verify-controls` / curl.
 5. Record a screen capture of each money shot as a backup.
@@ -15,10 +22,11 @@ This section is for the case where a **room of attendees** runs the demo on thei
 ### (a) Setup buffer / pre-flight
 The realities of a live room:
 - **Attendees should run `make quickstart` BEFORE the session** (or during a ~10-minute setup window at the start). The pinned ContextForge gateway image **pulls once** and **7 images build** from source the first time; on conference wifi the network is the risk, not the laptop.
+- **Bob and npx are optional**: `make quickstart` warns in preflight if they're absent and still ends with **16/16**, so a headless Linux VM / CI runner proves every control with no Bob installed. Bob is needed only to DRIVE the demo.
 - Cold start once images are cached: **~38 seconds** end-to-end (measured: `make down && make quickstart` → "16 passed, 0 failed"; slowest phase is the stack bring-up + gateway-health wait). **That number is build-only** — the **first-ever** run on a clean machine additionally pays the one-time ContextForge image pull + 7 source builds, so budget several minutes on first run / conference wifi.
 - **Presenter pre-flight (do all of this before the room arrives):**
   1. Pre-run `make quickstart` and confirm it ends with the "Ready." card.
-  2. Confirm `make verify-controls` = **16/16** (this is the headless safety net).
+  2. Confirm `make verify-controls` = **16/16** (this is the headless safety net — it passes with no Bob installed).
   3. Know the two launch commands: **`make bob`** (FinOps analyst persona, Act 1) and **`make bob-operator`** (operator persona, Act 2). Both refresh the config and launch from the repo root — quit Bob before switching.
   4. Open the two panes you'll drive from: **Bob** (`make bob`) and **`make monitor`** (the ContextForge Admin UI — catalog + logs).
   5. **Record a screen capture of each beat** (each money shot + the operator beats) as a backup, so any single live failure is a fall-back to video, not a dead demo.
@@ -27,8 +35,10 @@ The realities of a live room:
 
 | Symptom | Likely cause | In-the-moment fallback | Prevent it |
 |---|---|---|---|
-| "Docker daemon not responding" | Docker Desktop not started | Start it, then re-run `make quickstart` | Start Docker before the session |
-| "preflight: `<tool>` MISSING" | `uv` / `bob` / `npx` / `node` not installed | Install per the preflight hint, then re-run | Install all four beforehand |
+| "Docker daemon not responding" | Docker not started — Docker Desktop on Mac/Windows, OR the Docker Engine service (`dockerd`) on Linux | Start Docker Desktop, or on Linux `sudo systemctl start docker`; then re-run `make quickstart` | Start Docker (Desktop or the Linux Engine service) before the session |
+| Build `RUN` steps fail with "Could not resolve host: index.crates.io" (or a pip/apt host) even though image **pulls** succeed | Fresh Docker Engine install whose build container inherits a dead systemd-resolved stub (`127.0.0.53`) | Create `/etc/docker/daemon.json` with `{"dns":["8.8.8.8","1.1.1.1"]}`, then `sudo systemctl restart docker`, then re-run `make quickstart` (idempotent) | On a fresh Linux VM, set the daemon DNS before the first build |
+| "preflight: `<tool>` MISSING" | a REQUIRED tool (`docker` / `uv` / `curl` / `python3`) is missing | Install per the preflight hint, then re-run | Install the required tools beforehand |
+| "preflight: `bob` / `npx` not found" (yellow `!`, not a hard MISSING) | Bob / Node are OPTIONAL — only needed to DRIVE / inspect the demo | Nothing to fix: quickstart still finishes `16 passed, 0 failed`. Install IBM Bob Shell (needs Node ≥22.15) to drive Bob | Only needed on the machine that drives Bob |
 | "`make up` hangs / gateway never healthy" | Slow or blocked image pull (conference wifi / proxy / `ghcr.io`) | Switch to a phone hotspot; or just watch the presenter and take the repo home | Pre-pull with `docker compose pull` beforehand |
 | "Port already in use" | One of 4444 (gateway), 8090 (A2A inspector), 6274/6277 (MCP inspector), 7070 (companion), 3000/9001 (agents) is taken | Stop the conflicting app or free the port | Check those ports are free before |
 | "Bob shows no tools / 'Disconnected'" | The FinOps/Operator UUID changed on reseed (stale UUID in `.bob/mcp.json`) | Quit Bob and re-launch with `make bob` (or `make bob-operator`) — they refresh the UUID before launching. `bob mcp list` "Disconnected" is a static status line until a live session — not a failure | Always launch via `make bob` / `make bob-operator` (they refresh on every run) |
@@ -41,7 +51,7 @@ The realities of a live room:
 
 ### (c) Fallback ladder (if live Bob misbehaves on stage)
 Work down this ladder — the point is that **the demo can never fully fail, because the controls are independently provable** even if the live agent acts up:
-1. **`make verify-controls`** — proves all 16 controls headlessly and deterministically (block/allow), no agent in the loop.
+1. **`make verify-controls`** — proves all 16 controls headlessly and deterministically (block/allow), no agent in the loop. (Runs with no Bob installed.)
 2. **`make demo`** — the stage-gated walkthrough (cold start → register → scenarios → proof) that pauses at each stage.
 3. **The recorded screen captures** of each beat (from pre-flight step 5).
 4. **The take-home repo + `QUICKSTART.md`** — attendees run it later on their own.
@@ -75,6 +85,8 @@ Work down this ladder — the point is that **the demo can never fully fail, bec
 | Bob lists no tools | re-launch with `make bob` (refreshes the FinOps UUID from the repo root), confirm `curl -s localhost:4444/health` = 200 |
 | Bob server "Disconnected" / wrapper exits | ensure `.bob/mcp.json` has `DATABASE_URL` in `env` (writable path); stale FinOps UUID → `make bob` |
 | Bob "No MCP servers configured" / asks for UUID+token | launched from the wrong dir (cwd has no `.bob/mcp.json`) → use `make bob` (launches from the repo root) |
+| `bob` not found / won't launch | `bob` isn't installed — `make bob` writes the config + prints an install hint and exits 0. Install IBM Bob Shell (`curl -fsSL https://bob.ibm.com/download/bobshell.sh \| bash`, needs **Node ≥ 22.15**); the stack + `make verify-controls` still prove 16/16 without it |
+| Docker build fails: "Could not resolve host" (cargo/pip/apt) but pulls work | fresh Docker Engine inherited a dead resolver — add `{"dns":["8.8.8.8","1.1.1.1"]}` to `/etc/docker/daemon.json`, `sudo systemctl restart docker`, re-run `make quickstart` (idempotent) |
 | `make seed` warns "tool not found" | backends still starting; wait 5s and re-run `make seed` (idempotent) |
 | Port 4444 in use | another gateway running: `make down`, or `pkill -f mcpgateway.main` (a host instance) |
 | OPA shot not blocking | `docker compose ps opa` up? `make demo-reset`; check `gateway/policies/finops.rego` mounted |

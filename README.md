@@ -100,12 +100,14 @@ Swap back to the analyst at any time with `make bob`.
 
 | Tool | Why | How to get it |
 |---|---|---|
-| **Docker Desktop** (running) | Runs the gateway, OPA, MCP servers, and A2A agents | [docker.com](https://www.docker.com/products/docker-desktop/) — start it before you begin |
+| **Docker** (running) | Runs the gateway, OPA, MCP servers, and A2A agents | **Docker Desktop** on macOS/Windows, **or Docker Engine** on Linux (runs natively, no nested virtualization). Start it before you begin. — [docker.com](https://www.docker.com/products/docker-desktop/) |
 | **uv** | Mints the gateway JWT **offline** (no network round-trip) | `https://docs.astral.sh/uv/` |
-| **IBM Bob Shell** (`bob`) | The AI agent you'll drive | macOS/Linux: `curl -fsSL https://bob.ibm.com/download/bobshell.sh \| bash` ([bob.ibm.com/download](https://bob.ibm.com/download)) |
-| **Node.js ≥ 22.15** | Required by IBM Bob Shell (it's a Node app); also runs the MCP Inspector (`npx`) | [nodejs.org](https://nodejs.org), or `nvm install 22` |
+| **IBM Bob Shell** (`bob`) | _Optional_ — only to **drive** Bob; the stack + `16/16` proof run without it | macOS/Linux: `curl -fsSL https://bob.ibm.com/download/bobshell.sh \| bash` ([bob.ibm.com/download](https://bob.ibm.com/download)) — checks Node ≥ 22.15 first |
+| **Node.js ≥ 22.15** | _Optional_ — required by IBM Bob Shell (it's a Node app) and the MCP Inspector (`npx`); not needed to bring up the stack or prove the controls | [nodejs.org](https://nodejs.org), or `nvm install 22` |
 
 > Budget **~5 GB** of free disk. On the first run, the pinned ContextForge image pulls once and the seven source images (six MCP servers + the Rust payments agent) build locally. Subsequent cold starts (`make down && make quickstart`) take roughly **~38 seconds** once images are cached.
+
+> **Running on Linux / in a VM.** Only **Docker** and **uv** are truly required to bring up the stack and prove `16/16` — `bob`/Node are needed only to _drive_ the demo. On Apple silicon a full macOS-guest VM is impractical (~60 GB+ disk); the practical path is a lightweight Linux VM (Multipass/Lima) + Docker Engine, which runs the stack natively on arm64 (the OPA image is multi-arch, so no emulation). IBM Bob Shell is cross-platform and can also be installed in the VM to drive the demo (first run uses an IBMid device-code login on a headless box). See **[Running on a fresh Linux box / VM](#running-on-a-fresh-linux-box--vm)** below.
 
 ---
 
@@ -117,7 +119,9 @@ cd ai-agent-controlplane-demo
 make quickstart
 ```
 
-`make quickstart` is **one command** that takes a laptop from nothing to a running, governed mesh: preflight (checks Docker/uv/bob/npx) → bring up the stack → seed (register servers/agents, build the FinOps / Treasury / Operator virtual servers) → configure Bob (FinOps analyst persona) → **prove all four controls (`16/16`)** → print a copy-paste walkthrough card. It's re-runnable — safe to run again if anything stalls. The Admin UI logs in with `admin@finbyte.demo` / `FinByteAdmin!2026`.
+`make quickstart` is **one command** that takes a laptop from nothing to a running, governed mesh: preflight (**requires** Docker + uv; **warns but continues** if `bob`/`npx` are absent) → bring up the stack → seed (register servers/agents, build the FinOps / Treasury / Operator virtual servers) → configure Bob (FinOps analyst persona) → **prove all four controls (`16/16`, with no Bob required)** → print a copy-paste walkthrough card. It's re-runnable — safe to run again if anything stalls. The Admin UI logs in with `admin@finbyte.demo` / `FinByteAdmin!2026`.
+
+> **Proof is headless.** `make quickstart` finishes `16 passed, 0 failed` even on a box without `bob` or Node (a Linux VM or CI runner): Bob only **drives** the demo — it isn't needed to bring up the stack or prove the controls. `make bob` / `make bob-operator` also fail gracefully if `bob` isn't installed (they still write `.bob/mcp.json`, print an install hint, and exit `0`).
 
 ### Drive Bob
 
@@ -144,6 +148,35 @@ make monitor        # ContextForge Admin UI (/admin): catalog + Overview/Metrics
 make inspect-mcp    # MCP Inspector → the 8 governed tools (erp-payments-wire is ABSENT)
 make inspect-a2a    # A2A Inspector → validates the Python + Rust agent cards
 ```
+
+### Running on a fresh Linux box / VM
+
+From nothing to `16/16` on a clean Linux box (or a lightweight Multipass/Lima VM on Apple silicon — the practical path, since a macOS-guest VM needs ~60 GB+ disk):
+
+```bash
+# 1. Install the runtime + build deps (Docker Engine runs natively, no nested virtualization):
+#    - Docker Engine          https://docs.docker.com/engine/install/
+#    - Node.js ≥ 22.15        nvm install 22          (only needed to DRIVE Bob)
+#    - uv                     https://docs.astral.sh/uv/
+#    - git + make             your distro's package manager
+
+# 2. Clone + bring it all up → 16 passed, 0 failed (no Bob required):
+git clone <REPO_URL> ai-agent-controlplane-demo
+cd ai-agent-controlplane-demo
+make quickstart
+
+# 3. To DRIVE the demo, install IBM Bob Shell (cross-platform; checks Node ≥ 22.15):
+curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash
+make bob            # first run prompts an IBMid device-code login on a headless box
+```
+
+> **Build-time DNS gotcha (fresh Docker Engine).** If `make quickstart` fails during an image build with `Could not resolve host: index.crates.io` (cargo/pip inside a `RUN` step) **even though image _pulls_ succeed**, the build container is using the host's dead `systemd-resolved` `127.0.0.53` stub. Fix it once and re-run (quickstart is idempotent):
+>
+> ```bash
+> echo '{"dns":["8.8.8.8","1.1.1.1"]}' | sudo tee /etc/docker/daemon.json
+> sudo systemctl restart docker
+> make quickstart
+> ```
 
 ---
 
@@ -196,6 +229,7 @@ ai-agent-controlplane-demo/
 - **Presenter run order + recovery:** [`docs/RUNBOOK.md`](docs/RUNBOOK.md).
 - **Anything drifts / `16/16` fails:** `make demo-reset` (recreate + reseed the gateway), then `make verify-controls`.
 - **Footgun — "No MCP servers configured":** you launched `bob` from the wrong directory (often the `bob-personas/` subfolder). Bob looks for `.bob/mcp.json` relative to its cwd. Quit it and run **`make bob`**, which launches from the repo root _and_ refreshes the live UUID after a reseed.
+- **Fresh Linux VM — `Could not resolve host …` during a `make quickstart` image build** (e.g. `index.crates.io`, while image _pulls_ succeed): the Docker build container is using the host's dead `systemd-resolved` `127.0.0.53` stub. Fix → write `/etc/docker/daemon.json` with `{"dns":["8.8.8.8","1.1.1.1"]}`, `sudo systemctl restart docker`, then re-run `make quickstart` (idempotent). See **[Running on a fresh Linux box / VM](#running-on-a-fresh-linux-box--vm)**.
 
 ---
 
