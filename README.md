@@ -110,7 +110,7 @@ Swap back to the analyst at any time with `make bob`.
 ## Quickstart
 
 ```bash
-git clone <REPO_URL> ai-agent-controlplane-demo
+git clone https://github.com/manavgup/ai-agent-controlplane-demo.git
 cd ai-agent-controlplane-demo
 make quickstart
 ```
@@ -157,7 +157,7 @@ From nothing to `16/16` on a clean Linux box (or a lightweight Multipass/Lima VM
 #    - git + make             your distro's package manager
 
 # 2. Clone + bring it all up → 16 passed, 0 failed (no Bob required):
-git clone <REPO_URL> ai-agent-controlplane-demo
+git clone https://github.com/manavgup/ai-agent-controlplane-demo.git
 cd ai-agent-controlplane-demo
 make quickstart
 

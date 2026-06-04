@@ -29,7 +29,7 @@ monitor, **MCP Inspector**, **A2A Inspector**).
 ## 1. One command
 
 ```bash
-git clone <REPO_URL> ai-agent-controlplane-demo
+git clone https://github.com/manavgup/ai-agent-controlplane-demo.git
 cd ai-agent-controlplane-demo
 make quickstart
 ```
