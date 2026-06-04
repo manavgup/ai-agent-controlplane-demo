@@ -70,13 +70,13 @@ bob-install-operator: ## Write .bob/mcp.json for the OPERATOR persona (register 
 bob: bob-install ## Launch Bob as the FinOps ANALYST (cwd-proof; refreshes config first)
 	@echo; printf "▶ Launching Bob — FinOps analyst — from %s\n" "$$(pwd)"; \
 	echo "  (reads ./.bob/mcp.json → finbyte-gateway: 8 tools, no wire)"; echo
-	@command -v bob >/dev/null 2>&1 || { printf "  IBM Bob (bob) isn't installed here — it's a macOS app, absent on this Linux/headless box.\n  .bob/mcp.json was still written; install Bob on a Mac and run 'make bob' from this repo to drive it.\n  The stack is fully provable WITHOUT Bob:  make verify-controls  (-> 16/16).\n"; exit 0; }
+	@command -v bob >/dev/null 2>&1 || { printf "  IBM Bob (bob) isn't on your PATH — install IBM Bob Shell to drive the demo.\n  .bob/mcp.json was still written; install IBM Bob Shell (https://bob.ibm.com/download), then 'make bob' will launch it.\n  The stack is fully provable WITHOUT Bob:  make verify-controls  (-> 16/16).\n"; exit 0; }
 	@bob
 
 bob-operator: bob-install-operator ## Launch Bob as the platform OPERATOR (cwd-proof; refreshes config first)
 	@echo; printf "▶ Launching Bob — platform operator — from %s\n" "$$(pwd)"; \
 	echo "  (reads ./.bob/mcp.json → register / list / audit / evaluate)"; echo
-	@command -v bob >/dev/null 2>&1 || { printf "  IBM Bob (bob) isn't installed here — it's a macOS app, absent on this Linux/headless box.\n  .bob/mcp.json (operator persona) was still written; install Bob on a Mac and run 'make bob-operator' from this repo.\n  The stack is fully provable WITHOUT Bob:  make verify-controls  (-> 16/16).\n"; exit 0; }
+	@command -v bob >/dev/null 2>&1 || { printf "  IBM Bob (bob) isn't on your PATH — install IBM Bob Shell to drive the demo.\n  .bob/mcp.json (operator persona) was still written; install IBM Bob Shell (https://bob.ibm.com/download), then 'make bob-operator' will launch it.\n  The stack is fully provable WITHOUT Bob:  make verify-controls  (-> 16/16).\n"; exit 0; }
 	@bob
 
 companion: ## Run the browser companion dashboard on :7070 (watch the control plane while using Bob)
