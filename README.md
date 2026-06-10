@@ -9,6 +9,8 @@ git clone https://github.com/manavgup/ai-agent-controlplane-demo
 cd ai-agent-controlplane-demo && make quickstart
 ```
 
+Short link to this repo: **[ibm.biz/BobControlDemo](https://ibm.biz/BobControlDemo)**
+
 <p align="center">
   <img src="slides/assets/qr-repo.png" alt="QR code linking to this repository" width="140"><br>
   <em>📱 On your phone? Scan to bookmark or fork for later.</em>
