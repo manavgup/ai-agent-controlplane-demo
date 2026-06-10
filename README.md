@@ -3,6 +3,11 @@
 > **IBM Bob × ContextForge — the AI agent control plane.** One AI agent, a fintech agent mesh, and a gateway that governs every move. _Who's in charge of your agents?_
 
 <p align="center">
+  <img src="slides/assets/qr-repo.png" alt="QR code linking to this repository" width="160"><br>
+  <em>📱 Scan to clone &amp; run — then <code>make quickstart</code></em>
+</p>
+
+<p align="center">
   <img src="docs/diagrams/architecture.svg" alt="Reference architecture: IBM Bob drives a FinByte agent mesh through the IBM ContextForge gateway, with an OPA sidecar, six MCP servers, and two cross-language A2A agents." width="900">
 </p>
 
