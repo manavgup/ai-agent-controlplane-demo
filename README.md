@@ -2,9 +2,16 @@
 
 > **IBM Bob × ContextForge — the AI agent control plane.** One AI agent, a fintech agent mesh, and a gateway that governs every move. _Who's in charge of your agents?_
 
+**Run it on your laptop:**
+
+```bash
+git clone https://github.com/manavgup/ai-agent-controlplane-demo
+cd ai-agent-controlplane-demo && make quickstart
+```
+
 <p align="center">
-  <img src="slides/assets/qr-repo.png" alt="QR code linking to this repository" width="160"><br>
-  <em>📱 Scan to clone &amp; run — then <code>make quickstart</code></em>
+  <img src="slides/assets/qr-repo.png" alt="QR code linking to this repository" width="140"><br>
+  <em>📱 On your phone? Scan to bookmark or fork for later.</em>
 </p>
 
 <p align="center">
