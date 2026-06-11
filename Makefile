@@ -167,8 +167,11 @@ inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server 
 	echo " backend MCP server; everything goes through the one governed seam)."; \
 	echo; \
 	echo "Final step — add the gateway token (inspector v0.22 won't load it from config):"; \
-	echo "  open  Authentication ▸ Custom Headers , click the Header Value field,"; \
-	echo "  select-all, paste this value, then Connect:"; \
+	echo "  1) Connection Type   →  Via Proxy   (NOT Direct — Direct gets CORS-blocked)"; \
+	echo "  2) Authentication ▸ Custom Headers ▸ + Add :"; \
+	echo "       Header Name  =  Authorization"; \
+	echo "       Header Value =  paste the line below  (make sure the row toggle is ON)"; \
+	echo "  3) Connect  →  you should see 8 tools"; \
 	echo; \
 	echo "  Bearer $$ADMIN"; \
 	echo; \
