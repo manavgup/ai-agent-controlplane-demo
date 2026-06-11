@@ -15,42 +15,41 @@ from a2a.types import AgentCapabilities, AgentCard, AgentInterface, AgentSkill
 
 from agent_executor import AuditorAgentExecutor
 
-
-HOST = '0.0.0.0'
+HOST = "0.0.0.0"
 PORT = 9001
 
 
 def build_agent_card() -> AgentCard:
     skill = AgentSkill(
-        id='audit_expense',
-        name='audit_expense',
+        id="audit_expense",
+        name="audit_expense",
         description=(
-            'Audits an expense approval request and, when approved, submits a '
-            'payment to the control-plane gateway for policy enforcement.'
+            "Audits an expense approval request and, when approved, submits a "
+            "payment to the control-plane gateway for policy enforcement."
         ),
-        tags=['audit', 'expense', 'payments'],
+        tags=["audit", "expense", "payments"],
         examples=[
-            'Approve and pay $50,000 to Acme LLC',
-            'Audit this expense of 1200 for Globex Inc',
+            "Approve and pay $50,000 to Acme LLC",
+            "Audit this expense of 1200 for Globex Inc",
         ],
-        input_modes=['text/plain'],
-        output_modes=['text/plain'],
+        input_modes=["text/plain"],
+        output_modes=["text/plain"],
     )
 
     return AgentCard(
-        name='Auditor Agent',
+        name="Auditor Agent",
         description=(
-            'Audits expense approvals and requests payments via the control-plane '
-            'gateway.'
+            "Audits expense approvals and requests payments via the control-plane "
+            "gateway."
         ),
-        version='0.1.0',
-        default_input_modes=['text/plain'],
-        default_output_modes=['text/plain'],
+        version="0.1.0",
+        default_input_modes=["text/plain"],
+        default_output_modes=["text/plain"],
         capabilities=AgentCapabilities(streaming=True),
         supported_interfaces=[
             AgentInterface(
-                protocol_binding='JSONRPC',
-                url=f'http://{HOST}:{PORT}',
+                protocol_binding="JSONRPC",
+                url=f"http://{HOST}:{PORT}",
             )
         ],
         skills=[skill],
@@ -68,7 +67,7 @@ def build_app() -> Starlette:
 
     routes = []
     routes.extend(create_agent_card_routes(public_agent_card))
-    routes.extend(create_jsonrpc_routes(request_handler, '/'))
+    routes.extend(create_jsonrpc_routes(request_handler, "/"))
 
     return Starlette(routes=routes)
 
@@ -77,5 +76,5 @@ def main() -> None:
     uvicorn.run(build_app(), host=HOST, port=PORT)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

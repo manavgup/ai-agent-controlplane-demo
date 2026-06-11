@@ -30,6 +30,7 @@ def wire(payee: str, amount: float, approval: bool = False) -> dict:
 async def health(request):
     """Plain REST health probe (for the gateway's connectivity test + containers)."""
     from starlette.responses import JSONResponse
+
     return JSONResponse({"status": "ok", "server": "erp-payments"})
 
 

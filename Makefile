@@ -211,11 +211,11 @@ lint-rust: ## Lint the Rust agent (fmt + clippy)
 test: ## Run pytest (tolerates "no tests collected")
 	@uv run --with pytest pytest -q $(PY_DIRS) || { c=$$?; [ $$c -eq 5 ] || exit $$c; }
 bandit: ## Python source security scan
-	uvx bandit -r $(PY_DIRS) -ll
+	uvx bandit -c .bandit.yaml -r $(PY_DIRS) -ll
 pip-audit: ## Dependency CVE scan
 	uvx pip-audit || true
 secrets-baseline: ## Secret scan (detect-secrets — upstream-faithful)
-	uvx --from detect-secrets detect-secrets scan --update .secrets.baseline
+	uvx --from detect-secrets detect-secrets scan > .secrets.baseline
 sbom: ## Generate CycloneDX SBOM
 	uvx --from cyclonedx-bom cyclonedx-py environment --output-format JSON --output-file docs/sbom.json --no-validate $$(command -v python3)
 hadolint: ## Lint Dockerfiles

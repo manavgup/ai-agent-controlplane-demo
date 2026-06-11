@@ -31,10 +31,17 @@ def register_mcp_server(name: str, url: str, description: str = "") -> dict:
     the governed catalog. `url` is the server's MCP endpoint, reachable from the
     gateway (e.g. 'http://my-service:8000/mcp')."""
     try:
-        r = httpx.post(f"{GW}/gateways", headers=H, timeout=30, json={
-            "name": name, "url": url, "transport": "STREAMABLEHTTP",
-            "description": description or f"{name} (registered via operator)",
-        })
+        r = httpx.post(
+            f"{GW}/gateways",
+            headers=H,
+            timeout=30,
+            json={
+                "name": name,
+                "url": url,
+                "transport": "STREAMABLEHTTP",
+                "description": description or f"{name} (registered via operator)",
+            },
+        )
     except Exception as e:  # noqa: BLE001
         return {"registered": False, "error": str(e), "name": name, "url": url}
     ok = 200 <= r.status_code < 300
@@ -50,6 +57,7 @@ def register_mcp_server(name: str, url: str, description: str = "") -> dict:
 def list_control_plane() -> dict:
     """List everything ContextForge is governing: federated MCP servers, A2A
     agents, and the virtual servers (each a least-privilege tool scope)."""
+
     def get(path):
         try:
             return httpx.get(f"{GW}{path}", headers=H, timeout=15).json()
@@ -62,16 +70,33 @@ def list_control_plane() -> dict:
     vservers = []
     for s in servers if isinstance(servers, list) else []:
         try:
-            tools = httpx.get(f"{GW}/servers/{s['id']}/tools", headers=H, timeout=15).json()
-            names = sorted(t.get("name", "") for t in tools) if isinstance(tools, list) else []
+            tools = httpx.get(
+                f"{GW}/servers/{s['id']}/tools", headers=H, timeout=15
+            ).json()
+            names = (
+                sorted(t.get("name", "") for t in tools)
+                if isinstance(tools, list)
+                else []
+            )
         except Exception:  # noqa: BLE001
             names = []
-        vservers.append({"name": s.get("name"), "id": s.get("id"),
-                         "tool_count": len(names), "tools": names})
+        vservers.append(
+            {
+                "name": s.get("name"),
+                "id": s.get("id"),
+                "tool_count": len(names),
+                "tools": names,
+            }
+        )
     return {
-        "mcp_servers": [{"name": x.get("name"), "url": x.get("url")}
-                        for x in gateways] if isinstance(gateways, list) else [],
-        "a2a_agents": [x.get("name") for x in agents] if isinstance(agents, list) else [],
+        "mcp_servers": (
+            [{"name": x.get("name"), "url": x.get("url")} for x in gateways]
+            if isinstance(gateways, list)
+            else []
+        ),
+        "a2a_agents": (
+            [x.get("name") for x in agents] if isinstance(agents, list) else []
+        ),
         "virtual_servers": vservers,
     }
 
@@ -81,8 +106,12 @@ def recent_blocks(limit: int = 10) -> list[dict]:
     """The audit trail of recent tool invocations the control plane BLOCKED
     (policy violations / errors), newest first — what was stopped and when."""
     try:
-        d = httpx.get(f"{GW}/admin/logs", headers=H, timeout=15,
-                      params={"level": "ERROR", "limit": limit}).json()
+        d = httpx.get(
+            f"{GW}/admin/logs",
+            headers=H,
+            timeout=15,
+            params={"level": "ERROR", "limit": limit},
+        ).json()
     except Exception as e:  # noqa: BLE001
         return [{"error": f"could not read audit log: {e}"}]
     rows = []
@@ -91,33 +120,49 @@ def recent_blocks(limit: int = 10) -> list[dict]:
         m = re.search(r"Tool '([^']+)' invocation failed", msg)
         if not m:
             continue
-        rows.append({
-            "time": str(e.get("timestamp", ""))[:19],
-            "tool": m.group(1),
-            "outcome": "blocked",
-            "request_id": e.get("request_id"),
-        })
+        rows.append(
+            {
+                "time": str(e.get("timestamp", ""))[:19],
+                "tool": m.group(1),
+                "outcome": "blocked",
+                "request_id": e.get("request_id"),
+            }
+        )
     return rows
 
 
 @mcp.tool
-def evaluate_policy(amount: float, approval: bool = False,
-                    tool: str = "erp-payments-wire") -> dict:
+def evaluate_policy(
+    amount: float, approval: bool = False, tool: str = "erp-payments-wire"
+) -> dict:
     """Ask the OPA policy engine directly whether a payment of `amount` (with or
     without `approval`) WOULD be allowed — interrogating the policy live, without
     actually attempting the payment. Returns allow + any deny reasons."""
-    payload = {"input": {
-        "action": f"tools.invoke.{tool}",
-        "resource": {"id": tool, "type": "tool"},
-        "context": {"tool_args": {"amount": amount, "approval": approval,
-                                  "payee": "(policy probe)"}},
-    }}
+    payload = {
+        "input": {
+            "action": f"tools.invoke.{tool}",
+            "resource": {"id": tool, "type": "tool"},
+            "context": {
+                "tool_args": {
+                    "amount": amount,
+                    "approval": approval,
+                    "payee": "(policy probe)",
+                }
+            },
+        }
+    }
     try:
-        res = httpx.post(f"{OPA}/v1/data/mcpgateway", json=payload, timeout=15).json().get("result", {})
+        res = (
+            httpx.post(f"{OPA}/v1/data/mcpgateway", json=payload, timeout=15)
+            .json()
+            .get("result", {})
+        )
     except Exception as e:  # noqa: BLE001
         return {"error": f"OPA unreachable: {e}"}
     return {
-        "tool": tool, "amount": amount, "approval": approval,
+        "tool": tool,
+        "amount": amount,
+        "approval": approval,
         "allow": res.get("allow"),
         "deny": res.get("deny", []),
     }
@@ -127,6 +172,7 @@ def evaluate_policy(amount: float, approval: bool = False,
 async def health(request):
     """Plain REST health probe (for the gateway's connectivity test + containers)."""
     from starlette.responses import JSONResponse
+
     return JSONResponse({"status": "ok", "server": "controlplane"})
 
 

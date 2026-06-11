@@ -1,0 +1,18 @@
+# Bandit security-scan config.
+#
+# Kept as a dedicated file (NOT pyproject.toml) on purpose: a repo-root
+# pyproject.toml without a [project] table makes `uv run` treat the repo as a
+# project and abort with "No `project` table found", which breaks the offline
+# JWT mint (`uv run --with mcp-contextforge-gateway …`) that make demo / the
+# money-shot scripts / several Makefile targets rely on. The services here run
+# via Docker/uv, not as an installed package, so the repo stays pyproject-free.
+#
+# Read via `bandit -c .bandit.yaml` (see the `bandit` target in the Makefile).
+
+# B104 ("hardcoded bind all interfaces", i.e. binding 0.0.0.0) is suppressed
+# project-wide on purpose: every Python service here runs inside its own
+# container and must listen on 0.0.0.0 so Docker can route traffic to it.
+# Binding 127.0.0.1 would make the service unreachable from other containers.
+# This is a deliberate, documented suppression — not a behavior change.
+skips:
+  - B104

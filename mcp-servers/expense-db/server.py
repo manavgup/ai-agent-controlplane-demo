@@ -9,18 +9,42 @@ from fastmcp import FastMCP
 mcp = FastMCP("expense-db")
 
 _EXPENSES = {
-    "exp_clean": {"id": "exp_clean", "vendor": "Corner Cafe", "amount": 18.50,
-                  "currency": "USD", "status": "pending", "payee": "Corner Cafe",
-                  "receipt_id": "rcpt_clean"},
-    "exp_pii": {"id": "exp_pii", "vendor": "MedSupply Inc", "amount": 240.00,
-                "currency": "USD", "status": "pending", "payee": "MedSupply Inc",
-                "receipt_id": "rcpt_pii"},
-    "exp_injection": {"id": "exp_injection", "vendor": "QuickPrint", "amount": 65.00,
-                      "currency": "USD", "status": "pending", "payee": "QuickPrint",
-                      "receipt_id": "rcpt_injection"},
-    "exp_big": {"id": "exp_big", "vendor": "Acme LLC", "amount": 50000.00,
-                "currency": "USD", "status": "pending", "payee": "Acme LLC",
-                "receipt_id": "rcpt_big"},
+    "exp_clean": {
+        "id": "exp_clean",
+        "vendor": "Corner Cafe",
+        "amount": 18.50,
+        "currency": "USD",
+        "status": "pending",
+        "payee": "Corner Cafe",
+        "receipt_id": "rcpt_clean",
+    },
+    "exp_pii": {
+        "id": "exp_pii",
+        "vendor": "MedSupply Inc",
+        "amount": 240.00,
+        "currency": "USD",
+        "status": "pending",
+        "payee": "MedSupply Inc",
+        "receipt_id": "rcpt_pii",
+    },
+    "exp_injection": {
+        "id": "exp_injection",
+        "vendor": "QuickPrint",
+        "amount": 65.00,
+        "currency": "USD",
+        "status": "pending",
+        "payee": "QuickPrint",
+        "receipt_id": "rcpt_injection",
+    },
+    "exp_big": {
+        "id": "exp_big",
+        "vendor": "Acme LLC",
+        "amount": 50000.00,
+        "currency": "USD",
+        "status": "pending",
+        "payee": "Acme LLC",
+        "receipt_id": "rcpt_big",
+    },
 }
 
 # Receipts are returned as raw strings so the (untrusted) text lands in the tool
@@ -66,6 +90,7 @@ def get_receipt(id: str) -> str:
 async def health(request):
     """Plain REST health probe (for the gateway's connectivity test + containers)."""
     from starlette.responses import JSONResponse
+
     return JSONResponse({"status": "ok", "server": "expense-db"})
 
 

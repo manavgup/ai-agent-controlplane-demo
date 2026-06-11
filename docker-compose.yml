@@ -8,7 +8,12 @@ services:
     # (gateway/Dockerfile). No host bind-mounts → runs from any clone path,
     # including ones Docker can't share (e.g. /tmp on macOS).
     build: ./gateway
-    env_file: .env
+    # `.env` is intentionally NOT committed (see .env.example). `required: false`
+    # lets `docker compose config` / CI validate the file when `.env` is absent,
+    # while still loading it for real runs (`make up`) when present.
+    env_file:
+      - path: .env
+        required: false
     environment:
       HOST: 0.0.0.0
       PORT: "4444"

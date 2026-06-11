@@ -21,9 +21,8 @@ from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
 from a2a.types.a2a_pb2 import TaskState
 
-
-GATEWAY_URL = os.environ.get('GATEWAY_URL', 'http://gateway:4444')
-GATEWAY_TOKEN = os.environ.get('GATEWAY_TOKEN', '')
+GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://gateway:4444")
+GATEWAY_TOKEN = os.environ.get("GATEWAY_TOKEN", "")
 
 
 def parse_amount(text: str) -> float:
@@ -33,32 +32,32 @@ def parse_amount(text: str) -> float:
     """
     # Match the first number, allowing an optional leading '$', thousands
     # separators and a decimal portion.
-    match = re.search(r'\$?\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)', text)
+    match = re.search(r"\$?\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)", text)
     if not match:
         return 0.0
-    return float(match.group(1).replace(',', ''))
+    return float(match.group(1).replace(",", ""))
 
 
 def parse_approval(text: str) -> bool:
     """Return True if the text indicates the expense is approved."""
     lowered = text.lower()
-    return 'approv' in lowered  # matches 'approved', 'approval', 'approve'
+    return "approv" in lowered  # matches 'approved', 'approval', 'approve'
 
 
 def parse_payee(text: str) -> str:
     """Extract a payee from the text, defaulting to 'Acme LLC'."""
     # Look for a phrase like "to <Payee>" / "payee <Payee>" / "pay <Payee>".
     match = re.search(
-        r'(?:payee|pay(?:ment)?(?:\s+to)?|to|for)\s+'
-        r'([A-Z][A-Za-z0-9&.\'-]*(?:\s+[A-Z][A-Za-z0-9&.\'-]*)*'
-        r'(?:\s+(?:LLC|Inc\.?|Corp\.?|Ltd\.?|Co\.?))?)',
+        r"(?:payee|pay(?:ment)?(?:\s+to)?|to|for)\s+"
+        r"([A-Z][A-Za-z0-9&.\'-]*(?:\s+[A-Z][A-Za-z0-9&.\'-]*)*"
+        r"(?:\s+(?:LLC|Inc\.?|Corp\.?|Ltd\.?|Co\.?))?)",
         text,
     )
     if match:
         candidate = match.group(1).strip()
         if candidate:
             return candidate
-    return 'Acme LLC'
+    return "Acme LLC"
 
 
 class AuditorAgent:
@@ -73,17 +72,17 @@ class AuditorAgent:
     async def audit(self, payee: str, amount: float, approval: bool) -> str:
         """Call the gateway tool over HTTP. Never raises; returns a message."""
         url = f'{GATEWAY_URL.rstrip("/")}/rpc'
-        headers = {'Authorization': f'Bearer {GATEWAY_TOKEN}'}
+        headers = {"Authorization": f"Bearer {GATEWAY_TOKEN}"}
         body = {
-            'jsonrpc': '2.0',
-            'id': 1,
-            'method': 'tools/call',
-            'params': {
-                'name': 'a2a-payments',
-                'arguments': {
-                    'payee': payee,
-                    'amount': amount,
-                    'approval': approval,
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "a2a-payments",
+                "arguments": {
+                    "payee": payee,
+                    "amount": amount,
+                    "approval": approval,
                 },
             },
         }
@@ -91,58 +90,70 @@ class AuditorAgent:
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(url, json=body, headers=headers)
-        except Exception as exc:  # noqa: BLE001 - transport failure, NOT a policy decision
-            return f'ERROR (transport, not a policy decision): {exc}'
+        except (
+            Exception
+        ) as exc:  # noqa: BLE001 - transport failure, NOT a policy decision
+            return f"ERROR (transport, not a policy decision): {exc}"
 
         # Non-2xx -> auth/transport error, NOT a policy block.
         if response.status_code < 200 or response.status_code >= 300:
-            detail = _short(response.text) or f'HTTP {response.status_code}'
-            kind = 'auth' if response.status_code in (401, 403) else f'transport {response.status_code}'
-            return f'ERROR ({kind}, not a policy decision): {detail}'
+            detail = _short(response.text) or f"HTTP {response.status_code}"
+            kind = (
+                "auth"
+                if response.status_code in (401, 403)
+                else f"transport {response.status_code}"
+            )
+            return f"ERROR ({kind}, not a policy decision): {detail}"
 
         # Parse the JSON-RPC response body.
         try:
             data = response.json()
         except Exception:  # noqa: BLE001
-            return f'Payment executed: {_short(response.text)}'
+            return f"Payment executed: {_short(response.text)}"
 
         # JSON-RPC level error: only a policy violation is a "block"; anything
         # else (e.g. -32601 tool-not-found) is a misconfiguration, not policy.
-        if isinstance(data, dict) and data.get('error'):
-            err = data['error']
-            msg = err.get('message', '') if isinstance(err, dict) else str(err)
+        if isinstance(data, dict) and data.get("error"):
+            err = data["error"]
+            msg = err.get("message", "") if isinstance(err, dict) else str(err)
             if _looks_like_violation(msg):
-                return f'BLOCKED by control-plane policy: {_short(msg)}'
-            return f'ERROR (not a policy decision): {_short(str(err))}'
+                return f"BLOCKED by control-plane policy: {_short(msg)}"
+            return f"ERROR (not a policy decision): {_short(str(err))}"
 
-        result = data.get('result', data) if isinstance(data, dict) else data
+        result = data.get("result", data) if isinstance(data, dict) else data
 
         # Tool-level policy violation (MCP isError / violation text in output).
         if isinstance(result, dict):
             text = _extract_text(result)
-            if result.get('isError') or result.get('is_error') or (text and _looks_like_violation(text)):
-                return f'BLOCKED by control-plane policy: {_short(text)}'
+            if (
+                result.get("isError")
+                or result.get("is_error")
+                or (text and _looks_like_violation(text))
+            ):
+                return f"BLOCKED by control-plane policy: {_short(text)}"
             # The bridged Rust agent echoes its own JSON-RPC; a non-policy error
             # in there (e.g. bad params) must NOT be reported as a success.
             if text and _embedded_error(text):
-                return f'ERROR (downstream agent, not a policy decision): {_short(text)}'
-            return f'Payment executed: {_short(text or str(result))}'
+                return (
+                    f"ERROR (downstream agent, not a policy decision): {_short(text)}"
+                )
+            return f"Payment executed: {_short(text or str(result))}"
 
-        return f'Payment executed: {_short(str(result))}'
+        return f"Payment executed: {_short(str(result))}"
 
 
 def _extract_text(result: dict) -> str:
     """Pull human-readable text out of an MCP tools/call result."""
-    content = result.get('content')
+    content = result.get("content")
     if isinstance(content, list):
         parts = []
         for item in content:
-            if isinstance(item, dict) and item.get('type') == 'text':
-                parts.append(str(item.get('text', '')))
+            if isinstance(item, dict) and item.get("type") == "text":
+                parts.append(str(item.get("text", "")))
             elif isinstance(item, str):
                 parts.append(item)
         if parts:
-            return ' '.join(parts)
+            return " ".join(parts)
     return str(result)
 
 
@@ -150,7 +161,14 @@ def _looks_like_violation(text: str) -> bool:
     lowered = text.lower()
     return any(
         kw in lowered
-        for kw in ('blocked', 'denied', 'policy', 'violation', 'not allowed', 'forbidden')
+        for kw in (
+            "blocked",
+            "denied",
+            "policy",
+            "violation",
+            "not allowed",
+            "forbidden",
+        )
     )
 
 
@@ -158,14 +176,14 @@ def _embedded_error(text: str) -> bool:
     """True if the bridged agent's echoed response carries a non-policy error
     (so we never report it as a successful payment)."""
     lowered = text.lower()
-    if 'invalid params' in lowered or 'protojson' in lowered:
+    if "invalid params" in lowered or "protojson" in lowered:
         return True
     return '"error"' in lowered and '"jsonrpc"' in lowered
 
 
 def _short(text: str, limit: int = 500) -> str:
-    text = (text or '').strip()
-    return text if len(text) <= limit else text[:limit] + '...'
+    text = (text or "").strip()
+    return text if len(text) <= limit else text[:limit] + "..."
 
 
 class AuditorAgentExecutor(AgentExecutor):
@@ -191,25 +209,25 @@ class AuditorAgentExecutor(AgentExecutor):
         )
         await task_updater.update_status(
             state=TaskState.TASK_STATE_WORKING,
-            message=new_text_message('Auditing expense...'),
+            message=new_text_message("Auditing expense..."),
         )
 
-        query = get_message_text(context.message) or ''
+        query = get_message_text(context.message) or ""
         amount = parse_amount(query)
         approval = parse_approval(query)
         payee = parse_payee(query)
 
         result = await self.agent.audit(payee=payee, amount=amount, approval=approval)
-        print('Auditor result:', result)
+        print("Auditor result:", result)
 
         await task_updater.add_artifact(
-            parts=[new_text_part(text=result, media_type='text/plain')]
+            parts=[new_text_part(text=result, media_type="text/plain")]
         )
         await task_updater.update_status(
             state=TaskState.TASK_STATE_COMPLETED,
-            message=new_text_message('Audit complete.'),
+            message=new_text_message("Audit complete."),
         )
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         """Cancel is not supported."""
-        raise NotImplementedError('Cancel is not supported.')
+        raise NotImplementedError("Cancel is not supported.")
