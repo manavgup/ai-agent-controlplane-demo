@@ -48,8 +48,9 @@ case "$PERSONA" in
 esac
 
 # Inspector ports (for the SSH port-forward hint).
-MCP_INSPECTOR_PORT=6274   # @modelcontextprotocol/inspector default client UI
-A2A_INSPECTOR_PORT=8090   # `make inspect-a2a` publishes the container on :8090
+MCP_INSPECTOR_PORT=6274        # @modelcontextprotocol/inspector default client UI
+MCP_INSPECTOR_PROXY_PORT=6277  # its proxy/API — the 6274 UI calls this; forward both or the UI loads but can't connect
+A2A_INSPECTOR_PORT=8090        # `make inspect-a2a` publishes the container on :8090
 
 SESSION="cockpit"
 
@@ -126,7 +127,7 @@ open_admin(){
     cat <<EOF
 
   ${B}Remote session detected${R} — these UIs are on the remote host. Forward them:
-    ${CYN}ssh -L 4444:localhost:4444 -L ${MCP_INSPECTOR_PORT}:localhost:${MCP_INSPECTOR_PORT} -L ${A2A_INSPECTOR_PORT}:localhost:${A2A_INSPECTOR_PORT} <host>${R}
+    ${CYN}ssh -L 4444:localhost:4444 -L ${MCP_INSPECTOR_PORT}:localhost:${MCP_INSPECTOR_PORT} -L ${MCP_INSPECTOR_PROXY_PORT}:localhost:${MCP_INSPECTOR_PROXY_PORT} -L ${A2A_INSPECTOR_PORT}:localhost:${A2A_INSPECTOR_PORT} <host>${R}
   Then open:
     Admin UI       : http://localhost:4444/admin
     MCP Inspector  : http://localhost:${MCP_INSPECTOR_PORT}
