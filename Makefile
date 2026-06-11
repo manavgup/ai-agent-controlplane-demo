@@ -200,6 +200,7 @@ cockpit-down: ## Tear down the cockpit (kill session/panes + remove a2a-inspecto
 	  else echo "no cockpit panes recorded in this session (nothing to kill)"; fi; \
 	else echo "no cockpit session found"; fi
 	@docker rm -f a2a-inspector >/dev/null 2>&1 || true; echo "a2a-inspector removed (if present)"
+	@pkill -f "modelcontextprotocol/inspector" >/dev/null 2>&1 && echo "MCP Inspector proxy stopped" || true
 
 verify-controls: ## Run the money-shot proof suite (assert block/allow)
 	@bash scripts/money-shots/run-all.sh
