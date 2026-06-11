@@ -215,7 +215,7 @@ bandit: ## Python source security scan
 pip-audit: ## Dependency CVE scan
 	uvx pip-audit || true
 secrets-baseline: ## Secret scan (detect-secrets — upstream-faithful)
-	uvx --from detect-secrets detect-secrets scan --update .secrets.baseline
+	uvx --from detect-secrets detect-secrets scan > .secrets.baseline
 sbom: ## Generate CycloneDX SBOM
 	uvx --from cyclonedx-bom cyclonedx-py environment --output-format JSON --output-file docs/sbom.json --no-validate $$(command -v python3)
 hadolint: ## Lint Dockerfiles
