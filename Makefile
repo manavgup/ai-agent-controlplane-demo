@@ -165,11 +165,15 @@ inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server 
 	echo "(Streamable HTTP + the right URL — this is the gateway's governed slice, NOT a"; \
 	echo " backend MCP server; everything goes through the one governed seam)."; \
 	echo; \
-	echo "Final step — add the gateway token (inspector v0.22 drops it from the config):"; \
-	echo "  expand  Authentication ▸ Custom Headers  (the 'Authorization' header is pre-added),"; \
-	echo "  paste this token right after 'Bearer ' in the Header Value field, then Connect:"; \
-	echo; \
-	echo "  $$ADMIN"; \
+	echo "Final step — add the gateway token (inspector v0.22 won't load it from config):"; \
+	echo "  open  Authentication ▸ Custom Headers , click the Header Value field,"; \
+	echo "  select-all, paste, then Connect."; \
+	BEARER="Bearer $$ADMIN"; \
+	if command -v pbcopy >/dev/null 2>&1; then printf '%s' "$$BEARER" | pbcopy; echo "  ✓ the full 'Bearer <token>' is on your CLIPBOARD — just Cmd-V into Header Value."; \
+	elif command -v wl-copy >/dev/null 2>&1; then printf '%s' "$$BEARER" | wl-copy; echo "  ✓ copied to clipboard (wl-copy) — paste into Header Value."; \
+	elif command -v xclip >/dev/null 2>&1; then printf '%s' "$$BEARER" | xclip -selection clipboard; echo "  ✓ copied to clipboard (xclip) — paste into Header Value."; \
+	elif command -v xsel >/dev/null 2>&1; then printf '%s' "$$BEARER" | xsel --clipboard; echo "  ✓ copied to clipboard (xsel) — paste into Header Value."; \
+	else echo; echo "  Header Value:  $$BEARER"; fi; \
 	echo; \
 	echo "You should then see 8 tools — note erp-payments-wire is ABSENT (least-privilege)."; \
 	echo "(proxy auth is disabled for this local demo; temp config at $$CFG)"; \
