@@ -154,16 +154,26 @@ monitor: ## Open the ContextForge monitor (Admin UI: catalog + observability + l
 	echo "  observability: /admin (Overview, Metrics, Logs tabs)"; \
 	(open http://localhost:4444/admin 2>/dev/null || xdg-open http://localhost:4444/admin 2>/dev/null || true)
 
-inspect-mcp: ## Launch MCP Inspector pointed at the gateway's FinOps server (shows the governed tools)
+inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server (shows the governed tools)
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
 	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if s.get('name')=='FinOps']" 2>/dev/null | head -1); \
 	if [ -z "$$UUID" ]; then echo "FinOps server not found — run 'make seed' first" >&2; exit 1; fi; \
-	echo "MCP Inspector opening… In the UI, connect with:"; \
-	echo "  Transport      : Streamable HTTP"; \
-	echo "  URL            : http://localhost:4444/servers/$$UUID/mcp"; \
-	echo "  Auth header    : Authorization: Bearer $$ADMIN"; \
-	echo "(you should see 8 tools — note erp-payments-wire is ABSENT: least-privilege)"; \
-	npx -y @modelcontextprotocol/inspector
+	URL="http://localhost:4444/servers/$$UUID/mcp"; \
+	CFG=$$(mktemp /tmp/mcp-finops-XXXXXX.json); \
+	printf '{"mcpServers":{"FinByte-FinOps":{"type":"streamable-http","url":"%s","headers":{"Authorization":"Bearer %s"}}}}\n' "$$URL" "$$ADMIN" > "$$CFG"; \
+	echo "MCP Inspector opens pre-pointed at the FinOps virtual server on ContextForge"; \
+	echo "(Streamable HTTP + the right URL — this is the gateway's governed slice, NOT a"; \
+	echo " backend MCP server; everything goes through the one governed seam)."; \
+	echo; \
+	echo "Final step — add the gateway token (inspector v0.22 drops it from the config):"; \
+	echo "  expand  Authentication ▸ Custom Headers  (the 'Authorization' header is pre-added),"; \
+	echo "  paste this token right after 'Bearer ' in the Header Value field, then Connect:"; \
+	echo; \
+	echo "  $$ADMIN"; \
+	echo; \
+	echo "You should then see 8 tools — note erp-payments-wire is ABSENT (least-privilege)."; \
+	echo "(proxy auth is disabled for this local demo; temp config at $$CFG)"; \
+	DANGEROUSLY_OMIT_AUTH=true npx -y @modelcontextprotocol/inspector --config "$$CFG" --server FinByte-FinOps
 
 inspect-a2a: ## Launch the A2A Inspector (clone+build first time) to validate the agent cards
 	@echo "A2A Inspector (a2aproject/a2a-inspector) on http://localhost:8090"; \
