@@ -23,13 +23,18 @@ def get_policy() -> str:
 @mcp.tool
 def wire_limit() -> dict:
     """Return the numeric wire auto-approve limit."""
-    return {"auto_approve_under": 10000, "currency": "USD", "dual_approval_at_or_above": 10000}
+    return {
+        "auto_approve_under": 10000,
+        "currency": "USD",
+        "dual_approval_at_or_above": 10000,
+    }
 
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request):
     """Plain REST health probe (for the gateway's connectivity test + containers)."""
     from starlette.responses import JSONResponse
+
     return JSONResponse({"status": "ok", "server": "policy-docs"})
 
 

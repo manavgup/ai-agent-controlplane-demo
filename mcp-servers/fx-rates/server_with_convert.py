@@ -18,7 +18,12 @@ def get_fx_rate(quote: str, base: str = "USD") -> dict:
     """Return the demo FX rate to convert 1 unit of `base` into `quote`."""
     b, q = base.upper(), quote.upper()
     if q not in _RATES or b not in _RATES:
-        return {"error": "unknown_currency", "base": b, "quote": q, "known": sorted(_RATES)}
+        return {
+            "error": "unknown_currency",
+            "base": b,
+            "quote": q,
+            "known": sorted(_RATES),
+        }
     return {"base": b, "quote": q, "rate": round(_RATES[q] / _RATES[b], 6)}
 
 
@@ -33,16 +38,27 @@ def convert(amount: float, base: str = "USD", quote: str = "EUR") -> dict:
     """Convert `amount` from `base` currency into `quote` using the demo rates."""
     b, q = base.upper(), quote.upper()
     if b not in _RATES or q not in _RATES:
-        return {"error": "unknown_currency", "base": b, "quote": q, "known": sorted(_RATES)}
+        return {
+            "error": "unknown_currency",
+            "base": b,
+            "quote": q,
+            "known": sorted(_RATES),
+        }
     rate = _RATES[q] / _RATES[b]
-    return {"amount": amount, "base": b, "quote": q,
-            "rate": round(rate, 6), "converted": round(amount * rate, 2)}
+    return {
+        "amount": amount,
+        "base": b,
+        "quote": q,
+        "rate": round(rate, 6),
+        "converted": round(amount * rate, 2),
+    }
 
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request):
     """Plain REST health probe (for the gateway's connectivity test + containers)."""
     from starlette.responses import JSONResponse
+
     return JSONResponse({"status": "ok", "server": "fx-rates"})
 
 

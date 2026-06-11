@@ -5,6 +5,7 @@ and Treasury virtual servers, and print their UUIDs + a viewer token.
 Run from the host (gateway published on :4444):
     ADMIN_TOKEN=... uv run --with httpx python gateway/seed/seed.py
 """
+
 import os
 import sys
 import time
@@ -52,10 +53,16 @@ def main():
         if name in existing:
             print(f"[gw] exists: {name}")
             continue
-        r = api("POST", "/gateways", json={
-            "name": name, "url": url, "transport": "STREAMABLEHTTP",
-            "description": f"{name} MCP server",
-        })
+        r = api(
+            "POST",
+            "/gateways",
+            json={
+                "name": name,
+                "url": url,
+                "transport": "STREAMABLEHTTP",
+                "description": f"{name} MCP server",
+            },
+        )
         print(f"[gw] register {name}: {r.status_code} {r.text[:160]}")
 
     # The operator demo has Bob register 'fx-rates' LIVE; ensure it starts
@@ -63,7 +70,9 @@ def main():
     for g in jget("/gateways"):
         if g.get("name") == "fx-rates":
             api("DELETE", f"/gateways/{g['id']}")
-            print("[gw] removed fx-rates (reserved for the operator demo to register live)")
+            print(
+                "[gw] removed fx-rates (reserved for the operator demo to register live)"
+            )
 
     # 2) A2A agents ---------------------------------------------------------
     existing_a = {a.get("name") for a in jget("/a2a")}
@@ -71,10 +80,19 @@ def main():
         if name in existing_a:
             print(f"[a2a] exists: {name}")
             continue
-        r = api("POST", "/a2a", json={"agent": {
-            "name": name, "endpoint_url": url, "agent_type": "jsonrpc",
-            "description": f"{name} A2A agent", "tags": ["finbyte"],
-        }})
+        r = api(
+            "POST",
+            "/a2a",
+            json={
+                "agent": {
+                    "name": name,
+                    "endpoint_url": url,
+                    "agent_type": "jsonrpc",
+                    "description": f"{name} A2A agent",
+                    "tags": ["finbyte"],
+                }
+            },
+        )
         print(f"[a2a] register {name}: {r.status_code} {r.text[:240]}")
 
     # 3) discover tool ids (gateway may prefix names) -----------------------
@@ -105,25 +123,47 @@ def main():
         return out
 
     # 4) virtual servers ----------------------------------------------------
-    finops = ids("list_pending_expenses", "get_expense", "get_receipt",
-                 "approve", "reimburse", "get_policy", "wire_limit", "a2a_auditor")
+    finops = ids(
+        "list_pending_expenses",
+        "get_expense",
+        "get_receipt",
+        "approve",
+        "reimburse",
+        "get_policy",
+        "wire_limit",
+        "a2a_auditor",
+    )
     treasury = ids("wire", "reimburse", "a2a_payments")
     # Operator persona: privileged platform-operations scope (deliberately
     # separate from the least-privilege FinOps analyst — the analyst cannot
     # register servers or read the audit trail; the operator can).
-    operator = ids("register_mcp_server", "list_control_plane",
-                   "recent_blocks", "evaluate_policy")
+    operator = ids(
+        "register_mcp_server", "list_control_plane", "recent_blocks", "evaluate_policy"
+    )
     # delete+recreate so re-running fixes tool associations
     by_name = {s.get("name"): s.get("id") for s in jget("/servers")}
-    for sname, tids in [("FinOps", finops), ("Treasury", treasury), ("Operator", operator)]:
+    for sname, tids in [
+        ("FinOps", finops),
+        ("Treasury", treasury),
+        ("Operator", operator),
+    ]:
         if sname in by_name:
             d = api("DELETE", f"/servers/{by_name[sname]}")
             print(f"[server] delete existing {sname}: {d.status_code}")
-        r = api("POST", "/servers", json={"server": {
-            "name": sname, "description": f"{sname} virtual server",
-            "associated_tools": tids,
-        }})
-        print(f"[server] create {sname} ({len(tids)} tools): {r.status_code} {r.text[:160]}")
+        r = api(
+            "POST",
+            "/servers",
+            json={
+                "server": {
+                    "name": sname,
+                    "description": f"{sname} virtual server",
+                    "associated_tools": tids,
+                }
+            },
+        )
+        print(
+            f"[server] create {sname} ({len(tids)} tools): {r.status_code} {r.text[:160]}"
+        )
 
     print("\n=== virtual servers (use the FinOps UUID for Bob's mcp.json) ===")
     for s in jget("/servers"):

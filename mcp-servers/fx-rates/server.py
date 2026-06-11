@@ -28,6 +28,7 @@ def list_currencies() -> list[str]:
 async def health(request):
     """Plain REST health probe (for the gateway's connectivity test + containers)."""
     from starlette.responses import JSONResponse
+
     return JSONResponse({"status": "ok", "server": "fx-rates"})
 
 

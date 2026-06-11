@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Capture proof screenshots: the companion (all scenarios run) + the ContextForge Admin UI."""
+
 import os
 from playwright.sync_api import sync_playwright
 
@@ -23,15 +24,28 @@ with sync_playwright() as p:
     try:
         ap.goto("http://localhost:4444/admin/login", wait_until="networkidle")
         ap.wait_for_timeout(1000)
-        for sel in ["input[type=email]", "input[name=email]", "#email", "input[name=username]"]:
+        for sel in [
+            "input[type=email]",
+            "input[name=email]",
+            "#email",
+            "input[name=username]",
+        ]:
             if ap.query_selector(sel):
-                ap.fill(sel, "admin@finbyte.demo"); break
+                ap.fill(sel, "admin@finbyte.demo")
+                break
         for sel in ["input[type=password]", "input[name=password]", "#password"]:
             if ap.query_selector(sel):
-                ap.fill(sel, "changeme"); break
-        for sel in ["button[type=submit]", "button:has-text('Login')", "button:has-text('Sign')", "input[type=submit]"]:
+                ap.fill(sel, "changeme")
+                break
+        for sel in [
+            "button[type=submit]",
+            "button:has-text('Login')",
+            "button:has-text('Sign')",
+            "input[type=submit]",
+        ]:
             if ap.query_selector(sel):
-                ap.click(sel); break
+                ap.click(sel)
+                break
         ap.wait_for_timeout(3500)
     except Exception as e:
         print("admin login note:", str(e)[:120])
