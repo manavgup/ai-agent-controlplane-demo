@@ -1,0 +1,15 @@
+# Project-level tool configuration.
+#
+# This file currently exists to centralize the Bandit security-scan config.
+# It is intentionally minimal (no build-system / packaging metadata) — the
+# services in this repo are run via Docker/uv, not installed as a package.
+
+[tool.bandit]
+# B104 ("hardcoded bind all interfaces", i.e. binding 0.0.0.0) is suppressed
+# project-wide on purpose: every Python service here runs inside its own
+# container and must listen on 0.0.0.0 so Docker can route traffic to it.
+# Binding 127.0.0.1 would make the service unreachable from other containers.
+# This is a deliberate, documented suppression — not a behavior change.
+# NOTE: bandit only reads this section when invoked with `-c pyproject.toml`
+# (see the `bandit` target in the Makefile).
+skips = ["B104"]
