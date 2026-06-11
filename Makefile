@@ -211,7 +211,7 @@ lint-rust: ## Lint the Rust agent (fmt + clippy)
 test: ## Run pytest (tolerates "no tests collected")
 	@uv run --with pytest pytest -q $(PY_DIRS) || { c=$$?; [ $$c -eq 5 ] || exit $$c; }
 bandit: ## Python source security scan
-	uvx bandit -c pyproject.toml -r $(PY_DIRS) -ll
+	uvx bandit -c .bandit.yaml -r $(PY_DIRS) -ll
 pip-audit: ## Dependency CVE scan
 	uvx pip-audit || true
 secrets-baseline: ## Secret scan (detect-secrets — upstream-faithful)
