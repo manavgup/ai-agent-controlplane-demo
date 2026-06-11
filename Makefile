@@ -158,8 +158,9 @@ inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server 
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
 	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if s.get('name')=='FinOps']" 2>/dev/null | head -1); \
 	if [ -z "$$UUID" ]; then echo "FinOps server not found — run 'make seed' first" >&2; exit 1; fi; \
+	if [ -z "$$ADMIN" ]; then echo "could not mint the admin token (is the stack up? try 'make quickstart')" >&2; exit 1; fi; \
 	URL="http://localhost:4444/servers/$$UUID/mcp"; \
-	CFG=$$(mktemp /tmp/mcp-finops-XXXXXX.json); \
+	CFG=$$(mktemp /tmp/mcp-finops-XXXXXX); mv "$$CFG" "$$CFG.json"; CFG="$$CFG.json"; \
 	printf '{"mcpServers":{"FinByte-FinOps":{"type":"streamable-http","url":"%s","headers":{"Authorization":"Bearer %s"}}}}\n' "$$URL" "$$ADMIN" > "$$CFG"; \
 	echo "MCP Inspector opens pre-pointed at the FinOps virtual server on ContextForge"; \
 	echo "(Streamable HTTP + the right URL — this is the gateway's governed slice, NOT a"; \
@@ -167,13 +168,16 @@ inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server 
 	echo; \
 	echo "Final step — add the gateway token (inspector v0.22 won't load it from config):"; \
 	echo "  open  Authentication ▸ Custom Headers , click the Header Value field,"; \
-	echo "  select-all, paste, then Connect."; \
+	echo "  select-all, paste this value, then Connect:"; \
+	echo; \
+	echo "  Bearer $$ADMIN"; \
+	echo; \
 	BEARER="Bearer $$ADMIN"; \
-	if command -v pbcopy >/dev/null 2>&1; then printf '%s' "$$BEARER" | pbcopy; echo "  ✓ the full 'Bearer <token>' is on your CLIPBOARD — just Cmd-V into Header Value."; \
-	elif command -v wl-copy >/dev/null 2>&1; then printf '%s' "$$BEARER" | wl-copy; echo "  ✓ copied to clipboard (wl-copy) — paste into Header Value."; \
-	elif command -v xclip >/dev/null 2>&1; then printf '%s' "$$BEARER" | xclip -selection clipboard; echo "  ✓ copied to clipboard (xclip) — paste into Header Value."; \
-	elif command -v xsel >/dev/null 2>&1; then printf '%s' "$$BEARER" | xsel --clipboard; echo "  ✓ copied to clipboard (xsel) — paste into Header Value."; \
-	else echo; echo "  Header Value:  $$BEARER"; fi; \
+	if command -v pbcopy >/dev/null 2>&1; then printf '%s' "$$BEARER" | pbcopy; echo "  ✓ (also copied to your clipboard — just Cmd-V into Header Value)"; \
+	elif command -v wl-copy >/dev/null 2>&1; then printf '%s' "$$BEARER" | wl-copy; echo "  ✓ (also copied to clipboard via wl-copy)"; \
+	elif command -v xclip >/dev/null 2>&1; then printf '%s' "$$BEARER" | xclip -selection clipboard; echo "  ✓ (also copied to clipboard via xclip)"; \
+	elif command -v xsel >/dev/null 2>&1; then printf '%s' "$$BEARER" | xsel --clipboard; echo "  ✓ (also copied to clipboard via xsel)"; \
+	fi; \
 	echo; \
 	echo "You should then see 8 tools — note erp-payments-wire is ABSENT (least-privilege)."; \
 	echo "(proxy auth is disabled for this local demo; temp config at $$CFG)"; \
