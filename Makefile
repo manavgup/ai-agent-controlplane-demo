@@ -174,7 +174,8 @@ inspect-a2a: ## Launch the A2A Inspector (clone+build first time) to validate th
 	    && docker buildx build --load -t a2a-inspector "$$tmp/ai" >/dev/null 2>&1 || { echo "build failed — see the a2a-inspector README"; exit 1; }; \
 	fi; \
 	docker rm -f a2a-inspector >/dev/null 2>&1 || true; \
-	docker run --rm --name a2a-inspector --add-host=host.docker.internal:host-gateway -p 8090:8080 a2a-inspector
+	addhost=""; [ "$$(uname -s)" = "Linux" ] && addhost="--add-host=host.docker.internal:host-gateway"; \
+	docker run --rm --name a2a-inspector $$addhost -p 8090:8080 a2a-inspector
 
 cockpit: ## tmux cockpit: Bob + logs + OPA + both inspectors in one window (COCKPIT_PERSONA=operator for Act 2)
 	@bash scripts/cockpit.sh
