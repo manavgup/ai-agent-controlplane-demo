@@ -149,9 +149,10 @@ make inspect-a2a    # A2A Inspector → validates the Python + Rust agent cards
 
 Prefer one command over arranging tabs by hand? `make cockpit` spawns a single
 [tmux](https://github.com/tmux/tmux) window that tiles **Bob** (big left pane, ~62%)
-alongside four live watch panes — `logs`, `logs-opa`, `inspect-mcp`, `inspect-a2a` —
-and opens the Admin UI. Each pane just runs the existing `make` target, so it reuses
-all the token/UUID logic. Requires tmux (`brew install tmux` / `apt-get install tmux`);
+alongside four live watch panes — `logs`, `logs-opa`, `inspect-mcp`, `inspect-a2a`.
+It also opens a HOW-TO guide (`docs/cockpit.html`) in your browser and starts the
+Companion dashboard on `:7070`. Each pane just runs the existing `make` target, so it
+reuses all the token/UUID logic. Requires tmux (`brew install tmux` / `apt-get install tmux`);
 without it you get the manual fallback list above.
 
 ```bash
@@ -164,11 +165,11 @@ Already inside tmux? Run `make cockpit` **from your Bob pane** and it adds the f
 watch panes around it (no second Bob); `make cockpit-down` then removes only those panes.
 
 **Over SSH:** the cockpit (tmux) runs fine on the remote host, but the browser UIs
-(Admin UI, MCP/A2A Inspectors) live there too — `make cockpit` prints the URLs plus a
+(HOW-TO page, Companion, Admin UI, MCP/A2A Inspectors) live there too — `make cockpit` prints the URLs plus a
 port-forward hint instead of opening a tab. Forward them from your laptop:
 
 ```bash
-ssh -L 4444:localhost:4444 -L 6274:localhost:6274 -L 8090:localhost:8090 <host>
+ssh -L 4444:localhost:4444 -L 7070:localhost:7070 -L 6274:localhost:6274 -L 6277:localhost:6277 -L 8090:localhost:8090 <host>
 ```
 
 ### Running on a fresh Linux box / VM
