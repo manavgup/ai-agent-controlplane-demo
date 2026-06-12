@@ -14,3 +14,4 @@ target/
 
 # PowerPoint lock/owner files
 slides/~$*
+docs/assets/cockpit-token.js

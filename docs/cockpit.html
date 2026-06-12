@@ -102,6 +102,24 @@
   .pane b{display:block;color:var(--ink);font-size:13.5px;margin-bottom:2px}
   .pane span{color:var(--muted)}
 
+  /* collapsible screenshots */
+  details.shot{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:4px 10px;margin:10px 0}
+  details.shot summary{cursor:pointer;font-weight:600;font-size:14.5px;padding:9px 4px;
+    list-style:none;color:var(--ibm);user-select:none}
+  details.shot summary::-webkit-details-marker{display:none}
+  details.shot summary::before{content:'▸';display:inline-block;width:16px;color:var(--muted)}
+  details.shot[open] summary::before{content:'▾'}
+  details.shot img{display:block;width:100%;height:auto;border-radius:9px;margin:6px 0 10px;
+    border:1px solid var(--line)}
+  details.shot .cap{font-size:13px;color:var(--muted);margin:0 0 8px}
+
+  /* live token block */
+  .tokenbox{margin:12px 0}
+  .tokenlabel{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px}
+  #tokenval{color:#0b3a8f}
+  .tokenbox.empty #tokenval{color:var(--muted)}
+
   footer{border-top:1px solid var(--line);padding:28px 0 48px;color:var(--muted);font-size:14px}
   footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
@@ -163,6 +181,11 @@
       </div>
       <div class="note">A pane closes when its command exits — that's normal. To tear the whole thing down: <code class="inline">make cockpit-down</code>. Detach without killing: <kbd>Ctrl</kbd>+<kbd>b</kbd> then <kbd>d</kbd>.</div>
     </div>
+    <details class="shot">
+      <summary>Show me what the tmux window looks like</summary>
+      <p class="cap">Bob in the big left pane; gateway logs, OPA decisions, and the two inspectors stacked down the right.</p>
+      <img src="assets/cockpit-tmux.png" alt="The make cockpit tmux window — Bob on the left, gateway logs / OPA decisions / MCP Inspector / A2A Inspector stacked on the right">
+    </details>
   </section>
 
   <!-- 3 -->
@@ -197,7 +220,16 @@
             Header Value = paste the token (the <code class="inline">inspect-mcp</code> pane printed it and copied it to your clipboard — <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>V</kbd>), toggle the row <b>on</b></li>
           <li><b>Connect</b> → 8 tools</li>
         </ol>
+        <div class="tokenbox empty" id="tokenbox">
+          <div class="tokenlabel">Your gateway token (paste into Header Value)</div>
+          <div class="cmd"><span id="tokenval">Run <code class="inline">make cockpit</code> to stamp your token here — or grab it from the <code class="inline">inspect-mcp</code> pane (it's already on your clipboard).</span><button class="copy" id="tokencopy" style="display:none">copy</button></div>
+        </div>
         <p><a href="http://localhost:6274" target="_blank">→ localhost:6274</a></p>
+        <details class="shot">
+          <summary>Show me where to paste the token</summary>
+          <p class="cap">Connection Type <b>Via Proxy</b> → Authentication ▸ Custom Headers ▸ <b>+ Add</b> → Name <code class="inline">Authorization</code>, paste into the highlighted Value field, toggle the row <b>on</b>, then Connect.</p>
+          <img src="assets/mcp-inspector-auth.png" alt="MCP Inspector Authentication panel: a Custom Header named Authorization with the token field highlighted to show where to paste">
+        </details>
       </div>
 
       <div class="card">
@@ -300,7 +332,18 @@
 </footer>
 
 <div class="toast" id="toast">Copied</div>
+<!-- make cockpit writes assets/cockpit-token.js (gitignored) with this session's token -->
+<script src="assets/cockpit-token.js" onerror="void 0"></script>
 <script>
+  // If make cockpit stamped a token, show it (copyable) in the MCP Inspector card.
+  (function(){
+    if(window.COCKPIT_TOKEN){
+      var v=document.getElementById('tokenval'),c=document.getElementById('tokencopy'),box=document.getElementById('tokenbox');
+      if(v){v.textContent=window.COCKPIT_TOKEN;}
+      if(c){c.style.display='';c.setAttribute('data-copy',window.COCKPIT_TOKEN);}
+      if(box){box.classList.remove('empty');}
+    }
+  })();
   document.querySelectorAll('.copy').forEach(function(b){
     b.addEventListener('click',function(){
       var t=b.getAttribute('data-copy');
