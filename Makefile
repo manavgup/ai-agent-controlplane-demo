@@ -3,7 +3,18 @@ SECRET := demo-only-change-me-0123456789abcdef
 # Mint tokens offline. Override DATABASE_URL so settings validation doesn't try
 # to create the container's /data dir (read-only on the host).
 MINT := DATABASE_URL=sqlite:///./.tokmint.db uv run --with mcp-contextforge-gateway -- python -m mcpgateway.utils.create_jwt_token
-COMPOSE := docker compose
+# Container runtime + compose command. Prefer docker; fall back to podman so the
+# demo runs everywhere (the standing constraint), not just on a Docker machine.
+# Both auto-detect once; override either explicitly, e.g.:
+#   make up CONTAINER=podman COMPOSE="podman compose"
+DETECTED_CONTAINER := $(shell command -v docker >/dev/null 2>&1 && echo docker || echo podman)
+DETECTED_COMPOSE := $(shell \
+	if command -v docker >/dev/null 2>&1; then echo "docker compose"; \
+	elif command -v podman-compose >/dev/null 2>&1; then echo "podman-compose"; \
+	elif command -v podman >/dev/null 2>&1; then echo "podman compose"; \
+	else echo "docker compose"; fi)
+CONTAINER ?= $(DETECTED_CONTAINER)
+COMPOSE ?= $(DETECTED_COMPOSE)
 
 .PHONY: help up down seed token token-bob bob bob-operator bob-config bob-install bob-config-operator bob-install-operator companion logs logs-opa verify-controls demo-reset ps demo quickstart monitor inspect-mcp inspect-a2a cockpit cockpit-down fxrates-convert fxrates-reset
 
@@ -188,16 +199,17 @@ inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server 
 	DANGEROUSLY_OMIT_AUTH=true npx -y @modelcontextprotocol/inspector --config "$$CFG" --server FinByte-FinOps
 
 inspect-a2a: ## Launch the A2A Inspector (clone+build first time) to validate the agent cards
-	@echo "A2A Inspector (a2aproject/a2a-inspector) on http://localhost:8090"; \
+	@echo "A2A Inspector (a2aproject/a2a-inspector) on http://localhost:8090  (runtime: $(CONTAINER))"; \
 	echo "  point it at:  http://host.docker.internal:9001  (Python Auditor)  ·  :3000 (Rust Payments)"; \
-	if ! docker image inspect a2a-inspector >/dev/null 2>&1; then \
+	if [ "$(CONTAINER)" = "docker" ]; then BUILD="docker buildx build --load"; else BUILD="$(CONTAINER) build"; fi; \
+	if ! $(CONTAINER) image inspect a2a-inspector >/dev/null 2>&1; then \
 	  echo "building a2a-inspector image (first run, ~1-2 min)…"; \
 	  tmp=$$(mktemp -d); git clone --depth 1 https://github.com/a2aproject/a2a-inspector "$$tmp/ai" >/dev/null 2>&1 \
-	    && docker buildx build --load -t a2a-inspector "$$tmp/ai" >/dev/null 2>&1 || { echo "build failed — see the a2a-inspector README"; exit 1; }; \
+	    && $$BUILD -t a2a-inspector "$$tmp/ai" >/dev/null 2>&1 || { echo "build failed — see the a2a-inspector README"; exit 1; }; \
 	fi; \
-	docker rm -f a2a-inspector >/dev/null 2>&1 || true; \
-	addhost=""; [ "$$(uname -s)" = "Linux" ] && addhost="--add-host=host.docker.internal:host-gateway"; \
-	docker run --rm --name a2a-inspector $$addhost -p 8090:8080 a2a-inspector
+	$(CONTAINER) rm -f a2a-inspector >/dev/null 2>&1 || true; \
+	addhost=""; if [ "$(CONTAINER)" = "podman" ] || [ "$$(uname -s)" = "Linux" ]; then addhost="--add-host=host.docker.internal:host-gateway"; fi; \
+	$(CONTAINER) run --rm --name a2a-inspector $$addhost -p 8090:8080 a2a-inspector
 
 cockpit: ## tmux cockpit: Bob + logs + OPA + both inspectors in one window (COCKPIT_PERSONA=operator for Act 2)
 	@bash scripts/cockpit.sh
@@ -221,7 +233,7 @@ cockpit-down: ## Tear down the cockpit (kill session/panes + remove a2a-inspecto
 	    echo "augment panes killed ($$panes)"; \
 	  else echo "no cockpit panes recorded in this session (nothing to kill)"; fi; \
 	else echo "no cockpit session found"; fi
-	@docker rm -f a2a-inspector >/dev/null 2>&1 || true; echo "a2a-inspector removed (if present)"
+	@$(CONTAINER) rm -f a2a-inspector >/dev/null 2>&1 || true; echo "a2a-inspector removed (if present)"
 	@pkill -f "modelcontextprotocol/inspector" >/dev/null 2>&1 && echo "MCP Inspector proxy stopped" || true
 	@pkill -f "companion/app.py" >/dev/null 2>&1 && echo "companion stopped" || true
 

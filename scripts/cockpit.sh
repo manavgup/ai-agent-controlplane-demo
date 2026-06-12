@@ -98,10 +98,17 @@ ok "stack seeded (FinOps server $FINOPS)"
 # its error and waits for Enter before closing (see pane_cmd), so nothing is lost.
 probe(){ command -v "$1" >/dev/null 2>&1 || warn "$1 not found — the '$2' pane will error out (shows the message, closes on Enter)"; }
 probe npx     "inspect-mcp"
-probe docker  "inspect-a2a"
+# inspect-a2a runs on either docker OR podman (the Makefile auto-detects) — warn
+# only if NEITHER is present.
+command -v docker >/dev/null 2>&1 || command -v podman >/dev/null 2>&1 \
+  || warn "no container runtime (docker/podman) — the 'inspect-a2a' pane will error out (shows the message, closes on Enter)"
 probe git     "inspect-a2a (first-run build)"
 probe python3 "logs-opa"
-probe bob     "bob ($BOB_TARGET)"
+# Bob is optional. When it's absent the Bob pane shows a steady note pointing at
+# the Companion instead of vanishing (see bob_pane_cmd) — the rest of the cockpit
+# is fully usable without it.
+command -v bob >/dev/null 2>&1 \
+  || warn "IBM Bob not installed — the Bob pane will show a note pointing to the Companion (:7070); the rest of the cockpit works."
 
 # ── preflight 5: TTY + size guard ────────────────────────────────────────────
 if [ ! -t 1 ]; then
@@ -169,6 +176,18 @@ WATCH_TARGETS=(logs logs-opa inspect-mcp inspect-a2a)
 # had to kill manually (and, in augment mode, polluted their real window).
 pane_cmd(){ echo "make $1 || { echo; echo '[$1 exited - scroll up to read; press Enter to close]'; read _; }; exit"; }
 
+# Bob lives in the big left pane. If IBM Bob isn't installed, `make bob` prints an
+# install notice and exits 0 — which, with pane_cmd, would close that 62%-wide
+# pane instantly (the || never fires on a clean exit). Instead show a steady note
+# that points at the Companion and HOLD the pane, so the layout stays intact.
+bob_pane_cmd(){
+  if command -v bob >/dev/null 2>&1; then
+    pane_cmd "$BOB_TARGET"
+  else
+    echo "clear; printf '\n  IBM Bob is not installed on this machine.\n\n  Every other cockpit pane works without it. The Companion dashboard\n  shows the same governed demo:  http://localhost:7070\n\n  Install IBM Bob Shell (https://bob.ibm.com/download), then re-run make cockpit.\n\n  [idle pane - press Enter to close]\n'; read _; exit"
+  fi
+}
+
 teardown_hint(){ printf "\n  %sto tear down:%s %smake cockpit-down%s\n" "$D" "$R" "$CYN" "$R"; }
 
 # ── COLD START (not in tmux): build the session, attach ──────────────────────
@@ -200,7 +219,7 @@ cold_start(){
 
   # Send each pane its command. Bob in the big left pane; the four watch panes
   # top-to-bottom down the right column.
-  tmux send-keys -t "$bob" "$(pane_cmd "$BOB_TARGET")" Enter
+  tmux send-keys -t "$bob" "$(bob_pane_cmd)" Enter
   local watch_panes=("$right" "$p2" "$p3" "$p4") i=0
   for t in "${WATCH_TARGETS[@]}"; do
     tmux send-keys -t "${watch_panes[$i]}" "$(pane_cmd "$t")" Enter
