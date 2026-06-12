@@ -156,9 +156,10 @@ monitor: ## Open the ContextForge monitor (Admin UI: catalog + observability + l
 
 inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server (shows the governed tools)
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
-	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if s.get('name')=='FinOps']" 2>/dev/null | head -1); \
-	if [ -z "$$UUID" ]; then echo "FinOps server not found — run 'make seed' first" >&2; exit 1; fi; \
 	if [ -z "$$ADMIN" ]; then echo "could not mint the admin token (is the stack up? try 'make quickstart')" >&2; exit 1; fi; \
+	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if s.get('name')=='FinOps']" 2>/dev/null | head -1); \
+	if [ -z "$$UUID" ]; then echo "FinOps server not found — is the stack up and seeded? try 'make quickstart'" >&2; exit 1; fi; \
+	rm -f /tmp/mcp-finops-* 2>/dev/null || true; \
 	URL="http://localhost:4444/servers/$$UUID/mcp"; \
 	CFG=$$(mktemp /tmp/mcp-finops-XXXXXX); mv "$$CFG" "$$CFG.json"; CFG="$$CFG.json"; \
 	printf '{"mcpServers":{"FinByte-FinOps":{"type":"streamable-http","url":"%s","headers":{"Authorization":"Bearer %s"}}}}\n' "$$URL" "$$ADMIN" > "$$CFG"; \
