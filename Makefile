@@ -5,7 +5,7 @@ SECRET := demo-only-change-me-0123456789abcdef
 MINT := DATABASE_URL=sqlite:///./.tokmint.db uv run --with mcp-contextforge-gateway -- python -m mcpgateway.utils.create_jwt_token
 COMPOSE := docker compose
 
-.PHONY: help up down seed token token-bob bob bob-operator bob-config bob-install bob-config-operator bob-install-operator companion logs logs-opa verify-controls demo-reset ps demo quickstart monitor inspect-mcp inspect-a2a fxrates-convert fxrates-reset
+.PHONY: help up down seed token token-bob bob bob-operator bob-config bob-install bob-config-operator bob-install-operator companion logs logs-opa verify-controls demo-reset ps demo quickstart monitor inspect-mcp inspect-a2a cockpit cockpit-down fxrates-convert fxrates-reset
 
 # `make` (no target) prints this curated, categorized help. Keep it in sync when you
 # add/rename a target — the inline `## ...` comments still document each target too.
@@ -36,6 +36,8 @@ help:
 	@printf "  \033[36m%-22s\033[0m %s\n" "inspect-mcp" "MCP Inspector → the 8 governed tools (wire absent)"
 	@printf "  \033[36m%-22s\033[0m %s\n" "inspect-a2a" "A2A Inspector → validate the Python + Rust agent cards"
 	@printf "  \033[36m%-22s\033[0m %s\n" "companion" "Browser evidence dashboard on :7070"
+	@printf "  \033[36m%-22s\033[0m %s\n" "cockpit" "tmux cockpit: Bob + logs + OPA + both inspectors in one window"
+	@printf "  \033[36m%-22s\033[0m %s\n" "cockpit-down" "Tear down the cockpit (kill session/panes + a2a-inspector)"
 	@printf "\n\033[1m🎬 SHOWCASE\033[0m\n"
 	@printf "  \033[36m%-22s\033[0m %s\n" "fxrates-convert" "Apply the finished fx-rates (adds convert) + rebuild"
 	@printf "  \033[36m%-22s\033[0m %s\n" "fxrates-reset" "Restore base fx-rates so the \"Bob builds it\" beat repeats"
@@ -152,16 +154,38 @@ monitor: ## Open the ContextForge monitor (Admin UI: catalog + observability + l
 	echo "  observability: /admin (Overview, Metrics, Logs tabs)"; \
 	(open http://localhost:4444/admin 2>/dev/null || xdg-open http://localhost:4444/admin 2>/dev/null || true)
 
-inspect-mcp: ## Launch MCP Inspector pointed at the gateway's FinOps server (shows the governed tools)
+inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server (shows the governed tools)
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
+	if [ -z "$$ADMIN" ]; then echo "could not mint the admin token (is the stack up? try 'make quickstart')" >&2; exit 1; fi; \
 	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if s.get('name')=='FinOps']" 2>/dev/null | head -1); \
-	if [ -z "$$UUID" ]; then echo "FinOps server not found — run 'make seed' first" >&2; exit 1; fi; \
-	echo "MCP Inspector opening… In the UI, connect with:"; \
-	echo "  Transport      : Streamable HTTP"; \
-	echo "  URL            : http://localhost:4444/servers/$$UUID/mcp"; \
-	echo "  Auth header    : Authorization: Bearer $$ADMIN"; \
-	echo "(you should see 8 tools — note erp-payments-wire is ABSENT: least-privilege)"; \
-	npx -y @modelcontextprotocol/inspector
+	if [ -z "$$UUID" ]; then echo "FinOps server not found — is the stack up and seeded? try 'make quickstart'" >&2; exit 1; fi; \
+	rm -f /tmp/mcp-finops-* 2>/dev/null || true; \
+	URL="http://localhost:4444/servers/$$UUID/mcp"; \
+	CFG=$$(mktemp /tmp/mcp-finops-XXXXXX); mv "$$CFG" "$$CFG.json"; CFG="$$CFG.json"; \
+	printf '{"mcpServers":{"FinByte-FinOps":{"type":"streamable-http","url":"%s","headers":{"Authorization":"Bearer %s"}}}}\n' "$$URL" "$$ADMIN" > "$$CFG"; \
+	echo "MCP Inspector opens pre-pointed at the FinOps virtual server on ContextForge"; \
+	echo "(Streamable HTTP + the right URL — this is the gateway's governed slice, NOT a"; \
+	echo " backend MCP server; everything goes through the one governed seam)."; \
+	echo; \
+	echo "Final step — add the gateway token (inspector v0.22 won't load it from config):"; \
+	echo "  1) Connection Type   →  Via Proxy   (NOT Direct — Direct gets CORS-blocked)"; \
+	echo "  2) Authentication ▸ Custom Headers ▸ + Add :"; \
+	echo "       Header Name  =  Authorization"; \
+	echo "       Header Value =  paste the line below  (make sure the row toggle is ON)"; \
+	echo "  3) Connect  →  you should see 8 tools"; \
+	echo; \
+	echo "  Bearer $$ADMIN"; \
+	echo; \
+	BEARER="Bearer $$ADMIN"; \
+	if command -v pbcopy >/dev/null 2>&1; then printf '%s' "$$BEARER" | pbcopy; echo "  ✓ (also copied to your clipboard — just Cmd-V into Header Value)"; \
+	elif command -v wl-copy >/dev/null 2>&1; then printf '%s' "$$BEARER" | wl-copy; echo "  ✓ (also copied to clipboard via wl-copy)"; \
+	elif command -v xclip >/dev/null 2>&1; then printf '%s' "$$BEARER" | xclip -selection clipboard; echo "  ✓ (also copied to clipboard via xclip)"; \
+	elif command -v xsel >/dev/null 2>&1; then printf '%s' "$$BEARER" | xsel --clipboard; echo "  ✓ (also copied to clipboard via xsel)"; \
+	fi; \
+	echo; \
+	echo "You should then see 8 tools — note erp-payments-wire is ABSENT (least-privilege)."; \
+	echo "(proxy auth is disabled for this local demo; temp config at $$CFG)"; \
+	DANGEROUSLY_OMIT_AUTH=true npx -y @modelcontextprotocol/inspector --config "$$CFG" --server FinByte-FinOps
 
 inspect-a2a: ## Launch the A2A Inspector (clone+build first time) to validate the agent cards
 	@echo "A2A Inspector (a2aproject/a2a-inspector) on http://localhost:8090"; \
@@ -172,7 +196,34 @@ inspect-a2a: ## Launch the A2A Inspector (clone+build first time) to validate th
 	    && docker buildx build --load -t a2a-inspector "$$tmp/ai" >/dev/null 2>&1 || { echo "build failed — see the a2a-inspector README"; exit 1; }; \
 	fi; \
 	docker rm -f a2a-inspector >/dev/null 2>&1 || true; \
-	docker run --rm --name a2a-inspector -p 8090:8080 a2a-inspector
+	addhost=""; [ "$$(uname -s)" = "Linux" ] && addhost="--add-host=host.docker.internal:host-gateway"; \
+	docker run --rm --name a2a-inspector $$addhost -p 8090:8080 a2a-inspector
+
+cockpit: ## tmux cockpit: Bob + logs + OPA + both inspectors in one window (COCKPIT_PERSONA=operator for Act 2)
+	@bash scripts/cockpit.sh
+
+# Mode-aware teardown. Cold-start built a `cockpit` session → kill it. Augment
+# recorded the panes it created in the @cockpit_panes session option → kill ONLY
+# those (never the user's whole window). Both also force-remove the a2a-inspector
+# container: killing the pane stops the `docker run` client but `--rm` only fires
+# on a clean stop, so an orphan can survive.
+cockpit-down: ## Tear down the cockpit (kill session/panes + remove a2a-inspector)
+	@if command -v tmux >/dev/null 2>&1 && tmux has-session -t cockpit 2>/dev/null; then \
+	  tmux kill-session -t cockpit 2>/dev/null && echo "cockpit session killed"; \
+	elif command -v tmux >/dev/null 2>&1 && [ -n "$$TMUX" ]; then \
+	  panes=$$(tmux show-option -qv @cockpit_panes 2>/dev/null); \
+	  if [ -n "$$panes" ]; then \
+	    for p in $$panes; do \
+	      tmux set-option -p -t "$$p" remain-on-exit off 2>/dev/null || true; \
+	      tmux kill-pane -t "$$p" 2>/dev/null || true; \
+	    done; \
+	    tmux set-option -u @cockpit_panes 2>/dev/null || true; \
+	    echo "augment panes killed ($$panes)"; \
+	  else echo "no cockpit panes recorded in this session (nothing to kill)"; fi; \
+	else echo "no cockpit session found"; fi
+	@docker rm -f a2a-inspector >/dev/null 2>&1 || true; echo "a2a-inspector removed (if present)"
+	@pkill -f "modelcontextprotocol/inspector" >/dev/null 2>&1 && echo "MCP Inspector proxy stopped" || true
+	@pkill -f "companion/app.py" >/dev/null 2>&1 && echo "companion stopped" || true
 
 verify-controls: ## Run the money-shot proof suite (assert block/allow)
 	@bash scripts/money-shots/run-all.sh
