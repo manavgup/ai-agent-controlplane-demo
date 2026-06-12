@@ -122,20 +122,22 @@ fi
 # host. Over SSH (or with no opener) print URLs + a port-forward hint instead of
 # claiming a tab opened. Locally, reuse the `open || xdg-open` pattern.
 have_opener(){ command -v open >/dev/null 2>&1 || command -v xdg-open >/dev/null 2>&1; }
-open_admin(){
+# The HOW-TO page is the main consumption surface — it links to every UI and
+# spells out the steps. Resolve it relative to this script so it works from
+# any cwd.
+HOWTO="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)/docs/cockpit.html"
+open_howto(){
   if [ -n "${SSH_CONNECTION:-}${SSH_TTY:-}" ] || ! have_opener; then
     cat <<EOF
 
-  ${B}Remote session detected${R} — these UIs are on the remote host. Forward them:
-    ${CYN}ssh -L 4444:localhost:4444 -L ${MCP_INSPECTOR_PORT}:localhost:${MCP_INSPECTOR_PORT} -L ${MCP_INSPECTOR_PROXY_PORT}:localhost:${MCP_INSPECTOR_PROXY_PORT} -L ${A2A_INSPECTOR_PORT}:localhost:${A2A_INSPECTOR_PORT} <host>${R}
-  Then open:
-    Admin UI       : http://localhost:4444/admin
-    MCP Inspector  : http://localhost:${MCP_INSPECTOR_PORT}
-    A2A Inspector  : http://localhost:${A2A_INSPECTOR_PORT}
+  ${B}Remote session detected${R} — the UIs live on the remote host. Forward them:
+    ${CYN}ssh -L 4444:localhost:4444 -L 7070:localhost:7070 -L ${MCP_INSPECTOR_PORT}:localhost:${MCP_INSPECTOR_PORT} -L ${MCP_INSPECTOR_PROXY_PORT}:localhost:${MCP_INSPECTOR_PROXY_PORT} -L ${A2A_INSPECTOR_PORT}:localhost:${A2A_INSPECTOR_PORT} <host>${R}
+  Open the how-to guide locally: ${CYN}docs/cockpit.html${R}   (it links to every UI)
+  Surfaces: Companion :7070 · Admin UI :4444/admin · MCP Inspector :${MCP_INSPECTOR_PORT} · A2A Inspector :${A2A_INSPECTOR_PORT}
 EOF
   else
-    echo "  Opening ContextForge Admin UI → $GW/admin"
-    (open "$GW/admin" 2>/dev/null || xdg-open "$GW/admin" 2>/dev/null || true)
+    echo "  Opening the HOW-TO guide → docs/cockpit.html"
+    (open "$HOWTO" 2>/dev/null || xdg-open "$HOWTO" 2>/dev/null || true)
   fi
 }
 
@@ -157,7 +159,7 @@ cold_start(){
   if tmux has-session -t "$SESSION" 2>/dev/null; then
     warn "cockpit already running — attaching; ${CYN}make cockpit-down${R} first for a fresh layout."
     teardown_hint
-    open_admin
+    open_howto
     exec tmux attach -t "$SESSION"
   fi
 
@@ -189,7 +191,7 @@ cold_start(){
 
   ok "cockpit session built — Bob persona: $PERSONA"
   teardown_hint
-  open_admin
+  open_howto
   exec tmux attach -t "$SESSION"
 }
 
@@ -222,7 +224,7 @@ augment(){
 
   ok "added ${#created[@]} watch panes (${created[*]})"
   teardown_hint
-  open_admin
+  open_howto
 }
 
 if [ -z "${TMUX:-}" ]; then

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IBM Bob × ContextForge — How to run the demo</title>
+<style>
+  :root{
+    --ibm:#0f62fe; --ibm-dark:#0043ce; --ink:#161616; --muted:#525252;
+    --line:#e0e0e0; --bg:#f4f4f7; --card:#ffffff; --code-bg:#f2f4f8;
+    --ok:#198038; --warn:#8a6d00; --warn-bg:#fff8e1; --block:#da1e28;
+    --radius:12px; --shadow:0 1px 3px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;color:var(--ink);background:var(--bg);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  code,kbd,pre{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+  a{color:var(--ibm);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* layout */
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  header.hero{
+    background:linear-gradient(135deg,#0f62fe 0%,#6929c4 100%);
+    color:#fff;padding:48px 0 40px;
+  }
+  header.hero .wrap{display:flex;flex-direction:column;gap:6px}
+  .eyebrow{font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.85;font-weight:600}
+  header.hero h1{margin:4px 0 2px;font-size:34px;line-height:1.15;font-weight:700}
+  header.hero p.tag{margin:0;font-size:18px;opacity:.92;font-style:italic}
+  .status{
+    display:inline-flex;align-items:center;gap:8px;margin-top:18px;align-self:flex-start;
+    background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);
+    padding:7px 14px;border-radius:999px;font-size:14px;font-weight:600;
+  }
+  .dot{width:9px;height:9px;border-radius:50%;background:#42be65;box-shadow:0 0 0 4px rgba(66,190,101,.25)}
+
+  /* sticky nav */
+  nav.toc{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.92);
+    backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--line)}
+  nav.toc .wrap{display:flex;gap:4px;flex-wrap:wrap;padding:10px 24px}
+  nav.toc a{color:var(--muted);font-size:13.5px;font-weight:600;padding:6px 10px;border-radius:8px}
+  nav.toc a:hover{background:var(--code-bg);color:var(--ink);text-decoration:none}
+
+  main{padding:36px 0 64px}
+  section{margin:0 0 40px}
+  h2{font-size:23px;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+  h2 .num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;
+    background:var(--ibm);color:#fff;font-size:15px;font-weight:700;flex:none}
+  .lede{color:var(--muted);margin:0 0 18px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:22px 24px;margin:0 0 16px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}.wrap{padding:0 18px}}
+
+  .card h3{margin:0 0 4px;font-size:18px;display:flex;align-items:center;gap:9px}
+  .pill{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .pill.rec{background:#defbe6;color:var(--ok)}
+  .pill.port{background:#edf5ff;color:var(--ibm-dark);font-family:"SF Mono",monospace}
+  .card p{margin:6px 0 10px;color:var(--muted)}
+  .card ol,.card ul{margin:8px 0;padding-left:20px}
+  .card li{margin:5px 0}
+
+  /* command block with copy */
+  .cmd{position:relative;background:var(--code-bg);border:1px solid var(--line);
+    border-radius:9px;padding:11px 44px 11px 14px;margin:10px 0;
+    font-size:14px;white-space:pre-wrap;word-break:break-word;color:#0b3a8f}
+  .cmd .copy{position:absolute;top:7px;right:7px;border:1px solid var(--line);
+    background:#fff;color:var(--muted);border-radius:7px;font-size:12px;font-weight:600;
+    padding:3px 9px;cursor:pointer;line-height:1.4}
+  .cmd .copy:hover{border-color:var(--ibm);color:var(--ibm)}
+  code.inline{background:var(--code-bg);border:1px solid var(--line);border-radius:6px;
+    padding:1px 6px;font-size:13.5px;color:#0b3a8f}
+  kbd{background:#fff;border:1px solid #c6c6c6;border-bottom-width:2px;border-radius:6px;
+    padding:1px 7px;font-size:12.5px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+
+  /* callouts */
+  .note{border-left:4px solid var(--ibm);background:#edf5ff;border-radius:0 9px 9px 0;
+    padding:12px 16px;margin:12px 0;color:#0b3a8f;font-size:14.5px}
+  .warnbox{border-left:4px solid var(--warn);background:var(--warn-bg);border-radius:0 9px 9px 0;
+    padding:12px 16px;margin:12px 0;color:#5b4708;font-size:14.5px}
+
+  /* table */
+  table{width:100%;border-collapse:collapse;margin:6px 0;background:var(--card);
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;font-size:14.5px}
+  th{background:#fafafc;font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  tr:last-child td{border-bottom:0}
+  .verdict{font-weight:700;font-size:12.5px;padding:2px 8px;border-radius:6px;white-space:nowrap}
+  .v-block{background:#fff1f1;color:var(--block)}
+  .v-mask{background:#edf5ff;color:var(--ibm-dark)}
+  .v-allow{background:#defbe6;color:var(--ok)}
+
+  .panes{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;gap:8px;margin-top:8px}
+  @media(max-width:720px){.panes{grid-template-columns:1fr 1fr}}
+  .pane{background:var(--code-bg);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:13px}
+  .pane b{display:block;color:var(--ink);font-size:13.5px;margin-bottom:2px}
+  .pane span{color:var(--muted)}
+
+  footer{border-top:1px solid var(--line);padding:28px 0 48px;color:var(--muted);font-size:14px}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:9px 16px;border-radius:8px;font-size:14px;
+    opacity:0;pointer-events:none;transition:.2s}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">IBM Bob × ContextForge · Control Plane Demo</div>
+    <h1>Who's in charge of your agents?</h1>
+    <p class="tag">One AI agent, a fintech agent mesh, and a gateway that governs every move.</p>
+    <div class="status"><span class="dot"></span>The cockpit is running — here's how to drive it</div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <a href="#start">60-second start</a>
+    <a href="#cockpit">Your cockpit</a>
+    <a href="#surfaces">Demo surfaces</a>
+    <a href="#controls">The four controls</a>
+    <a href="#bob">Drive Bob</a>
+    <a href="#prove">Prove it</a>
+    <a href="#trouble">Troubleshooting</a>
+    <a href="#teardown">Teardown</a>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+  <!-- 1 -->
+  <section id="start">
+    <h2><span class="num">1</span>The 60-second version</h2>
+    <p class="lede">If you do only one thing: open the Companion dashboard and click <b>Run</b>. No login, no tokens — it proves every control on its own.</p>
+    <div class="card">
+      <h3>🟢 Open the Companion <span class="pill port">localhost:7070</span></h3>
+      <p>A click-through dashboard for all four controls. It calls the same deterministic proof path as <code class="inline">make verify-controls</code>, so it works even if Bob misbehaves.</p>
+      <p><a href="http://localhost:7070" target="_blank">→ Open the Companion dashboard</a> &nbsp;·&nbsp; then hit <b>▶ Run all scenarios</b>.</p>
+      <div class="note">Not running yet? Start it in a terminal: <code class="inline">make companion</code></div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section id="cockpit">
+    <h2><span class="num">2</span>Your cockpit (the tmux window)</h2>
+    <p class="lede">A single tmux session tiles everything you need to watch the control plane while you drive Bob. Each pane is just a <code class="inline">make</code> target.</p>
+    <div class="card">
+      <div class="panes">
+        <div class="pane"><b>Bob</b><span>the AI agent — type prompts here</span></div>
+        <div class="pane"><b>gateway logs</b><span>every governed tool call</span></div>
+        <div class="pane"><b>OPA decisions</b><span>ALLOW / DENY + reason</span></div>
+        <div class="pane"><b>MCP Inspector</b><span>the governed tool list</span></div>
+        <div class="pane"><b>A2A Inspector</b><span>the agent cards</span></div>
+      </div>
+      <div class="note">A pane closes when its command exits — that's normal. To tear the whole thing down: <code class="inline">make cockpit-down</code>. Detach without killing: <kbd>Ctrl</kbd>+<kbd>b</kbd> then <kbd>d</kbd>.</div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section id="surfaces">
+    <h2><span class="num">3</span>Demo surfaces</h2>
+    <p class="lede">Four ways to show the control plane. Lead with the Companion and the Admin UI — they're the least fiddly.</p>
+    <div class="grid">
+
+      <div class="card">
+        <h3>Companion <span class="pill rec">Recommended</span> <span class="pill port">:7070</span></h3>
+        <p>Run each control with a button; click <b>🔍 Evidence</b> to see the matching gateway/OPA log lines.</p>
+        <p><a href="http://localhost:7070" target="_blank">→ localhost:7070</a></p>
+      </div>
+
+      <div class="card">
+        <h3>ContextForge Admin UI <span class="pill port">:4444/admin</span></h3>
+        <p>The control plane itself — catalog, virtual servers, metrics, and the live <b>Logs</b> tab.</p>
+        <p><a href="http://localhost:4444/admin" target="_blank">→ localhost:4444/admin</a></p>
+        <p style="margin-bottom:4px">Login:</p>
+        <div class="cmd">admin@finbyte.demo<button class="copy" data-copy="admin@finbyte.demo">copy</button></div>
+        <div class="cmd">FinByteAdmin!2026<button class="copy" data-copy="FinByteAdmin!2026">copy</button></div>
+        <div class="warnbox"><b>"Invalid email or password"?</b> The gateway accepts these creds — your browser is autofilling a saved/old <code class="inline">localhost:4444</code> password over them. Fix once: <code class="inline">chrome://password-manager/passwords</code> → search <b>localhost</b> → delete that entry → type the password by hand (watch for a trailing space).</div>
+      </div>
+
+      <div class="card">
+        <h3>MCP Inspector <span class="pill port">:6274</span></h3>
+        <p>Opens pre-pointed at the gateway's <b>FinOps virtual server</b> — the governed slice. You'll see 8 tools, and <code class="inline">erp-payments-wire</code> is <b>absent</b> (least-privilege). Three steps to connect:</p>
+        <ol>
+          <li><b>Connection Type</b> → <b>Via Proxy</b> &nbsp;<span style="color:var(--muted)">(not Direct — Direct is CORS-blocked)</span></li>
+          <li><b>Authentication ▸ Custom Headers ▸ + Add</b>:<br>
+            Header Name = <code class="inline">Authorization</code><br>
+            Header Value = paste the token (the <code class="inline">inspect-mcp</code> pane printed it and copied it to your clipboard — <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>V</kbd>), toggle the row <b>on</b></li>
+          <li><b>Connect</b> → 8 tools</li>
+        </ol>
+        <p><a href="http://localhost:6274" target="_blank">→ localhost:6274</a></p>
+      </div>
+
+      <div class="card">
+        <h3>A2A Inspector <span class="pill port">:8090</span></h3>
+        <p>Validate the two A2A agent cards. Point it at the Python Auditor and the Rust Payments agent:</p>
+        <div class="cmd">http://host.docker.internal:9001<button class="copy" data-copy="http://host.docker.internal:9001">copy</button></div>
+        <div class="cmd">http://host.docker.internal:3000<button class="copy" data-copy="http://host.docker.internal:3000">copy</button></div>
+        <p><a href="http://localhost:8090" target="_blank">→ localhost:8090</a></p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section id="controls">
+    <h2><span class="num">4</span>The four controls</h2>
+    <p class="lede">Every one is enforced on the gateway, before Bob ever sees a result and before any money moves.</p>
+    <table>
+      <thead><tr><th>Control</th><th>Say to Bob</th><th>What the gateway does</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>1 · Policy (OPA)</b></td>
+          <td><i>"Wire $50,000 to Acme LLC for expense <code class="inline">exp_big</code>."</i></td>
+          <td><span class="verdict v-block">BLOCKED</span> over the $10k cap. Add <i>"with dual approval"</i> → <span class="verdict v-allow">ALLOWED</span>. Same policy blocks the cross-language A2A $50k.</td>
+        </tr>
+        <tr>
+          <td><b>2 · Data protection</b></td>
+          <td><i>"Fetch receipt <code class="inline">rcpt_pii</code>, verbatim."</i></td>
+          <td><span class="verdict v-mask">MASKED</span> SSN → <code class="inline">***-**-6789</code>, card → <code class="inline">****-****-****-1111</code>, key → <code class="inline">[SECRET_REDACTED]</code>.</td>
+        </tr>
+        <tr>
+          <td><b>3 · Prompt-injection</b></td>
+          <td><i>"Fetch receipt <code class="inline">rcpt_injection</code>."</i></td>
+          <td><span class="verdict v-block">NEUTRALIZED</span> the embedded <code class="inline">SYSTEM: ignore all prior policy…</code> → <code class="inline">[INJECTION_BLOCKED]</code>.</td>
+        </tr>
+        <tr>
+          <td><b>4 · RBAC least-privilege</b></td>
+          <td><i>"Now wire $50k yourself, directly."</i></td>
+          <td>Bob <b>can't</b> — the FinOps virtual server hides <code class="inline">erp-payments-wire</code>. The MCP Inspector confirms it's absent.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 5 -->
+  <section id="bob">
+    <h2><span class="num">5</span>Drive Bob</h2>
+    <p class="lede">Type these into the <b>Bob</b> pane. Tell Bob to use the tools explicitly if it starts narrating.</p>
+    <div class="card">
+      <div class="cmd">Use the finbyte-gateway tools to wire $50,000 to Acme LLC for expense exp_big.<button class="copy" data-copy="Use the finbyte-gateway tools to wire $50,000 to Acme LLC for expense exp_big.">copy</button></div>
+      <div class="cmd">…now with dual approval.<button class="copy" data-copy="...now with dual approval.">copy</button></div>
+      <div class="cmd">Fetch receipt rcpt_pii, verbatim.<button class="copy" data-copy="Fetch receipt rcpt_pii, verbatim.">copy</button></div>
+      <div class="cmd">Fetch receipt rcpt_injection.<button class="copy" data-copy="Fetch receipt rcpt_injection.">copy</button></div>
+      <div class="note">Watch the <b>gateway logs</b> and <b>OPA decisions</b> panes — a log line proves Bob actually called the tool (no line = it narrated).</div>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section id="prove">
+    <h2><span class="num">6</span>Prove it (deterministic)</h2>
+    <p class="lede">The controls aren't just shown — they're proven. Headless, no Bob required.</p>
+    <div class="card">
+      <div class="cmd">make verify-controls<button class="copy" data-copy="make verify-controls">copy</button></div>
+      <p style="margin-bottom:0">Expected: <b style="color:var(--ok)">16 passed, 0 failed</b>. This is your fallback if Bob gets chatty or the WiFi dies.</p>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section id="trouble">
+    <h2><span class="num">7</span>Troubleshooting</h2>
+    <div class="card">
+      <ul>
+        <li><b>Admin login keeps failing</b> — it's browser autofill, not the password. See the Admin UI card above; the creds are correct.</li>
+        <li><b>MCP Inspector won't connect</b> — make sure Connection Type is <b>Via Proxy</b> (not Direct), and the <code class="inline">Authorization</code> custom header row is toggled <b>on</b>. The token is on your clipboard from the <code class="inline">inspect-mcp</code> pane.</li>
+        <li><b>A pane shows an error and waits</b> — read it, press <kbd>Enter</kbd> to close that pane. The others keep running.</li>
+        <li><b>"cockpit already running — attaching"</b> — you re-attached to an old session. Run <code class="inline">make cockpit-down</code>, then <code class="inline">make cockpit</code> for a fresh one.</li>
+        <li><b>Bob says "No MCP servers configured" / lists no tools</b> — launch it via <code class="inline">make bob</code> (it refreshes config first), or reseed with <code class="inline">make demo-reset</code>.</li>
+        <li><b>Stack not up</b> — <code class="inline">make quickstart</code> brings up everything and seeds it.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section id="teardown">
+    <h2><span class="num">8</span>Teardown</h2>
+    <div class="card">
+      <div class="cmd">make cockpit-down   <span style="color:var(--muted)"># stop the cockpit (panes + inspectors)</span><button class="copy" data-copy="make cockpit-down">copy</button></div>
+      <div class="cmd">make down            <span style="color:var(--muted)"># stop the whole stack</span><button class="copy" data-copy="make down">copy</button></div>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>IBM Bob × ContextForge — AI Agent Control Plane Demo</div>
+    <div><a href="https://github.com/manavgup/ai-agent-controlplane-demo" target="_blank">github.com/manavgup/ai-agent-controlplane-demo</a> &nbsp;·&nbsp; <a href="https://ibm.biz/BobControlDemo" target="_blank">ibm.biz/BobControlDemo</a></div>
+  </div>
+</footer>
+
+<div class="toast" id="toast">Copied</div>
+<script>
+  document.querySelectorAll('.copy').forEach(function(b){
+    b.addEventListener('click',function(){
+      var t=b.getAttribute('data-copy');
+      navigator.clipboard.writeText(t).then(function(){
+        b.textContent='copied';
+        var toast=document.getElementById('toast');
+        toast.textContent='Copied: '+(t.length>40?t.slice(0,40)+'…':t);
+        toast.classList.add('show');
+        setTimeout(function(){toast.classList.remove('show')},1300);
+        setTimeout(function(){b.textContent='copy'},1200);
+      });
+    });
+  });
+</script>
+</body>
+</html>
