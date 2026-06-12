@@ -94,9 +94,9 @@ fi
 ok "stack seeded (FinOps server $FINOPS)"
 
 # ── preflight 4: optional dependency probes (warn, never fatal) ───────────────
-# remain-on-exit keeps a pane with a missing-dep error visible, so these are
-# advisory: they tell the user which panes will show an error up front.
-probe(){ command -v "$1" >/dev/null 2>&1 || warn "$1 not found — the '$2' pane will show an error (remain-on-exit keeps it visible)"; }
+# Advisory: tell the user up front which panes will fail. A failing pane shows
+# its error and waits for Enter before closing (see pane_cmd), so nothing is lost.
+probe(){ command -v "$1" >/dev/null 2>&1 || warn "$1 not found — the '$2' pane will error out (shows the message, closes on Enter)"; }
 probe npx     "inspect-mcp"
 probe docker  "inspect-a2a"
 probe git     "inspect-a2a (first-run build)"
@@ -142,6 +142,13 @@ EOF
 # The four stacked watch panes, top-to-bottom.
 WATCH_TARGETS=(logs logs-opa inspect-mcp inspect-a2a)
 
+# Build the command a pane runs. On a CLEAN exit the pane closes (no lingering
+# "dead" pane to kill by hand); on an ERROR it holds the message until Enter so a
+# missing-dep failure stays readable. This replaces a window-wide
+# `remain-on-exit on`, which turned every normal exit into a dead pane the user
+# had to kill manually (and, in augment mode, polluted their real window).
+pane_cmd(){ echo "make $1 || { echo; echo '[$1 exited - scroll up to read; press Enter to close]'; read _; }; exit"; }
+
 teardown_hint(){ printf "\n  %sto tear down:%s %smake cockpit-down%s\n" "$D" "$R" "$CYN" "$R"; }
 
 # ── COLD START (not in tmux): build the session, attach ──────────────────────
@@ -159,10 +166,6 @@ cold_start(){
   # defaults to 80x24 and the percentage splits come out wrong.
   tmux new-session -d -s "$SESSION" -x "$COLS" -y "$ROWS"
 
-  # remain-on-exit BEFORE send-keys: a pane whose command exits (missing dep)
-  # stays visible with its error ("Pane is dead") instead of vanishing.
-  tmux set-window-option -t "$SESSION" remain-on-exit on >/dev/null
-
   # Layout. split-window -p is relative to the target pane AT SPLIT TIME, so
   # order matters. We capture each pane's id (-P -F '#{pane_id}') rather than
   # assuming index 0 — the user's tmux may set base-index/pane-base-index to 1,
@@ -177,10 +180,10 @@ cold_start(){
 
   # Send each pane its command. Bob in the big left pane; the four watch panes
   # top-to-bottom down the right column.
-  tmux send-keys -t "$bob" "exec make $BOB_TARGET" Enter
+  tmux send-keys -t "$bob" "$(pane_cmd "$BOB_TARGET")" Enter
   local watch_panes=("$right" "$p2" "$p3" "$p4") i=0
   for t in "${WATCH_TARGETS[@]}"; do
-    tmux send-keys -t "${watch_panes[$i]}" "exec make $t" Enter
+    tmux send-keys -t "${watch_panes[$i]}" "$(pane_cmd "$t")" Enter
     i=$((i + 1))
   done
 
@@ -195,20 +198,18 @@ augment(){
   hd "Augmenting the current tmux window with the watch panes"
   warn "augment tiles around the ACTIVE pane — run this from your Bob pane (it does not start a second Bob)."
 
-  # remain-on-exit so a dead watch pane stays readable.
-  tmux set-window-option remain-on-exit on >/dev/null 2>&1 || true
-
   local anchor created=()
   anchor=$(tmux display-message -p '#{pane_id}')
 
   # First split halves the anchor pane width; then stack the four watch panes
-  # in that new column.
+  # in that new column. pane_cmd closes each pane cleanly on exit (no dead panes
+  # left in the user's real window) and holds only on error.
   local pane
-  pane=$(tmux split-window -h -t "$anchor" -P -F '#{pane_id}' "exec make ${WATCH_TARGETS[0]}")
+  pane=$(tmux split-window -h -t "$anchor" -P -F '#{pane_id}' "$(pane_cmd "${WATCH_TARGETS[0]}")")
   created+=("$pane")
   local prev="$pane" idx
   for idx in 1 2 3; do
-    pane=$(tmux split-window -v -t "$prev" -P -F '#{pane_id}' "exec make ${WATCH_TARGETS[$idx]}")
+    pane=$(tmux split-window -v -t "$prev" -P -F '#{pane_id}' "$(pane_cmd "${WATCH_TARGETS[$idx]}")")
     created+=("$pane")
     prev="$pane"
   done
