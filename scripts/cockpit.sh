@@ -126,11 +126,25 @@ have_opener(){ command -v open >/dev/null 2>&1 || command -v xdg-open >/dev/null
 # spells out the steps. Resolve it relative to this script so it works from
 # any cwd.
 HOWTO="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)/docs/cockpit.html"
+# The Companion dashboard (:7070) is the recommended demo surface the HOW-TO
+# leads with, so start it automatically — in the background (it's a browser UI,
+# not a terminal-watch pane). Skip if it's already serving. `make cockpit-down`
+# stops it. The stack is already verified up+seeded by the preflights above.
+start_companion(){
+  if curl -sf -o /dev/null "http://localhost:7070" 2>/dev/null; then
+    ok "companion already running → http://localhost:7070"
+  else
+    nohup make companion >/tmp/cockpit-companion.log 2>&1 &
+    ok "companion starting in the background → http://localhost:7070"
+  fi
+}
+
 open_howto(){
   # Stamp THIS session's admin token into a gitignored JS file the page reads,
   # so the HOW-TO can show a copy-paste token for the MCP Inspector.
   printf 'window.COCKPIT_TOKEN="Bearer %s";\n' "$ADMIN" \
     > "$(dirname "$HOWTO")/assets/cockpit-token.js" 2>/dev/null || true
+  start_companion
   if [ -n "${SSH_CONNECTION:-}${SSH_TTY:-}" ] || ! have_opener; then
     cat <<EOF
 
