@@ -32,9 +32,10 @@ bob(){ printf "     ${CYN}▸ %s${R}\n" "$*"; }   # an exact line to type at Bob
 RAW_PORT=8000
 RAW_PIDFILE=/tmp/finbyte-stage1-raw.pid
 RAW_LOG=/tmp/finbyte-stage1-raw.log
-# Stage 1: Bob writes this MCP server FROM SCRATCH (gitignored); _solution.py is
-# the tracked fallback (make stage1-scaffold). The gateway never reaches this
-# bare host process — fx-rates (a compose service) is the Stage 2 onboard vehicle.
+# Stage 1: Bob writes this MCP server FROM SCRATCH (generated, NOT committed — and
+# deliberately NOT gitignored, since Bob refuses to write ignored paths); _solution.py
+# is the tracked fallback (make stage1-scaffold). In Stage 2 this same server is
+# containerised (docker-compose.salestax.yml) and onboarded as the dev's own tool.
 SCRATCH_DIR=mcp-servers/sales-tax
 SCRATCH_SRC=$SCRATCH_DIR/server.py
 HOWTO=docs/cockpit.html
@@ -171,7 +172,7 @@ stage_govern(){
   echo
 
   say "${B}②d Bonus — have Bob extend an EXISTING service${R} (fx-rates):"
-  bob "Add a convert(amount, src_ccy, dst_ccy) tool to the fx-rates service at mcp-servers/fx-rates/server.py, then rebuild it."
+  bob "Add a convert(amount, base, quote) tool to the fx-rates service at mcp-servers/fx-rates/server.py, then rebuild it."
   bob "Re-register fx-rates and convert 1000 USD to EUR."
   say "  ${D}Fallback (does all of it):${R} ${CYN}make fxrates-extend${R}"
   say "  ${D}build-from-scratch (sales-tax) AND extend-existing (fx-rates), both governed.${R}"

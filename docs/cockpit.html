@@ -290,7 +290,7 @@ if __name__ == "__main__":
         <div class="cmd">Add sales tax to $100.<button class="copy" data-copy="Add sales tax to $100.">copy</button></div>
         <p><b>→ governed call through <code class="inline">:4444</code> → 108.50.</b> The tool you ran wide-open on <code class="inline">:8000</code> now runs token-gated through the one seam. Built → governed → <b>used</b>.</p>
         <div class="saybob">②c Bonus — have Bob extend an existing service (fx-rates)</div>
-        <div class="cmd">Add a convert(amount, src_ccy, dst_ccy) tool to the fx-rates service at mcp-servers/fx-rates/server.py, then rebuild it.<button class="copy" data-copy="Add a convert(amount, src_ccy, dst_ccy) tool to the fx-rates service at mcp-servers/fx-rates/server.py, then rebuild it.">copy</button></div>
+        <div class="cmd">Add a convert(amount, base, quote) tool to the fx-rates service at mcp-servers/fx-rates/server.py, then rebuild it.<button class="copy" data-copy="Add a convert(amount, base, quote) tool to the fx-rates service at mcp-servers/fx-rates/server.py, then rebuild it.">copy</button></div>
         <div class="cmd">Re-register fx-rates and convert 1000 USD to EUR.<button class="copy" data-copy="Re-register fx-rates and convert 1000 USD to EUR.">copy</button></div>
         <div class="warnbox"><b>Fallback</b> (does 2a–2c deterministically): <code class="inline">make salestax-register</code>, <code class="inline">make salestax-grant</code>, <code class="inline">make fxrates-extend</code>.</div>
       </div>
