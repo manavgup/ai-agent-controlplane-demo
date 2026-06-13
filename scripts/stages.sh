@@ -229,6 +229,15 @@ case "${1:-}" in
   govern)   stage_govern ;;
   controls) stage_controls ;;
   mesh)     stage_mesh ;;
-  reset)    stop_raw; rm -f "$SCRATCH_SRC" && echo "stopped the bare Stage-1 server and removed $SCRATCH_SRC (beat repeats clean; _solution.py kept)." ;;
+  reset)
+    stop_raw
+    rm -f "$SCRATCH_SRC"
+    make -s salestax-down >/dev/null 2>&1 || true
+    if ! git diff --quiet -- mcp-servers/fx-rates/server.py 2>/dev/null; then
+      echo "note: discarding local edits to mcp-servers/fx-rates/server.py (restoring committed version)."
+    fi
+    git checkout HEAD -- mcp-servers/fx-rates/server.py 2>/dev/null || true
+    echo "reset: stopped the bare server, removed $SCRATCH_SRC, stopped the sales-tax container, restored base fx-rates ( _solution.py / server_with_convert.py kept )."
+    ;;
   *) echo "usage: bash scripts/stages.sh {build|govern|controls|mesh|reset}" >&2; exit 2 ;;
 esac
