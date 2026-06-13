@@ -56,6 +56,14 @@ start_raw(){
   return 1
 }
 
+wait_salestax_container(){  # the CONTAINER answers on host :8001 (raw still owns :8000)
+  for _ in $(seq 1 40); do
+    curl -sf "localhost:8001/health" >/dev/null 2>&1 && return 0
+    sleep 1
+  done
+  return 1
+}
+
 open_build_guide(){ # open the prompt-card (build view) — SSH-aware, never fatal
   if [ -n "${SSH_CONNECTION:-}${SSH_TTY:-}" ] || ! { command -v open >/dev/null 2>&1 || command -v xdg-open >/dev/null 2>&1; }; then
     say "  ${D}Prompt-card (copy-paste Bob prompts):${R} open ${CYN}$HOWTO${R} and click the ${B}🎓 Progressive Build${R} tab."
@@ -119,35 +127,58 @@ stage_build(){
 
 # ──────────────────────────────────────────────────────────────────────────────
 stage_govern(){
-  hd "STAGE 2/4 — put that same tool behind ContextForge"
+  hd "STAGE 2/4 — govern the tool you just built (register → grant → call)"
   say "Same code — now it goes into the mesh: containerised, in the catalog, and"
   say "reachable only through the one governed seam with a token."
   echo
-  stop_raw && ok "stopped Bob's bare Stage-1 server (the gateway now governs a real mesh service: fx-rates)"
-  say "Bringing up the gateway + OPA + backends (idempotent; builds the fx-rates container)…"
-  make up || { no "stack failed to start — see: make logs"; exit 1; }
-  # seed builds the catalog + the Operator virtual server whose tools Bob uses to
-  # register (and deliberately leaves fx-rates UNregistered, so the live beat works).
+
+  if [ ! -f "$SCRATCH_SRC" ]; then
+    no "$SCRATCH_SRC doesn't exist — you can't govern what wasn't built."
+    say "  Run ${CYN}make stage1-build${R} (have Bob write it) or ${CYN}make stage1-scaffold${R}, then re-run ${CYN}make stage2-govern${R}."
+    exit 0
+  fi
+
+  say "Bringing up the gateway + OPA + backends (idempotent)…"
+  make up   || { no "stack failed to start — see: make logs"; exit 1; }
   make seed || { no "seed failed — retry 'make seed'"; exit 1; }
-  ok "mesh seeded — catalog built; fx-rates left unregistered for Bob to onboard live"
-  make -s bob-install-operator >/dev/null 2>&1 && ok "Bob set to the OPERATOR persona (can register/list/audit)" \
+  ok "mesh seeded — catalog + Operator virtual server built"
+  make -s bob-install-operator >/dev/null 2>&1 && ok "Bob set to the OPERATOR persona (can register)" \
     || no "couldn't set operator persona — run 'make bob-install-operator'"
   echo
-  say "${B}Drive Bob (operator):${R}"
-  bob "Register the fx-rates service at http://fx-rates:8000/mcp."
+
+  say "${B}②a Containerise the tool you built${R} (on the mesh network):"
+  make salestax-up || { no "couldn't build/run the sales-tax container — see 'make logs'"; exit 1; }
+  if wait_salestax_container; then
+    ok "sales-tax container healthy on :8001"
+    stop_raw && ok "retired the bare Stage-1 process on :8000 (the container takes over)"
+  else
+    no "the sales-tax container didn't answer on :8001 — check 'make logs'"; exit 1
+  fi
+  echo
+
+  say "${B}②b Register it${R} — drive Bob (operator):"
+  bob "Register the sales-tax service at http://sales-tax:8000/mcp."
   bob "List everything ContextForge is governing."
-  say "  ${D}fx-rates now lands in the catalog (token-gated). Bob can't CALL it yet —${R}"
-  say "  ${D}exposing it to an agent is a further grant (add it to a virtual server),${R}"
-  say "  ${D}which is the least-privilege point itself.${R}"
-  say "  ${D}Fallback if Bob's registration wobbles:${R} ${CYN}make fxrates-register${R}"
+  say "  ${D}Fallback:${R} ${CYN}make salestax-register${R}"
+  say "  ${D}It's now in the catalog, token-gated — but Bob still ${B}can't call it${R}.${D}"
+  say "  Exposing a tool to an agent is a separate grant. That gate ${B}is${R}${D} least-privilege.${R}"
   echo
-  say "${B}The contrast to make explicit (Stage 1 → now):${R}"
-  say "  • Stage 1:  ${CYN}curl localhost:8000/mcp${R}     ${D}→ wide open, any caller, any tool${R}"
-  say "  • Now:      everything flows through ${CYN}localhost:4444${R} ${D}→ catalog + token required${R}"
+
+  say "${B}②c Grant it + call it${R} — make the tool you built usable by your agent:"
+  say "  ${CYN}make salestax-grant${R}   ${D}(adds add_tax to a 'Builder' vserver + switches Bob to the builder persona)${R}"
+  bob "Add sales tax to \$100."
+  say "  ${D}→ governed call through :4444 → 108.50. Built → governed → ${B}used${R}.${D} The loop closes.${R}"
   echo
+
+  say "${B}②d Bonus — have Bob extend an EXISTING service${R} (fx-rates):"
+  bob "Add a convert(amount, src_ccy, dst_ccy) tool to the fx-rates service at mcp-servers/fx-rates/server.py, then rebuild it."
+  bob "Re-register fx-rates and convert 1000 USD to EUR."
+  say "  ${D}Fallback (does all of it):${R} ${CYN}make fxrates-extend${R}"
+  say "  ${D}build-from-scratch (sales-tax) AND extend-existing (fx-rates), both governed.${R}"
+  echo
+
   ( open http://localhost:4444/admin 2>/dev/null || xdg-open http://localhost:4444/admin 2>/dev/null || true )
-  say "Watch it land in the catalog → ${CYN}make monitor${R} (Admin UI)."
-  say "Next: ${CYN}make stage3-controls${R}"
+  say "Watch both land in the catalog → ${CYN}make monitor${R} (Admin UI). Next: ${CYN}make stage3-controls${R}"
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
