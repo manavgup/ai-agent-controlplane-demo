@@ -93,9 +93,14 @@ stage_build(){
     exit 1
   fi
   echo
-  say "${B}The point to land:${R} this works — and that's exactly the problem. Anyone on"
-  say "the network calls anything; no redaction, no policy, no audit. Open the"
-  say "Inspector and call the tool yourself — notice there's ${B}no token field${R}:"
+  say "${B}② Call it — proof it works (and that's the problem):${R}"
+  if uv run --with fastmcp==3.3.1 python scripts/salestax_smoke.py; then
+    ok "called add_tax over MCP — no token, no policy, no audit. Anyone on the network could."
+  else
+    no "smoke call failed — if Bob's server has a bug, drop in the known-good one: ${CYN}make stage1-scaffold${R}, then re-run."
+  fi
+  echo
+  say "Want to poke it by hand too? Open the MCP Inspector (no token field):"
   echo
   command -v npx >/dev/null 2>&1 || { no "npx not found (Node ≥18) — skipping the Inspector; the bare server is still up on :$RAW_PORT."; \
     say "  When you're ready to govern it:  ${CYN}make stage2-govern${R}"; open_build_guide; exit 0; }
