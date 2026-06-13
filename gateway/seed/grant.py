@@ -34,12 +34,16 @@ def main():
         existing = next((s for s in servers if s.get("name") == vname), None)
         keep_ids = []
         if existing:
-            # preserve whatever this vserver already exposed, then union
-            keep_ids = [
-                t.get("id") if isinstance(t, dict) else t
-                for t in existing.get("associated_tools", [])
+            # preserve whatever this vserver already exposed, then union.
+            # GET /servers returns `associatedTools` (camelCase) as tool NAMES;
+            # re-resolve them to ids so the union survives a delete+recreate.
+            assoc = existing.get("associatedTools")
+            if assoc is None:
+                assoc = existing.get("associated_tools", [])
+            existing_names = [
+                t.get("name") if isinstance(t, dict) else t for t in assoc
             ]
-            keep_ids = [x for x in keep_ids if x]  # drop any None/empty ids
+            keep_ids = match_tool_ids(tools, [n for n in existing_names if n])
             d = api(c, "DELETE", f"/servers/{existing['id']}")
             print(f"[server] delete existing {vname}: {d.status_code}")
 

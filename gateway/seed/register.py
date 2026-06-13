@@ -12,6 +12,7 @@ Example:
 """
 
 import sys
+import time
 
 from _gwapi import api, client, jget
 
@@ -27,20 +28,33 @@ def main():
             if g.get("name") == name and g.get("id"):
                 d = api(c, "DELETE", f"/gateways/{g['id']}")
                 print(f"[gw] delete existing {name}: {d.status_code}")
-        r = api(
-            c,
-            "POST",
-            "/gateways",
-            json={
-                "name": name,
-                "url": url,
-                "transport": transport,
-                "description": f"{name} MCP server",
-            },
-        )
-        print(f"[gw] register {name}: {r.status_code} {r.text[:160]}")
-        if r.status_code not in (200, 201):
-            sys.exit(1)
+
+        body = {
+            "name": name,
+            "url": url,
+            "transport": transport,
+            "description": f"{name} MCP server",
+        }
+        # The gateway probes the backend during registration; a just-(re)built
+        # container may not be ready yet (502). Retry a few times before failing.
+        last = ""
+        for attempt in range(1, 7):
+            try:
+                r = api(c, "POST", "/gateways", json=body)
+            except Exception as e:  # transport error: backend/gateway not ready
+                last = f"request error: {e}"
+                print(f"[gw] register {name} attempt {attempt}/6: {last}")
+                time.sleep(2)
+                continue
+            if r.status_code in (200, 201):
+                print(f"[gw] register {name}: {r.status_code} {r.text[:160]}")
+                return
+            last = f"{r.status_code} {r.text[:160]}"
+            print(f"[gw] register {name} attempt {attempt}/6: {last}")
+            if r.status_code < 500:
+                break  # a 4xx won't fix itself by retrying
+            time.sleep(2)
+        sys.exit(f"register {name} failed after retries: {last}")
 
 
 if __name__ == "__main__":
