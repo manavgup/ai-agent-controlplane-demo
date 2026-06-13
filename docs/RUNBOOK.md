@@ -24,7 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/manavgup/ai-agent-controlplane-demo
 
 Notes:
 - `make cockpit` needs **tmux ≥ 3.1** — it uses `split-window -l%` (the older `-p` was removed in tmux 3.4 and errors "size missing").
-- `make quickstart` and `make demo` still assume Docker (their daemon preflight). On Podman use `make up` / `make seed` directly, or the bootstrap above.
+- `make quickstart` and `make demo` run on Podman too — they auto-detect the runtime and try to enable the Podman socket if it isn't already up (same logic as the Makefile).
 
 ## Before the talk
 1. `cp .env.example .env && make up && make seed` — wait for "gateway healthy" + the FinOps/Treasury UUIDs.
