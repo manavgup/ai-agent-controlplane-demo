@@ -212,10 +212,13 @@ cold_start(){
   # the left ~62%, the right column splits into four ~25% stacked panes.
   local bob right p2 p3 p4
   bob=$(tmux list-panes -t "$SESSION" -F '#{pane_id}' | head -1)   # the lone initial pane = Bob
-  right=$(tmux split-window -h -p 38 -t "$bob"   -P -F '#{pane_id}')  # right column, 38% width
-  p2=$(tmux    split-window -v -p 75 -t "$right" -P -F '#{pane_id}')  # right ≈ top 25%
-  p3=$(tmux    split-window -v -p 67 -t "$p2"    -P -F '#{pane_id}')  # ≈ next 25%
-  p4=$(tmux    split-window -v -p 50 -t "$p3"    -P -F '#{pane_id}')  # last two ≈ 25% each
+  # Use `-l N%` (size of the NEW pane), not `-p N`: tmux 3.4 (Ubuntu 24.04,
+  # current Fedora, recent Homebrew) dropped `-p` and errors "size missing",
+  # which collapses the cockpit to a single pane. `-l N%` works on tmux 3.1+.
+  right=$(tmux split-window -h -l 38% -t "$bob"   -P -F '#{pane_id}')  # right column, 38% width
+  p2=$(tmux    split-window -v -l 75% -t "$right" -P -F '#{pane_id}')  # right ≈ top 25%
+  p3=$(tmux    split-window -v -l 67% -t "$p2"    -P -F '#{pane_id}')  # ≈ next 25%
+  p4=$(tmux    split-window -v -l 50% -t "$p3"    -P -F '#{pane_id}')  # last two ≈ 25% each
 
   # Send each pane its command. Bob in the big left pane; the four watch panes
   # top-to-bottom down the right column.

@@ -8,13 +8,28 @@ MINT := DATABASE_URL=sqlite:///./.tokmint.db uv run --with mcp-contextforge-gate
 # Both auto-detect once; override either explicitly, e.g.:
 #   make up CONTAINER=podman COMPOSE="podman compose"
 DETECTED_CONTAINER := $(shell command -v docker >/dev/null 2>&1 && echo docker || echo podman)
+# Prefer Docker Compose v2 (`docker compose` or the standalone `docker-compose`
+# binary) — it handles this 10-service stack correctly. The legacy python
+# `podman-compose` mishandles long-form env_file, shared build contexts, and
+# depends_on, so on Podman the documented path is docker-compose v2 against the
+# Podman socket (see RUNBOOK "Run on Podman"); `podman compose` is the fallback.
 DETECTED_COMPOSE := $(shell \
 	if command -v docker >/dev/null 2>&1; then echo "docker compose"; \
-	elif command -v podman-compose >/dev/null 2>&1; then echo "podman-compose"; \
+	elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; \
 	elif command -v podman >/dev/null 2>&1; then echo "podman compose"; \
 	else echo "docker compose"; fi)
 CONTAINER ?= $(DETECTED_CONTAINER)
 COMPOSE ?= $(DETECTED_COMPOSE)
+# On Podman, drive the stack through docker-compose against the rootless Podman
+# API socket, and use the classic (buildah) builder — Compose v2's buildkit
+# driver collides on parallel builds over the Podman socket. Both are defaults
+# (?=), so an explicit env override still wins. Requires the socket to be live:
+#   systemctl --user enable --now podman.socket   (scripts/test-fresh-host.sh does this)
+ifeq ($(CONTAINER),podman)
+DOCKER_HOST ?= unix:///run/user/$(shell id -u)/podman/podman.sock
+DOCKER_BUILDKIT ?= 0
+export DOCKER_HOST DOCKER_BUILDKIT
+endif
 
 .PHONY: help up down seed token token-bob bob bob-operator bob-config bob-install bob-config-operator bob-install-operator companion logs logs-opa verify-controls demo-reset ps demo quickstart monitor inspect-mcp inspect-a2a cockpit cockpit-down fxrates-convert fxrates-reset
 
@@ -201,7 +216,7 @@ inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server 
 inspect-a2a: ## Launch the A2A Inspector (clone+build first time) to validate the agent cards
 	@echo "A2A Inspector (a2aproject/a2a-inspector) on http://localhost:8090  (runtime: $(CONTAINER))"; \
 	echo "  point it at:  http://host.docker.internal:9001  (Python Auditor)  ·  :3000 (Rust Payments)"; \
-	if [ "$(CONTAINER)" = "docker" ]; then BUILD="docker buildx build --load"; else BUILD="$(CONTAINER) build"; fi; \
+	if [ "$(CONTAINER)" = "docker" ]; then BUILD="docker buildx build --load"; else BUILD="$(CONTAINER) build --network=host"; fi; \
 	if ! $(CONTAINER) image inspect a2a-inspector >/dev/null 2>&1; then \
 	  echo "building a2a-inspector image (first run, ~1-2 min)…"; \
 	  tmp=$$(mktemp -d); git clone --depth 1 https://github.com/a2aproject/a2a-inspector "$$tmp/ai" >/dev/null 2>&1 \
@@ -250,7 +265,7 @@ logs: ## Tail gateway logs (raw; blocked calls show as ERROR 'invocation failed'
 	$(COMPOSE) logs -f gateway
 
 logs-opa: ## Live, readable OPA policy decisions (ALLOW/DENY + args + reason)
-	@bash scripts/watch-decisions.sh
+	@COMPOSE="$(COMPOSE)" bash scripts/watch-decisions.sh
 
 ps: ## Show running services
 	$(COMPOSE) ps

@@ -4,7 +4,9 @@
 # Used by `make logs-opa`. Optional arg = how many past lines to show first.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
-exec docker compose logs -f --tail="${1:-30}" opa 2>/dev/null | python3 -u -c '
+# COMPOSE is exported by `make logs-opa` (auto-detected: docker compose /
+# docker-compose / podman compose). Default to `docker compose` when run directly.
+exec ${COMPOSE:-docker compose} logs -f --tail="${1:-30}" opa 2>/dev/null | python3 -u -c '
 import sys, json
 for line in sys.stdin:
     i = line.find("{")
