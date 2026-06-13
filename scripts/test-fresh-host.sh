@@ -46,7 +46,14 @@ if command -v apt-get >/dev/null 2>&1; then
   $SUDO DEBIAN_FRONTEND=noninteractive apt-get update -qq
   PKGS="make git tmux curl python3 python3-pip nodejs npm"
   [ "$RUNTIME" = "podman" ] && PKGS="$PKGS podman uidmap"
-  $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $PKGS >/dev/null
+  # Note: NOT silenced — if apt fails (e.g. podman vs an existing docker-ce), the
+  # error must be visible, and we must NOT march on to a doomed `make up`.
+  if ! $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y $PKGS; then
+    if [ "$RUNTIME" = "podman" ] && command -v docker >/dev/null 2>&1; then
+      die "apt couldn't install Podman — it conflicts with the docker-ce already on this host (shared containerd.io / CNI packages). This host isn't 'fresh': use its existing Docker instead — 'sudo usermod -aG docker \$USER', log out and back in, then re-run. (Podman + docker-ce can co-exist, but it needs manual conflict resolution.)"
+    fi
+    die "package install failed — see the apt output above."
+  fi
 fi
 ok "base packages installed"
 
