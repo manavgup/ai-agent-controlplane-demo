@@ -96,7 +96,7 @@ Swap back to the analyst at any time with `make bob`.
 
 | Tool | Why | How to get it |
 |---|---|---|
-| **Docker** (running) | Runs the gateway, OPA, MCP servers, and A2A agents | **Docker Desktop** on macOS/Windows, **or Docker Engine** on Linux (runs natively, no nested virtualization). Start it before you begin. — [docker.com](https://www.docker.com/products/docker-desktop/) |
+| **Docker** (running) | Runs the gateway, OPA, MCP servers, and A2A agents | **Docker Desktop** on macOS/Windows, **or Docker Engine** on Linux (runs natively, no nested virtualization). Start it before you begin. — [docker.com](https://www.docker.com/products/docker-desktop/) <br>**No Docker?** The stack also runs on **Podman** — see [Run on Podman](docs/RUNBOOK.md#run-on-podman-no-docker), or one-shot a fresh Ubuntu/WSL2/x86 host with `bash scripts/test-fresh-host.sh`. |
 | **uv** | Mints the gateway JWT **offline** (no network round-trip) | `https://docs.astral.sh/uv/` |
 | **IBM Bob Shell** (`bob`) | _Optional_ — only to **drive** Bob; the stack + `16/16` proof run without it | macOS/Linux: `curl -fsSL https://bob.ibm.com/download/bobshell.sh \| bash` ([bob.ibm.com/download](https://bob.ibm.com/download)) — checks Node ≥ 22.15 first |
 | **Node.js ≥ 22.15** | _Optional_ — required by IBM Bob Shell (it's a Node app) and the MCP Inspector (`npx`); not needed to bring up the stack or prove the controls | [nodejs.org](https://nodejs.org), or `nvm install 22` |

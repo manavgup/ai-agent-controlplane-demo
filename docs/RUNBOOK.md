@@ -6,6 +6,26 @@ A fresh machine needs these before step 1 (see the [README Prerequisites table](
 - **uv**, **git**, **make**.
 - **Only to DRIVE / inspect Bob:** IBM Bob Shell plus **Node ≥ 22.15** (Bob Shell is a cross-platform Node app; Node also runs the MCP Inspector via `npx`). Install Bob on macOS/Linux with `curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash` (it checks Node ≥22.15 first). On a bleeding-edge distro, use `nvm install 22` to satisfy the Node version. Bob and Node are **not** needed to bring up the stack or prove the controls headlessly (see step 2).
 
+## Run on Podman (no Docker)
+The stack runs on Podman as well as Docker — useful on a locked-down laptop or an attendee box with no Docker installed.
+
+**Fastest path** — on a fresh Ubuntu / WSL2 / IBM Cloud x86 host, the bootstrap installs the toolchain, brings the stack up, seeds it, and verifies every surface:
+```bash
+bash scripts/test-fresh-host.sh        # from a clone
+# …or bootstrap a clone too:
+curl -fsSL https://raw.githubusercontent.com/manavgup/ai-agent-controlplane-demo/main/scripts/test-fresh-host.sh | bash
+```
+
+**Manual.** The legacy python `podman-compose` can't run this 10-service stack (it mishandles long-form `env_file`, the shared opa/gateway build context, and `depends_on`). Use **Docker Compose v2 against the rootless Podman socket** — the Makefile auto-detects this, no manual env needed:
+1. Install `podman`, the `docker-compose` v2 binary, `tmux`, `uv`, Node, `python3`.
+2. Enable the rootless Podman API socket once: `systemctl --user enable --now podman.socket`.
+3. `make up && make seed` — the Makefile sets `CONTAINER=podman`, picks `docker-compose`, points `DOCKER_HOST` at the socket, and uses the classic (buildah) builder (`DOCKER_BUILDKIT=0`) automatically. Override any of these via env if your setup differs.
+4. `make cockpit` / `make companion` / `make inspect-a2a` — all work unchanged.
+
+Notes:
+- `make cockpit` needs **tmux ≥ 3.1** — it uses `split-window -l%` (the older `-p` was removed in tmux 3.4 and errors "size missing").
+- `make quickstart` and `make demo` run on Podman too — they auto-detect the runtime and try to enable the Podman socket if it isn't already up (same logic as the Makefile).
+
 ## Before the talk
 1. `cp .env.example .env && make up && make seed` — wait for "gateway healthy" + the FinOps/Treasury UUIDs.
    - On a **fresh Linux VM**, set the Docker daemon DNS *before* the first build (see the build-time-DNS row in the failure matrix below). Image pulls can succeed while in-build `RUN` steps (cargo/pip) fail to resolve hosts; `{"dns":["8.8.8.8","1.1.1.1"]}` in `/etc/docker/daemon.json` + `sudo systemctl restart docker` fixes it.

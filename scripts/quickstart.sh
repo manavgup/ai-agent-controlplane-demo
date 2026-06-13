@@ -27,6 +27,21 @@ ADMIN_EMAIL="admin@finbyte.demo"
 ADMIN_PW="$(grep -E '^PLATFORM_ADMIN_PASSWORD=' .env 2>/dev/null | cut -d= -f2- | tr -d '[:space:]')"
 ADMIN_PW="${ADMIN_PW:-FinByteAdmin!2026}"
 
+# Container runtime — mirror the Makefile: prefer Docker; else Podman via the
+# rootless API socket with Compose v2 + the classic (buildah) builder. Keeps this
+# script's own compose/exec calls consistent with `make up`. Override via env.
+if command -v docker >/dev/null 2>&1; then
+  RUNTIME="docker"; COMPOSE="${COMPOSE:-docker compose}"
+elif command -v podman >/dev/null 2>&1; then
+  RUNTIME="podman"
+  if command -v docker-compose >/dev/null 2>&1; then COMPOSE="${COMPOSE:-docker-compose}"; else COMPOSE="${COMPOSE:-podman compose}"; fi
+  export DOCKER_HOST="${DOCKER_HOST:-unix:///run/user/$(id -u)/podman/podman.sock}"
+  export DOCKER_BUILDKIT="${DOCKER_BUILDKIT:-0}"
+  [ -S "${DOCKER_HOST#unix://}" ] || systemctl --user enable --now podman.socket >/dev/null 2>&1 || true
+else
+  RUNTIME=""; COMPOSE="${COMPOSE:-docker compose}"
+fi
+
 # ── 1) preflight ─────────────────────────────────────────────────────────
 hd "1/5  Preflight — checking your laptop"
 miss=0
@@ -38,7 +53,7 @@ chkopt(){ # OPTIONAL (the stack + 16/16 proof run without it): cmd, why, note
   if command -v "$1" >/dev/null 2>&1; then ok "$1 — $($1 --version 2>/dev/null | head -1)";
   else printf "  ${YEL}!${R} %s not found — %s  ${D}(optional: %s)${R}\n" "$1" "$2" "$3"; fi
 }
-chk docker "runs the gateway + servers"        "install Docker Desktop and start it"
+if [ -n "$RUNTIME" ]; then ok "$RUNTIME — $($RUNTIME --version 2>/dev/null | head -1)  ${D}(compose: $COMPOSE)${R}"; else no "container runtime MISSING — install Docker Desktop, or Podman (rootless)"; miss=1; fi
 chk uv     "mints the gateway JWT offline"      "https://docs.astral.sh/uv/"
 # Bob and npx are only needed to DRIVE / inspect the demo — not to bring up the
 # stack or prove the controls. Keep them non-fatal so quickstart also works on a
@@ -47,15 +62,15 @@ chkopt bob "the AI agent you'll drive"          "needed only to DRIVE Bob; the s
 chkopt npx "runs the MCP Inspector"             "comes with Node.js ≥18; only for 'make inspect-mcp'"
 command -v curl >/dev/null 2>&1 || { no "curl MISSING"; miss=1; }
 command -v python3 >/dev/null 2>&1 || { no "python3 MISSING"; miss=1; }
-docker info >/dev/null 2>&1 || die "Docker daemon isn't responding — start Docker Desktop and re-run."
+[ -z "$RUNTIME" ] || $RUNTIME info >/dev/null 2>&1 || die "$RUNTIME isn't responding — start Docker Desktop, or enable the Podman socket ('systemctl --user enable --now podman.socket'), then re-run."
 [ "$miss" = 0 ] || die "Install the MISSING tools above, then re-run 'make quickstart'."
 [ -f .env ] || { cp .env.example .env; ok ".env created"; }
 
 # ── 2) bring up the stack ──────────────────────────────────────────────────
 hd "2/5  Starting ContextForge + 4 MCP servers + 2 A2A agents + operator"
-make up || die "stack failed to start — see: docker compose logs"
+make up || die "stack failed to start — see: $COMPOSE logs"
 # clear the forced password-change so the Admin UI logs in cleanly
-docker compose exec -T gateway python -c "import sqlite3;c=sqlite3.connect('/tmp/mcp.db');c.execute('update email_users set password_change_required=0');c.commit()" 2>/dev/null \
+$COMPOSE exec -T gateway python -c "import sqlite3;c=sqlite3.connect('/tmp/mcp.db');c.execute('update email_users set password_change_required=0');c.commit()" 2>/dev/null \
   && ok "Admin UI login ready" || printf "  ${YEL}!${R} couldn't clear password flag yet (Admin UI may prompt once)\n"
 
 # ── 3) register + 4) configure Bob ─────────────────────────────────────────

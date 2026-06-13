@@ -49,7 +49,20 @@ else BOLD=; DIM=; RST=; RED=; GRN=; YEL=; BLU=; CYN=; fi
 
 # ── config ─────────────────────────────────────────────────────────────
 GW="${GATEWAY_URL:-http://localhost:4444}"
-COMPOSE="docker compose"
+# Container runtime — mirror the Makefile: prefer Docker; else Podman via the
+# rootless API socket with Compose v2 + the classic (buildah) builder, so every
+# $COMPOSE call below matches `make up`. Override any of these via env.
+if command -v docker >/dev/null 2>&1; then
+  RUNTIME="docker"; COMPOSE="${COMPOSE:-docker compose}"
+elif command -v podman >/dev/null 2>&1; then
+  RUNTIME="podman"
+  if command -v docker-compose >/dev/null 2>&1; then COMPOSE="${COMPOSE:-docker-compose}"; else COMPOSE="${COMPOSE:-podman compose}"; fi
+  export DOCKER_HOST="${DOCKER_HOST:-unix:///run/user/$(id -u)/podman/podman.sock}"
+  export DOCKER_BUILDKIT="${DOCKER_BUILDKIT:-0}"
+  [ -S "${DOCKER_HOST#unix://}" ] || systemctl --user enable --now podman.socket >/dev/null 2>&1 || true
+else
+  RUNTIME=""; COMPOSE="${COMPOSE:-docker compose}"
+fi
 SECRET="$(grep -E '^JWT_SECRET_KEY=' .env 2>/dev/null | cut -d= -f2- | tr -d '[:space:]')"
 SECRET="${SECRET:-demo-only-change-me-0123456789abcdef}"
 ADMIN_EMAIL="admin@finbyte.demo"
@@ -123,9 +136,9 @@ PY
 
 # ════════════════════════════════════════════════════════════════════════
 stage 0 "Preflight — tooling & config"
-need docker "Install Docker Desktop and start it."
-docker info >/dev/null 2>&1 || die "Docker daemon not responding. Start Docker Desktop and retry."
-ok "docker daemon up"
+[ -n "$RUNTIME" ] || die "No container runtime found. Install Docker Desktop, or Podman (rootless)."
+$RUNTIME info >/dev/null 2>&1 || die "$RUNTIME isn't responding. Start Docker Desktop, or enable the Podman socket: systemctl --user enable --now podman.socket"
+ok "$RUNTIME up (compose: $COMPOSE)"
 need uv "Install uv → https://docs.astral.sh/uv/ (used to mint JWTs offline)"; ok "uv present"
 need curl ""; need python3 ""
 if [ ! -f .env ]; then cp .env.example .env; ok ".env created from .env.example"; else ok ".env present"; fi
@@ -138,7 +151,7 @@ stage 1 "Bring up ContextForge + 4 MCP servers + 2 A2A agents"
 if [ "$FRESH" = 1 ]; then say "  tearing down (down -v)…"; $COMPOSE down -v --remove-orphans >/dev/null 2>&1 || true; fi
 say "  minting the Auditor's gateway token…"
 printf 'AUDITOR_TOKEN=%s\n' "$(mint admin@finbyte.demo)" > .env.tokens
-say "  ${DIM}docker compose up -d --build  (pulls the pinned ContextForge image, builds 6 local images)${RST}"
+say "  ${DIM}$COMPOSE up -d --build  (pulls the pinned ContextForge image, builds 6 local images)${RST}"
 $COMPOSE --env-file .env.tokens up -d --build || die "compose up failed — inspect with: $COMPOSE logs"
 printf "  waiting for gateway health"
 healthy=0
