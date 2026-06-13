@@ -9,12 +9,14 @@ def test_norm_strips_separators_and_lowercases():
 
 
 def test_match_tool_ids_matches_by_normalized_name():
+    # longer "sales-tax-add-tax" is listed FIRST: old order-sensitive code would
+    # wrongly return "t2" for "add_tax" because its endswith match came first.
     tools = [
-        {"name": "add_tax", "id": "t1"},
         {"name": "sales-tax-add-tax", "id": "t2"},
+        {"name": "add_tax", "id": "t1"},
         {"name": "convert", "id": "t3"},
     ]
-    # exact-normalized "add_tax" should resolve to the first matching tool
+    # exact-normalized "add_tax" must beat the endswith match on the longer name
     assert match_tool_ids(tools, ["add_tax"]) == ["t1"]
     # "convert" resolves to t3
     assert match_tool_ids(tools, ["convert"]) == ["t3"]

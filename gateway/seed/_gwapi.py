@@ -43,20 +43,23 @@ def match_tool_ids(tools, names):
 
     `tools` is the /tools list (dicts with 'name'/'originalName' and 'id').
     Returns ids in request order, de-duplicated, skipping names with no match.
+    Match quality wins over tool-list order: exact normalized match is preferred,
+    then endswith, then substring.
     """
-    tmap = {}
+    pairs = []
     for t in tools:
         n = t.get("name") or t.get("originalName") or ""
         tid = t.get("id")
         if n and tid:
-            tmap[n] = tid
+            pairs.append((norm(n), tid))
     out = []
     for name in names:
         want = norm(name)
-        for tn, tid in tmap.items():
-            tnn = norm(tn)
-            if tnn == want or tnn.endswith(want) or want in tnn:
-                if tid not in out:
-                    out.append(tid)
-                break
+        match = (
+            next((tid for nn, tid in pairs if nn == want), None)
+            or next((tid for nn, tid in pairs if nn.endswith(want)), None)
+            or next((tid for nn, tid in pairs if want in nn), None)
+        )
+        if match and match not in out:
+            out.append(match)
     return out
