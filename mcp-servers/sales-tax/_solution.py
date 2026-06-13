@@ -19,7 +19,12 @@ mcp = FastMCP("sales-tax")
 def add_tax(amount: float, rate_pct: float = 8.5) -> dict:
     """Add sales tax to an amount. `rate_pct` is a percentage, e.g. 8.5 for 8.5%."""
     tax = round(amount * rate_pct / 100, 2)
-    return {"amount": amount, "rate_pct": rate_pct, "tax": tax, "total": round(amount + tax, 2)}
+    return {
+        "amount": amount,
+        "rate_pct": rate_pct,
+        "tax": tax,
+        "total": round(amount + tax, 2),
+    }
 
 
 @mcp.custom_route("/health", methods=["GET"])
