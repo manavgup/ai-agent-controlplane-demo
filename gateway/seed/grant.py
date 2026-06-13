@@ -39,6 +39,7 @@ def main():
                 t.get("id") if isinstance(t, dict) else t
                 for t in existing.get("associated_tools", [])
             ]
+            keep_ids = [x for x in keep_ids if x]  # drop any None/empty ids
             d = api(c, "DELETE", f"/servers/{existing['id']}")
             print(f"[server] delete existing {vname}: {d.status_code}")
 
@@ -63,7 +64,7 @@ def main():
             (s.get("id") for s in jget(c, "/servers") if s.get("name") == vname), ""
         )
         if not uuid:
-            sys.exit("could not read back the Builder UUID")
+            sys.exit(f"could not read back the {vname} UUID")
         print(uuid)  # LAST line = UUID (Makefile captures this)
 
 
