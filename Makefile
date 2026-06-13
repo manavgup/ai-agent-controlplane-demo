@@ -258,15 +258,15 @@ salestax-register: ## (Stage 2 fallback) register/refresh sales-tax in the gatew
 
 salestax-grant: ## (Stage 2) grant add_tax into the Builder vserver + install the Builder persona so Bob can CALL it
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
-	ADMIN_TOKEN=$$ADMIN uv run --with httpx python gateway/seed/grant.py Builder add_tax | tail -1 >/dev/null; \
+	ADMIN_TOKEN=$$ADMIN uv run --with httpx python gateway/seed/grant.py Builder add_tax >/dev/null && \
 	$(MAKE) -s bob-install-builder
 
 fxrates-extend: ## (Stage 2b fallback) give fx-rates a convert tool, rebuild, refresh in the gateway, grant it to Bob
 	cp mcp-servers/fx-rates/server_with_convert.py mcp-servers/fx-rates/server.py
 	$(COMPOSE) up -d --build fx-rates
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
-	ADMIN_TOKEN=$$ADMIN uv run --with httpx python gateway/seed/register.py fx-rates http://fx-rates:8000/mcp STREAMABLEHTTP; \
-	ADMIN_TOKEN=$$ADMIN uv run --with httpx python gateway/seed/grant.py Builder convert add_tax | tail -1 >/dev/null; \
+	ADMIN_TOKEN=$$ADMIN uv run --with httpx python gateway/seed/register.py fx-rates http://fx-rates:8000/mcp STREAMABLEHTTP && \
+	ADMIN_TOKEN=$$ADMIN uv run --with httpx python gateway/seed/grant.py Builder convert add_tax >/dev/null && \
 	$(MAKE) -s bob-install-builder
 	@echo "fx-rates extended with 'convert', re-discovered, and granted to Bob's Builder persona"
 
