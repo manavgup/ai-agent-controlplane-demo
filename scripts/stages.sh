@@ -101,7 +101,7 @@ stage_build(){
     exit 1
   fi
   echo
-  say "${B}② Call it — proof it works (and that's the problem):${R}"
+  say "${B}③ Call it — proof it works (and that's the problem):${R}"
   if uv run --with fastmcp==3.3.1 python scripts/salestax_smoke.py; then
     ok "called add_tax over MCP — no token, no policy, no audit. Anyone on the network could."
   else
