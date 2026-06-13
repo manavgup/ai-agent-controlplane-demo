@@ -67,23 +67,28 @@ case "$BASE" in
 esac
 
 # ── 4) the attendee command(s) ───────────────────────────────────────────────
+# Use the STREAMABLE-HTTP transport (-t http + the /mcp endpoint), not SSE. SSE is
+# a long-lived stream that the Codespaces/tunnel proxy buffers, so Bob hangs on
+# connect; /mcp is plain request/response and goes through cleanly (verified). It
+# works identically for a local gateway too, so http is the universal default.
 cat <<EOF
 
-${B}Attendees: install IBM Bob, then run ONE command${R} ${D}(nothing else — no Docker/uv/make)${R}:
+${B}Attendees: install IBM Bob, then — FROM AN EMPTY FOLDER — run ONE command${R}
+${D}(no Docker/uv/make. NOT from a clone of this repo: its .bob/mcp.json would shadow this one.)${R}
 
 ${B}Act 1 — FinOps analyst${R} (8 governed tools, no wire):
-  ${CYN}bob mcp add finbyte-gateway "$BASE/servers/$FINOPS/sse" -t sse -H "Authorization: Bearer $ADMIN" --trust${R}
+  ${CYN}bob mcp add finbyte-gateway "$BASE/servers/$FINOPS/mcp" -t http -H "Authorization: Bearer $ADMIN" --trust${R}
 
-Then drive it:
+Then drive it (from the same folder):
   ${CYN}bob${R}
-    "Fetch receipt rcpt_pii, verbatim."                 ${D}→ PII/secret redacted${R}
-    "Ask the auditor agent to pay \$50,000 to Acme LLC." ${D}→ blocked by policy${R}
+    "Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim."   ${D}→ PII/secret redacted${R}
+    "Ask the auditor agent to pay \$50,000 to Acme LLC."                    ${D}→ blocked by policy${R}
 
 ${D}Act 2 — platform operator (advanced): re-add pointed at the Operator server${R}
-  ${CYN}bob mcp add finbyte-gateway "$BASE/servers/$OPERATOR/sse" -t sse -H "Authorization: Bearer $ADMIN" --trust${R}
+  ${CYN}bob mcp add finbyte-gateway "$BASE/servers/$OPERATOR/mcp" -t http -H "Authorization: Bearer $ADMIN" --trust${R}
 
-${D}Equivalent .bob/mcp.json (if they prefer a file over the command):${R}
-  {"mcpServers":{"finbyte-gateway":{"url":"$BASE/servers/$FINOPS/sse","headers":{"Authorization":"Bearer $ADMIN"}}}}
+${D}Equivalent .bob/settings.json (if they prefer a file over the command):${R}
+  {"mcpServers":{"finbyte-gateway":{"httpUrl":"$BASE/servers/$FINOPS/mcp","headers":{"Authorization":"Bearer $ADMIN"}}}}
 
-${D}Reset a server's config:  bob mcp remove finbyte-gateway${R}
+${D}Reset:  bob mcp remove finbyte-gateway   ·   tip: copy the FULL token (it's ~470 chars — don't truncate)${R}
 EOF

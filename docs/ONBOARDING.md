@@ -6,18 +6,25 @@ runtime + building 10 images on conference WiFi**. So the goal is to keep the me
 
 ## The key fact that makes this easy
 
-IBM Bob speaks to **remote** MCP servers natively (SSE/HTTP + a bearer token) — no
-local wrapper, no `uv`, no Docker. So Bob on a bare laptop can drive a gateway running
-anywhere. Proven: a fresh Bob pointed straight at `/servers/<id>/sse` lists the 8
-governed tools and gets PII redacted — all four controls still apply over the wire.
+IBM Bob speaks to **remote** MCP servers natively (streamable-HTTP + a bearer token) —
+no local wrapper, no `uv`, no Docker. So Bob on a bare laptop can drive a gateway
+running anywhere. Proven end-to-end: a fresh Bob pointed at `/servers/<id>/mcp` over a
+**public Codespaces URL** lists the governed tools and gets PII redacted — all four
+controls still apply over the wire.
 
 ```bash
-bob mcp add finbyte-gateway "<GATEWAY_URL>/servers/<UUID>/sse" \
-  -t sse -H "Authorization: Bearer <TOKEN>" --trust
+# run from an EMPTY folder (not a clone of this repo — its .bob/mcp.json would shadow this)
+bob mcp add finbyte-gateway "<GATEWAY_URL>/servers/<UUID>/mcp" \
+  -t http -H "Authorization: Bearer <TOKEN>" --trust
 ```
 
 `make connect` prints that command fully filled in (URL + UUID + token) for whatever
 gateway you're running — Codespace, VM, or localhost.
+
+> **Use `-t http` + `/mcp`, not SSE, for a hosted gateway.** SSE is a long-lived stream
+> that the Codespaces (and most tunnel) proxies buffer, so Bob hangs on connect.
+> Streamable-HTTP is plain request/response and goes through cleanly. `make connect`
+> emits the `http` form by default.
 
 ## Tier 1 — Zero install, browser only (everyone)
 
