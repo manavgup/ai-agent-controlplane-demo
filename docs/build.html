@@ -232,8 +232,8 @@
       <tr>
         <td><b>② Bob + cloud mesh</b> <span class="pill rec">⭐</span></td>
         <td>You want to drive Bob hands-on without running Docker locally.</td>
-        <td>The mesh runs in a <b>GitHub Codespace</b>; your laptop needs <b>only IBM Bob</b>.
-          <a href="https://codespaces.new/manavgup/ai-agent-controlplane-demo?quickstart=1"><b>Open in Codespaces ↗</b></a> → make port <b>4444 Public</b> → run <code class="inline">make connect</code> → paste the printed <code class="inline">bob mcp add … -t http</code> line into your Bob. <span style="color:var(--block)"><b>Gotcha:</b></span> use <code class="inline">-t http</code> (never SSE), from an <b>empty folder</b>.</td>
+        <td>The mesh runs in a <b>GitHub Codespace</b> — <b>already built &amp; seeded</b> on creation, so you <b>skip the stage targets</b> and just drive <b>Stage ③</b>. Your laptop needs <b>only IBM Bob</b>.
+          <a href="https://codespaces.new/manavgup/ai-agent-controlplane-demo?quickstart=1"><b>Open in Codespaces ↗</b></a> → make port <b>4444 Public</b> → run <code class="inline">make connect</code> → paste the printed <code class="inline">bob mcp add … -t http</code> line into your Bob. <span style="color:var(--block)"><b>Gotcha:</b></span> use <code class="inline">-t http</code> (never SSE), from an <b>empty folder</b>, full token.</td>
       </tr>
       <tr>
         <td><b>③ Watch the presenter</b><br><span class="pill">watch-along</span></td>
@@ -273,7 +273,7 @@
       </tbody>
     </table>
   </div>
-  <div class="note"><b>Rule of thumb:</b> ⌨ gray commands run <em>where the mesh lives</em> — your Codespace, your laptop, or the presenter's. 🗣 purple prompts run in <em>your</em> Bob. <b>Only Bob + a shared gateway?</b> Drive <b>Stage ③</b> live and watch the rest (building your own tool needs the stack on your side).</div>
+  <div class="note"><b>Rule of thumb:</b> ⌨ gray commands run <em>where the mesh lives</em> — your laptop or the presenter's. 🗣 purple prompts run in <em>your</em> Bob. The <code class="inline">stageN-*</code> targets are the <b>local build lane</b>; <b>Codespaces skips them entirely</b> (the cloud already ran <code class="inline">make up &amp;&amp; make seed</code>) — you just <code class="inline">make connect</code> and drive <b>Stage ③</b>. Building your own tool (Stages ①–②) needs the stack on your side.</div>
 
   <details class="twisty" style="margin-top:14px"><summary>Architecture — what you're building (optional)</summary>
     <div class="twisty-body">
@@ -500,11 +500,16 @@ limit and requires dual approval (approval=true). FinByte T&E policy §2.</span>
     var now=document.getElementById('mbNow');
     var detail=document.getElementById('mbDetail');
     var info={
-      codespaces:{dim:'none',now:'Every step is yours.',
-        detail:'⌨ <b>make</b> commands run in your <b>Codespace terminal</b> — that\'s where the mesh lives. To drive Bob from your laptop: set port <b>4444</b> to <b>Public</b>, run <code class="inline">make connect</code> in the Codespace, then paste the printed <code class="inline">bob mcp add … -t http</code> line into your local Bob. Use <code class="inline">-t http</code> (never SSE), from an <b>empty folder</b>. To switch persona, re-run <code class="inline">make connect</code> and update the connection.'},
+      codespaces:{dim:'stage3',
+        now:'The mesh is <b>pre-built in your Codespace</b>. <b>Stage ③ is your live part</b> — drive it from your laptop Bob.',
+        sayLabel:'👁 local build lane — watch',
+        runLabel:'✓ already built + seeded in your Codespace',
+        detail:'Your Codespace ran <code class="inline">make up &amp;&amp; make seed</code> on creation, so the full governed mesh is already up — you <b>don\'t</b> run <code class="inline">stage1-build</code>…<code class="inline">stage4-mesh</code> (those are the <b>local build lane</b>). Just: set port <b>4444 → Public</b>, run <code class="inline">make connect</code> in the Codespace, paste the printed <code class="inline">bob mcp add … -t http</code> line into your laptop Bob (<b>empty folder</b>, never SSE, copy the <b>full ~470-char token</b>), then drive <b>Stage ③</b>. Switch persona by re-running <code class="inline">make connect</code> and re-adding with the other server URL.'},
       local:{dim:'none',now:'Every step is yours.',
         detail:'⌨ <b>make</b> commands and 🗣 Bob both run on <b>your laptop</b>; the gateway is at <code class="inline">localhost:4444</code>. Persona switches are automatic — <code class="inline">make bob</code> (analyst), <code class="inline">make bob-operator</code>, and <code class="inline">make bob-install-builder</code> rewrite Bob\'s connection for you. Always launch via those targets from the repo root so the live UUID stays fresh.'},
       bobonly:{dim:'stage3',now:'Active: <b>Stage ③ prompts</b>. The rest runs where the mesh lives — watch.',
+        sayLabel:'👁 needs the local stack — watch',
+        runLabel:'⌨ runs where the mesh lives',
         detail:'Your Bob points at <b>someone else\'s gateway</b>. Drive <b>Stage ③\'s</b> prompts live; the ⌨ build/seed commands and Stages ①–②–④ happen on the host running the mesh — watch those.'},
       watch:{dim:'all',now:'All steps are <b>presenter-driven</b> — just follow along.',
         detail:'Nothing to install. Follow the presenter, or open the <b>Companion</b> link / QR they share to stream the governed activity live.'}
@@ -524,7 +529,7 @@ limit and requires dual approval (approval=true). FinByte T&E policy §2.</span>
         if(conf.dim==='all'){dim=true;label=say?'👁 presenter says this':'👁 presenter runs this';}
         else if(conf.dim==='stage3'){
           if(stage==='s3'&&say){dim=false;}
-          else{dim=true;label=say?'👁 needs the local stack — watch':'⌨ runs where the mesh lives';}
+          else{dim=true;label=say?(conf.sayLabel||'👁 needs the local stack — watch'):(conf.runLabel||'⌨ runs where the mesh lives');}
         }
         el.classList.toggle('dimmed',dim);
         setChip(el,dim?label:'');
