@@ -40,6 +40,11 @@ cat <<'EOF'
         → prints the one 'bob mcp add …' command they paste into their local Bob
           (no Docker / uv / make on their machine — Bob talks to :4444 directly)
 
+ Verify what's registered with the gateway (ports already forwarded):
+   • Admin UI catalog : open :4444/admin   (fastest — lists every server/tool/agent)
+   • MCP Inspector    : make inspect-mcp    (:6274 — 8 governed tools, wire ABSENT)
+   • A2A Inspector    : make inspect-a2a    (:8090 — Python + Rust agent cards)
+
  Presenter surfaces (also forwarded):  Companion :7070 · Admin UI :4444/admin
 ══════════════════════════════════════════════════════════════════════════════
 EOF

@@ -275,6 +275,26 @@
   </div>
   <div class="note"><b>Rule of thumb:</b> ⌨ gray commands run <em>where the mesh lives</em> — your laptop or the presenter's. 🗣 purple prompts run in <em>your</em> Bob. The <code class="inline">stageN-*</code> targets are the <b>local build lane</b>; <b>Codespaces skips them entirely</b> (the cloud already ran <code class="inline">make up &amp;&amp; make seed</code>) — you just <code class="inline">make connect</code> and drive <b>Stage ③</b>. Building your own tool (Stages ①–②) needs the stack on your side.</div>
 
+  <details class="twisty" id="verify" style="margin-top:14px"><summary>🔍 Verify what's registered with the gateway (Admin UI · MCP &amp; A2A inspectors)</summary>
+    <div class="twisty-body">
+      <p class="lede" style="margin-top:0">Once your Codespace is up (it auto-ran <code class="inline">make up &amp;&amp; make seed</code> on creation), three surfaces confirm the catalog. Ports <code class="inline">4444 / 6274 / 8090</code> are <b>pre-forwarded by the devcontainer</b>; run the commands <b>in the Codespace terminal</b> (the gateway is <code class="inline">localhost</code> there), then open the matching <b>forwarded</b> port from the PORTS tab.</p>
+
+      <p style="margin:12px 0 4px"><b>① Admin UI — the fastest “is it registered?” check</b> <span class="pill rec">start here</span></p>
+      <div class="cmd">make monitor          <span style="color:var(--muted)"># or just open the forwarded :4444 → /admin</span><button class="copy" data-copy="make monitor">copy</button></div>
+      <div class="expect"><span class="lbl">You'll see</span> the ContextForge <b>Admin UI → Catalog</b>: every registered MCP server, tool, <b>virtual server</b>, and A2A agent in one list. No client needed.</div>
+
+      <p style="margin:14px 0 4px"><b>② MCP Inspector — the governed tool slice a client actually gets</b></p>
+      <div class="cmd">make inspect-mcp<button class="copy" data-copy="make inspect-mcp">copy</button></div>
+      <div class="expect"><span class="lbl">You'll see</span> the Inspector on the forwarded <code class="inline">:6274</code> → <b>8 tools</b>, with <code class="inline">erp-payments-wire</code> <b>absent</b> — least-privilege, proven from the client side.</div>
+
+      <p style="margin:14px 0 4px"><b>③ A2A Inspector — validate the two agent cards</b></p>
+      <div class="cmd">make inspect-a2a<button class="copy" data-copy="make inspect-a2a">copy</button></div>
+      <div class="expect"><span class="lbl">You'll see</span> the A2A Inspector on the forwarded <code class="inline">:8090</code> → the Python <b>auditor</b> + Rust <b>payments</b> agent cards (the cross-language pair Stage ③'s $50k block fires across).</div>
+
+      <div class="note"><b>Driving from your laptop?</b> Use surface ① (open the forwarded <code class="inline">:4444/admin</code>) — it needs nothing installed. To point a <b>local</b> MCP Inspector at the public gateway instead: <code class="inline">npx -y @modelcontextprotocol/inspector</code> → Transport <b>Streamable HTTP</b>, URL <code class="inline">https://&lt;codespace&gt;-4444.app.github.dev/servers/&lt;FinOps-UUID&gt;/mcp</code>, <b>Via Proxy</b>, add header <code class="inline">Authorization: Bearer &lt;token&gt;</code>. If the Inspector asks for a proxy token, open the pre-filled URL it prints.</div>
+    </div>
+  </details>
+
   <details class="twisty" style="margin-top:14px"><summary>Architecture — what you're building (optional)</summary>
     <div class="twisty-body">
       <p class="lede" style="margin-top:0">Bob drives a fintech (“FinByte”) agent mesh, but never touches the backends directly. Every tool call <em>and</em> every agent-to-agent call flows through <b>ContextForge</b> — the one governed seam that authenticates, authorizes, redacts, and audits before Bob sees a result or any money moves. An OPA sidecar decides policy.</p>
