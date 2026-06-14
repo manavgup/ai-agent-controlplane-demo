@@ -65,13 +65,11 @@ wait_salestax_container(){  # the CONTAINER answers on host :8001 (raw still own
   return 1
 }
 
-open_build_guide(){ # open the follow-along build guide — SSH-aware, never fatal
-  if [ -n "${SSH_CONNECTION:-}${SSH_TTY:-}" ] || ! { command -v open >/dev/null 2>&1 || command -v xdg-open >/dev/null 2>&1; }; then
-    say "  ${D}Follow-along guide (copy-paste Bob prompts):${R} open ${CYN}$HOWTO${R}."
-  else
-    ( open "$HOWTO" 2>/dev/null || xdg-open "$HOWTO" 2>/dev/null || true )
-    say "  ${D}Opened the follow-along guide → $HOWTO.${R}"
-  fi
+open_build_guide(){ # point at the follow-along guide — never auto-opens.
+  # `make dev-start` is the ONE target that opens docs/build.html in a browser;
+  # the stages only print a pointer so a cold `make stage1-build` still finds it
+  # (and we don't pop the same page a second time during the normal flow).
+  say "  ${D}Follow-along guide (copy-paste Bob prompts):${R} open ${CYN}$HOWTO${R}."
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
