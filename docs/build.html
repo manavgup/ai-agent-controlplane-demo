@@ -176,6 +176,7 @@
       </tr>
     </tbody>
   </table>
+  <div class="note"><b>Recommended hands-on path:</b> open the Codespace, make port <code class="inline">4444</code> <b>Public</b>, run <code class="inline">make connect</code>, then paste the printed <code class="inline">bob mcp add … -t http …/mcp</code> command into Bob. Two gotchas: use <code class="inline">-t http</code> (never SSE), and run <code class="inline">bob mcp add</code> from an <b>empty folder</b> so a repo-local <code class="inline">.bob/mcp.json</code> cannot shadow the connection.</div>
   <div class="note"><b>Which steps below are yours?</b> The ⌨ gray <code class="inline">make</code> commands run <em>wherever the mesh lives</em> — your machine (④), your Codespace (②), or the presenter's (①③). The 🗣 Bob prompts run in <em>your</em> Bob. <b>Only Bob + a shared gateway?</b> Do <b>Stage ③'s</b> prompts live and <b>watch ①–②</b> (building your own tool needs the stack on your side). &nbsp;<b>Rule of thumb: ⌨ runs where the mesh lives; 🗣 runs in your Bob.</b></div>
 
   <details class="twisty" style="margin-top:14px"><summary>Architecture — what you're building (optional)</summary>
@@ -191,7 +192,7 @@
   <div class="step say">
     <div class="step-h"><span class="n">1</span><span class="hat">Builder</span> 🗣 Say this to Bob</div>
     <div class="cmd bob">Create a new MCP server with fastmcp at mcp-servers/sales-tax/server.py: a tool add_tax(amount, rate_pct=8.5) returning {amount, rate_pct, tax, total}, plus a GET /health route, served over HTTP on 0.0.0.0:8000.<button class="copy" data-copy="Create a new MCP server with fastmcp at mcp-servers/sales-tax/server.py: a tool add_tax(amount, rate_pct=8.5) returning {amount, rate_pct, tax, total}, plus a GET /health route, served over HTTP on 0.0.0.0:8000.">copy</button></div>
-    <div class="expect"><span class="lbl">You'll see</span> Bob write <code class="inline">mcp-servers/sales-tax/server.py</code> — a working FastMCP server. If it won't start, paste the error back and Bob fixes its own code.</div>
+    <div class="expect"><span class="lbl">You'll see</span> Bob write <code class="inline">mcp-servers/sales-tax/server.py</code> — a working FastMCP server. Once it works, stop regenerating it; if it will not start, use the deterministic fallback below.</div>
     <details class="real"><summary>See Bob's actual run</summary>
       <div class="term"><div class="bar">bob — Builder · build</div><pre><span class="dim">&lt;thinking&gt; create a FastMCP server with the add_tax tool and a health endpoint &lt;/thinking&gt;</span>
 <span class="tool">[using tool write_to_file: mcp-servers/sales-tax/server.py]</span>
@@ -212,7 +213,8 @@
   ✔ called add_tax over MCP — no token, no policy, no audit.</pre></div>
     </details>
   </div>
-  <div class="warnbox"><b>If Bob's file won't run:</b> <code class="inline">make stage1-scaffold</code> drops in a known-good server, then re-run <code class="inline">make stage1-build</code>.</div>
+  <div class="warnbox"><b>If Bob's file won't run:</b> <code class="inline">make stage1-scaffold</code> drops in a known-good server, then re-run <code class="inline">make stage1-build</code>. Don't keep asking Bob to regenerate after a working file exists — a second pass can overwrite good code with a broken variant.</div>
+  <div class="warnbox"><b>If Bob hangs on <code class="inline">Initializing...</code>:</b> run <code class="inline">make clean</code>. Stage ① needs no gateway persona config; a stale <code class="inline">.bob/mcp.json</code> can point Bob at a dead gateway or stale virtual-server UUID.</div>
 
   <!-- ════ STAGE 2 ════ -->
   <h2 id="s2"><span class="num">2</span>Govern — register → grant → call <span class="pill port" style="margin-left:auto">governed · :4444</span></h2>
@@ -284,9 +286,12 @@
     <div class="expect"><span class="lbl">You'll see</span> a live <b>ALLOW / DENY</b> stream — every policy decision with its reason, in real time.</div>
   </div>
   <div class="step say">
-    <div class="step-h"><span class="n">3</span><span class="hat">Analyst</span> 🗣 Say this to Bob — one prompt hits all four controls</div>
-    <div class="cmd bob">Process today's pending expenses end to end. For each: read it, check its receipt, approve and reimburse anything clean, and flag anything that needs a wire.<button class="copy" data-copy="Process today's pending expenses end to end. For each: read it, check its receipt, approve and reimburse anything clean, and flag anything that needs a wire.">copy</button></div>
-    <div class="expect" style="margin-bottom:0"><span class="lbl">You'll see</span> Bob work the queue — and ContextForge bite each call as it happens:</div>
+    <div class="step-h"><span class="n">3</span><span class="hat">Analyst</span> 🗣 Say this to Bob — one control at a time</div>
+    <div class="cmd bob">Show me receipt rcpt_pii.<button class="copy" data-copy="Show me receipt rcpt_pii.">copy</button></div>
+    <div class="cmd bob">Show me receipt rcpt_injection.<button class="copy" data-copy="Show me receipt rcpt_injection.">copy</button></div>
+    <div class="cmd bob">Pay the $50,000 invoice to Acme Corp.<button class="copy" data-copy="Pay the $50,000 invoice to Acme Corp.">copy</button></div>
+    <div class="cmd bob">Wire $50k yourself.<button class="copy" data-copy="Wire $50k yourself.">copy</button></div>
+    <div class="expect" style="margin-bottom:0"><span class="lbl">You'll see</span> four deterministic beats — one prompt, one control, one narratable proof:</div>
   </div>
   <table style="margin-top:6px">
     <thead><tr><th>When Bob touches…</th><th>The control that fires</th></tr></thead>
@@ -297,6 +302,12 @@
       <tr><td>(Bob itself)</td><td>has <b>no wire tool</b> — least-privilege / RBAC</td></tr>
     </tbody>
   </table>
+  <details class="twisty"><summary>Optional finale — one prompt that can hit the whole queue</summary>
+    <div class="twisty-body">
+      <p style="margin-top:0">Use this after the discrete control beats if you want to show the end-to-end workflow in one breath. The four prompts above are the safer live path because each one forces a specific tool call.</p>
+      <div class="cmd bob">Process today's pending expenses end to end. For each: read it, check its receipt, approve and reimburse anything clean, and flag anything that needs a wire.<button class="copy" data-copy="Process today's pending expenses end to end. For each: read it, check its receipt, approve and reimburse anything clean, and flag anything that needs a wire.">copy</button></div>
+    </div>
+  </details>
   <details class="real"><summary>See Bob's actual runs (real transcripts)</summary>
     <div class="term"><div class="bar">bob — Analyst · "fetch receipt rcpt_pii verbatim"</div><pre><span class="tool">[using tool expense-db-get-receipt: {"id":"rcpt_pii"}]</span>
 <span class="out">Reimbursement for J. Doe. SSN ***-**-6789, card ****-****-****-1111 … api key [SECRET_REDACTED]. Total $240.00.</span>
