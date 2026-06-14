@@ -7,9 +7,9 @@ Status legend: 🔴 open · 🟡 worked-around (manual fix known) · 🟢 fixed 
 
 ---
 
-## `docs/cockpit.html` — pending content updates
+## `docs/build.html` — pending content updates
 
-The prompt-card page (`docs/cockpit.html`, opened by `make dev-start`) is the
+The prompt-card page (`docs/build.html`, opened by `make dev-start`) is the
 attendee-facing surface. Track on-page content it still needs here; implement in
 the batch after the dry-run.
 
