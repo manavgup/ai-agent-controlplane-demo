@@ -43,12 +43,15 @@ help:
 	@printf "  \033[36m%-22s\033[0m %s\n" "verify-controls" "Prove all four controls headlessly → \"16 passed, 0 failed\""
 	@printf "  \033[36m%-22s\033[0m %s\n" "demo" "Stage-gated end-to-end walkthrough (pauses at each stage)"
 	@printf "  \033[36m%-22s\033[0m %s\n" "check" "Verify ALL prerequisites are installed + live stack status"
-	@printf "\n\033[1m🎓 DEV DAY — PROGRESSIVE BUILD (bare tool → governed mesh)\033[0m\n"
+	@printf "\n\033[1m🎓 DEV DAY — PROGRESSIVE BUILD (two lanes — pick one)\033[0m\n"
 	@printf "  \033[36m%-22s\033[0m %s\n" "dev-start" "Open the prompt-card page (start here — copy-paste Bob prompts per stage)"
+	@printf "  \033[2m── LOCAL lane · Docker on your laptop · walk it, or jump with 'make quickstart' ──\033[0m\n"
 	@printf "  \033[36m%-22s\033[0m %s\n" "stage1-build" "Bob builds an MCP server from scratch → run RAW + inspect UNGOVERNED"
 	@printf "  \033[36m%-22s\033[0m %s\n" "stage2-govern" "Put that tool behind ContextForge (seed catalog + token + Bob registers it)"
 	@printf "  \033[36m%-22s\033[0m %s\n" "stage3-controls" "Exercise the four controls (Bob's analyst queue + logs-opa)"
 	@printf "  \033[36m%-22s\033[0m %s\n" "stage4-mesh" "The full governed picture (== quickstart end-state)"
+	@printf "  \033[2m── CODESPACES lane · no local Docker · mesh is pre-seeded, SKIP the stages ──\033[0m\n"
+	@printf "  \033[36m%-22s\033[0m %s\n" "connect" "Print the 1 'bob mcp add' line → drive Stage ③ from your laptop Bob"
 	@printf "\n\033[1m🤖 DRIVE BOB\033[0m\n"
 	@printf "  \033[36m%-22s\033[0m %s\n" "bob" "Launch Bob — FinOps analyst (Act 1; cwd-proof, refreshes config)"
 	@printf "  \033[36m%-22s\033[0m %s\n" "bob-operator" "Launch Bob — platform operator (Act 2)"
@@ -172,7 +175,7 @@ bob-install-builder: ## Write .bob/mcp.json for the BUILDER persona (calls the d
 	echo "wrote .bob/mcp.json — BUILDER persona (calls your granted tools: add_tax, convert). Restart Bob."; \
 	echo "Switch back to the analyst with: make bob-install"
 
-connect: ## Print the ONE 'bob mcp add' command for a LOCAL/REMOTE Bob to drive THIS gateway (no Docker/uv/make on the attendee's laptop). Set GATEWAY_URL=... for a VM, or run inside a Codespace for auto-detect.
+connect: ## Dev Day [CODESPACES lane]: print the ONE 'bob mcp add' command for a laptop Bob to drive THIS (pre-seeded) gateway — no Docker/uv/make locally; no stageN targets needed. Auto-detects a Codespace; set GATEWAY_URL=... for a VM.
 	@bash scripts/connect.sh
 
 # Launch Bob FROM THE REPO ROOT so it always reads THIS dir's .bob/mcp.json.
@@ -214,28 +217,37 @@ fxrates-reset: ## Restore the base fx-rates (no convert) so the 'Bob builds it' 
 	$(COMPOSE) up -d --build fx-rates
 	@echo "fx-rates restored to base (get_fx_rate + list_currencies)"
 
-# ── Dev Day: progressive build (bare tool → governed mesh) ──────────────────
+# ── Dev Day: progressive build (bare tool → governed mesh) — LOCAL BUILD LANE ─
 # Scene-setters that walk a room up the stack one beat at a time, the inverse of
 # quickstart's "whole mesh at once". Each prints the exact Bob prompt + a
 # deterministic fallback; see scripts/stages.sh and docs/SHOWCASE-BOB.md.
+#
+# TWO LANES — pick one:
+#   • LOCAL (this section): you run Docker on your laptop. Walk stage1→stage4,
+#     OR jump to the end-state with `make quickstart`.
+#   • CODESPACES (no Docker locally): the Codespace already ran `make up && make
+#     seed` on creation, so the mesh is BUILT + SEEDED. You DON'T run the stageN
+#     targets — just `make connect` (port 4444 → Public) and drive Stage ③ from
+#     your laptop Bob. See the `connect` target below.
 dev-start: ## Dev Day ⏵: open the follow-along build guide (docs/build.html)
 	@url="file://$(CURDIR)/docs/build.html"; \
 	echo "▶ Opening the Dev Day follow-along guide → docs/build.html"; \
 	echo "  copy each stage's Bob prompt straight from the page."; \
 	(open "$$url" 2>/dev/null || xdg-open "$$url" 2>/dev/null \
 	  || echo "  (no browser opener — open docs/build.html yourself)"); \
-	echo; echo "  Then walk the stages:  make stage1-build → stage2-govern → stage3-controls → stage4-mesh"
+	echo; echo "  LOCAL lane:      make stage1-build → stage2-govern → stage3-controls → stage4-mesh"; \
+	echo "  CODESPACES lane: skip the stages (mesh is pre-seeded) → make connect → drive Stage ③"
 
-stage1-build: ## Dev Day ①: Bob builds an MCP server from scratch → run RAW + inspect UNGOVERNED (:8000)
+stage1-build: ## Dev Day ① [LOCAL lane]: Bob builds an MCP server from scratch → run RAW + inspect UNGOVERNED (:8000)
 	@bash scripts/stages.sh build
 stage1-scaffold: ## Dev Day ① fallback: drop in the finished sales-tax server if Bob's live build wobbles
 	@cp mcp-servers/sales-tax/_solution.py mcp-servers/sales-tax/server.py && \
 	echo "wrote mcp-servers/sales-tax/server.py from _solution.py — now run 'make stage1-build'"
-stage2-govern: ## Dev Day ②: put that tool behind ContextForge (catalog + token)
+stage2-govern: ## Dev Day ② [LOCAL lane]: put that tool behind ContextForge (catalog + token)
 	@bash scripts/stages.sh govern
-stage3-controls: ## Dev Day ③: seed the mesh → the four controls start biting
+stage3-controls: ## Dev Day ③ [LOCAL lane]: seed the mesh → the four controls start biting
 	@bash scripts/stages.sh controls
-stage4-mesh: ## Dev Day ④: the full governed mesh (== quickstart end-state)
+stage4-mesh: ## Dev Day ④ [LOCAL lane]: the full governed mesh (== quickstart end-state)
 	@bash scripts/stages.sh mesh
 stage-reset: ## Stop the bare Stage-1 fx-rates server (if running)
 	@bash scripts/stages.sh reset
@@ -299,12 +311,15 @@ inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server 
 	echo "(Streamable HTTP + the right URL — this is the gateway's governed slice, NOT a"; \
 	echo " backend MCP server; everything goes through the one governed seam)."; \
 	echo; \
-	echo "Final step — add the gateway token (inspector v0.22 won't load it from config):"; \
-	echo "  1) Connection Type   →  Via Proxy   (NOT Direct — Direct gets CORS-blocked)"; \
-	echo "  2) Authentication ▸ Custom Headers ▸ + Add :"; \
+	echo "Fill the connection BY HAND (the --config preselect doesn't survive a Codespaces"; \
+	echo "port-forward, and older inspectors default to SSE — the gateway needs HTTP):"; \
+	echo "  1) Transport Type    →  Streamable HTTP   (NOT SSE)"; \
+	echo "  2) URL               →  $$URL"; \
+	echo "  3) Connection Type   →  Via Proxy   (NOT Direct — Direct gets CORS-blocked)"; \
+	echo "  4) Authentication ▸ Custom Headers ▸ + Add :"; \
 	echo "       Header Name  =  Authorization"; \
 	echo "       Header Value =  paste the line below  (make sure the row toggle is ON)"; \
-	echo "  3) Connect  →  you should see 8 tools"; \
+	echo "  5) Connect  →  you should see 8 tools"; \
 	echo; \
 	echo "  Bearer $$ADMIN"; \
 	echo; \
@@ -317,7 +332,7 @@ inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server 
 	echo; \
 	echo "You should then see 8 tools — note erp-payments-wire is ABSENT (least-privilege)."; \
 	echo "(proxy auth is disabled for this local demo; temp config at $$CFG)"; \
-	DANGEROUSLY_OMIT_AUTH=true npx -y @modelcontextprotocol/inspector --config "$$CFG" --server FinByte-FinOps
+	DANGEROUSLY_OMIT_AUTH=true npx -y @modelcontextprotocol/inspector@latest --config "$$CFG" --server FinByte-FinOps
 
 inspect-a2a: ## Launch the A2A Inspector (clone+build first time) to validate the agent cards
 	@echo "A2A Inspector (a2aproject/a2a-inspector) on http://localhost:8090  (runtime: $(CONTAINER))"; \
