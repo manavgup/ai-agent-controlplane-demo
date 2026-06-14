@@ -165,6 +165,9 @@
   .watchchip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;
     text-transform:uppercase;letter-spacing:.03em;padding:2px 9px;border-radius:999px;
     background:#eaeaef;color:#5b5b6b;margin-left:auto}
+  /* verify panel: dim the make-commands when they aren't the viewer's to run */
+  #verifyCmds.off{opacity:.4;filter:grayscale(.5)}
+  #verifyCmds.off .copy{display:none}
   /* ── where-am-I: sticky-nav active state + progress ── */
   nav.toc a.cur{background:var(--ibm);color:#fff}
   nav.toc a.cur:hover{background:var(--ibm-dark);color:#fff;text-decoration:none}
@@ -277,21 +280,24 @@
 
   <details class="twisty" id="verify" style="margin-top:14px"><summary>🔍 Verify what's registered with the gateway (Admin UI · MCP &amp; A2A inspectors)</summary>
     <div class="twisty-body">
-      <p class="lede" style="margin-top:0">Once your Codespace is up (it auto-ran <code class="inline">make up &amp;&amp; make seed</code> on creation), three surfaces confirm the catalog. Ports <code class="inline">4444 / 6274 / 8090</code> are <b>pre-forwarded by the devcontainer</b>; run the commands <b>in the Codespace terminal</b> (the gateway is <code class="inline">localhost</code> there), then open the matching <b>forwarded</b> port from the PORTS tab.</p>
+      <p class="lede" id="verifyIntro" style="margin-top:0">Your Codespace already ran <code class="inline">make up &amp;&amp; make seed</code>, so the mesh is up. Run these <b>in the Codespace terminal</b> (the gateway is <code class="inline">localhost</code> there), then open the matching <b>forwarded</b> port from the <b>PORTS</b> tab — <code class="inline">4444 / 6274 / 8090</code> are pre-forwarded by the devcontainer.</p>
 
+      <div id="verifyCmds">
       <p style="margin:12px 0 4px"><b>① Admin UI — the fastest “is it registered?” check</b> <span class="pill rec">start here</span></p>
-      <div class="cmd">make monitor          <span style="color:var(--muted)"># or just open the forwarded :4444 → /admin</span><button class="copy" data-copy="make monitor">copy</button></div>
+      <div class="cmd">make monitor          <span style="color:var(--muted)"># opens the Admin UI → /admin on :4444</span><button class="copy" data-copy="make monitor">copy</button></div>
       <div class="expect"><span class="lbl">You'll see</span> the ContextForge <b>Admin UI → Catalog</b>: every registered MCP server, tool, <b>virtual server</b>, and A2A agent in one list. No client needed.</div>
 
       <p style="margin:14px 0 4px"><b>② MCP Inspector — the governed tool slice a client actually gets</b></p>
       <div class="cmd">make inspect-mcp<button class="copy" data-copy="make inspect-mcp">copy</button></div>
-      <div class="expect"><span class="lbl">You'll see</span> the Inspector on the forwarded <code class="inline">:6274</code> → <b>8 tools</b>, with <code class="inline">erp-payments-wire</code> <b>absent</b> — least-privilege, proven from the client side.</div>
+      <div class="expect"><span class="lbl">You'll see</span> the Inspector on <code class="inline">:6274</code> → <b>8 tools</b>, with <code class="inline">erp-payments-wire</code> <b>absent</b> — least-privilege, proven from the client side.</div>
+      <div class="warnbox" style="margin:8px 0 0;font-size:13.5px"><b>In a Codespace, fill it in by hand</b> — the <code class="inline">--config</code> pre-fill doesn't survive the port-forward, and the inspector may open on <b>SSE</b>. Set <b>Transport Type → Streamable HTTP</b> (not SSE), paste the <code class="inline">…/servers/&lt;UUID&gt;/mcp</code> URL the terminal prints, <b>Via Proxy</b>, add the <code class="inline">Authorization: Bearer …</code> header. Fastest check without this fuss: <b>surface ①, the Admin UI</b>.</div>
 
       <p style="margin:14px 0 4px"><b>③ A2A Inspector — validate the two agent cards</b></p>
       <div class="cmd">make inspect-a2a<button class="copy" data-copy="make inspect-a2a">copy</button></div>
-      <div class="expect"><span class="lbl">You'll see</span> the A2A Inspector on the forwarded <code class="inline">:8090</code> → the Python <b>auditor</b> + Rust <b>payments</b> agent cards (the cross-language pair Stage ③'s $50k block fires across).</div>
+      <div class="expect"><span class="lbl">You'll see</span> the A2A Inspector on <code class="inline">:8090</code> → the Python <b>auditor</b> + Rust <b>payments</b> agent cards (the cross-language pair Stage ③'s $50k block fires across).</div>
+      </div>
 
-      <div class="note"><b>Driving from your laptop?</b> Use surface ① (open the forwarded <code class="inline">:4444/admin</code>) — it needs nothing installed. To point a <b>local</b> MCP Inspector at the public gateway instead: <code class="inline">npx -y @modelcontextprotocol/inspector</code> → Transport <b>Streamable HTTP</b>, URL <code class="inline">https://&lt;codespace&gt;-4444.app.github.dev/servers/&lt;FinOps-UUID&gt;/mcp</code>, <b>Via Proxy</b>, add header <code class="inline">Authorization: Bearer &lt;token&gt;</code>. If the Inspector asks for a proxy token, open the pre-filled URL it prints.</div>
+      <div class="note"><b>Driving from your laptop?</b> Use surface ① (open the <code class="inline">:4444/admin</code> page) — it needs nothing installed. To point a <b>local</b> MCP Inspector at the public gateway instead: <code class="inline">npx -y @modelcontextprotocol/inspector</code> → Transport <b>Streamable HTTP</b>, URL <code class="inline">https://&lt;codespace&gt;-4444.app.github.dev/servers/&lt;FinOps-UUID&gt;/mcp</code>, <b>Via Proxy</b>, add header <code class="inline">Authorization: Bearer &lt;token&gt;</code>. If the Inspector asks for a proxy token, open the pre-filled URL it prints.</div>
     </div>
   </details>
 
@@ -524,14 +530,22 @@ limit and requires dual approval (approval=true). FinByte T&E policy §2.</span>
         now:'The mesh is <b>pre-built in your Codespace</b>. <b>Stage ③ is your live part</b> — drive it from your laptop Bob.',
         sayLabel:'👁 local build lane — watch',
         runLabel:'✓ already built + seeded in your Codespace',
+        verifyRun:true,
+        verify:'Your Codespace already ran <code class="inline">make up &amp;&amp; make seed</code>, so the mesh is up. Run these <b>in the Codespace terminal</b> (the gateway is <code class="inline">localhost</code> there), then open the matching <b>forwarded</b> port from the <b>PORTS</b> tab — <code class="inline">4444 / 6274 / 8090</code> are pre-forwarded by the devcontainer.',
         detail:'Your Codespace ran <code class="inline">make up &amp;&amp; make seed</code> on creation, so the full governed mesh is already up — you <b>don\'t</b> run <code class="inline">stage1-build</code>…<code class="inline">stage4-mesh</code> (those are the <b>local build lane</b>). Just: set port <b>4444 → Public</b>, run <code class="inline">make connect</code> in the Codespace, paste the printed <code class="inline">bob mcp add … -t http</code> line into your laptop Bob (<b>empty folder</b>, never SSE, copy the <b>full ~470-char token</b>), then drive <b>Stage ③</b>. Switch persona by re-running <code class="inline">make connect</code> and re-adding with the other server URL.'},
       local:{dim:'none',now:'Every step is yours.',
+        verifyRun:true,
+        verify:'The mesh runs on <b>your laptop</b>. Run these <b>in your laptop terminal</b> — <code class="inline">make monitor</code> and <code class="inline">make inspect-mcp</code> <b>auto-open your browser</b> at <code class="inline">localhost</code> (no port-forwarding): Admin UI <code class="inline">localhost:4444/admin</code>, MCP <code class="inline">localhost:6274</code>, A2A <code class="inline">localhost:8090</code>.',
         detail:'⌨ <b>make</b> commands and 🗣 Bob both run on <b>your laptop</b>; the gateway is at <code class="inline">localhost:4444</code>. Persona switches are automatic — <code class="inline">make bob</code> (analyst), <code class="inline">make bob-operator</code>, and <code class="inline">make bob-install-builder</code> rewrite Bob\'s connection for you. Always launch via those targets from the repo root so the live UUID stays fresh.'},
       bobonly:{dim:'stage3',now:'Active: <b>Stage ③ prompts</b>. The rest runs where the mesh lives — watch.',
         sayLabel:'👁 needs the local stack — watch',
         runLabel:'⌨ runs where the mesh lives',
+        verifyRun:false,
+        verify:'The mesh runs on <b>someone else’s host</b>, so the <code class="inline">make inspect-*</code> commands below <b>aren’t yours to run</b>. Verify from your side with a <b>local</b> Inspector pointed at the gateway URL + token you were given (see the note below), or ask the host to show the Admin UI catalog.',
         detail:'Your Bob points at <b>someone else\'s gateway</b>. Drive <b>Stage ③\'s</b> prompts live; the ⌨ build/seed commands and Stages ①–②–④ happen on the host running the mesh — watch those.'},
       watch:{dim:'all',now:'All steps are <b>presenter-driven</b> — just follow along.',
+        verifyRun:false,
+        verify:'Verification is <b>presenter-driven</b> — they’ll put the Admin UI catalog and the inspectors on screen. The commands below are what the presenter runs; nothing for you to install.',
         detail:'Nothing to install. Follow the presenter, or open the <b>Companion</b> link / QR they share to stream the governed activity live.'}
     };
     function stageOf(el){var s=el.closest('details.stage-card');return s?s.id:'';}
@@ -556,6 +570,10 @@ limit and requires dual approval (approval=true). FinByte T&E policy §2.</span>
       });
       if(now)now.innerHTML=conf.now;
       if(detail)detail.innerHTML=conf.detail;
+      var vi=document.getElementById('verifyIntro');
+      if(vi&&conf.verify)vi.innerHTML=conf.verify;
+      var vc=document.getElementById('verifyCmds');
+      if(vc)vc.classList.toggle('off',conf.verifyRun===false);
     }
     document.querySelectorAll('.modebar button.mode').forEach(function(b){
       b.addEventListener('click',function(){

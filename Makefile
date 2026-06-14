@@ -311,12 +311,15 @@ inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server 
 	echo "(Streamable HTTP + the right URL — this is the gateway's governed slice, NOT a"; \
 	echo " backend MCP server; everything goes through the one governed seam)."; \
 	echo; \
-	echo "Final step — add the gateway token (inspector v0.22 won't load it from config):"; \
-	echo "  1) Connection Type   →  Via Proxy   (NOT Direct — Direct gets CORS-blocked)"; \
-	echo "  2) Authentication ▸ Custom Headers ▸ + Add :"; \
+	echo "Fill the connection BY HAND (the --config preselect doesn't survive a Codespaces"; \
+	echo "port-forward, and older inspectors default to SSE — the gateway needs HTTP):"; \
+	echo "  1) Transport Type    →  Streamable HTTP   (NOT SSE)"; \
+	echo "  2) URL               →  $$URL"; \
+	echo "  3) Connection Type   →  Via Proxy   (NOT Direct — Direct gets CORS-blocked)"; \
+	echo "  4) Authentication ▸ Custom Headers ▸ + Add :"; \
 	echo "       Header Name  =  Authorization"; \
 	echo "       Header Value =  paste the line below  (make sure the row toggle is ON)"; \
-	echo "  3) Connect  →  you should see 8 tools"; \
+	echo "  5) Connect  →  you should see 8 tools"; \
 	echo; \
 	echo "  Bearer $$ADMIN"; \
 	echo; \
@@ -329,7 +332,7 @@ inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server 
 	echo; \
 	echo "You should then see 8 tools — note erp-payments-wire is ABSENT (least-privilege)."; \
 	echo "(proxy auth is disabled for this local demo; temp config at $$CFG)"; \
-	DANGEROUSLY_OMIT_AUTH=true npx -y @modelcontextprotocol/inspector --config "$$CFG" --server FinByte-FinOps
+	DANGEROUSLY_OMIT_AUTH=true npx -y @modelcontextprotocol/inspector@latest --config "$$CFG" --server FinByte-FinOps
 
 inspect-a2a: ## Launch the A2A Inspector (clone+build first time) to validate the agent cards
 	@echo "A2A Inspector (a2aproject/a2a-inspector) on http://localhost:8090  (runtime: $(CONTAINER))"; \
