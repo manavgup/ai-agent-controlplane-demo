@@ -107,6 +107,51 @@ Swap back to the analyst at any time with `make bob`.
 
 ---
 
+## Two ways to run it
+
+Same stack, two stories — **pick your path**:
+
+<details>
+<summary>🎓 <b>Progressive build</b> — build an agent tool from scratch, then watch it get governed <i>(developer path)</i></summary>
+
+<br>
+
+Bottom-up, the inverse of `make quickstart`: start from a bare MCP server you'd recognise anywhere and earn ContextForge one layer at a time — **carrying the tool you built the whole way**. Open the prompt-card and drive Bob through four stages:
+
+```bash
+make dev-start          # opens docs/cockpit.html → 🎓 Progressive Build (copy-paste Bob prompts)
+```
+
+| Stage | Command | What you (and Bob) do | Bob persona |
+|---|---|---|---|
+| **① Build** | `make stage1-build` | **Prompt Bob** to write `mcp-servers/sales-tax/server.py` from scratch (a FastMCP `add_tax` tool). It runs bare on `:8000`; a call prints `add_tax(100) → 108.50`. *It works — and it's totally ungoverned: no token, no policy, anyone on the port runs anything.* | — |
+| **② Govern** | `make stage2-govern` | The **same** server is containerised onto the mesh, **registered** (in the catalog, token-gated — *not callable yet*), then **granted** into a `Builder` virtual server and **called back through the gateway** → `108.50`. **2b bonus:** Bob *extends* a service it didn't write (`fx-rates` gains `convert`). | operator → **builder** |
+| **③ Control** | `make stage3-controls` | One prompt drives a batch; the **four controls bite real calls** — PII redaction, injection neutralised, OPA blocks a $50k cross-language wire, RBAC (Bob has no `wire` tool). | analyst |
+| **④ Mesh** | `make stage4-mesh` | The full governed picture — identical to the `quickstart` end-state, but you watched it get built. | — |
+
+**The throughline is `register → grant → call`.** Your tool goes from *works-but-ungoverned* → *in the catalog but not callable* → *granted and callable through the one governed seam*, with redaction, policy, and audit applied. Registering a backend doesn't make it callable — **granting it to an agent is a separate, privileged step** (`make salestax-grant` adds it to the `Builder` vserver). That boundary *is* least-privilege.
+
+**The `builder` persona** (`make bob-install-builder`) is the developer's seat — it calls *your own granted tools* (`add_tax`, `convert`), alongside the existing **analyst** (least-privilege consumer) and **operator** (registers / audits / evaluates policy) personas.
+
+**No Docker on your laptop?** `make connect` prints a `bob mcp add … -t http` line pointed at a gateway running elsewhere — a teammate's box, a VM, or a **GitHub Codespace** — so you drive the whole governed mesh with **only Bob installed**, governance intact over the wire.
+
+→ Narrated beats: **[`docs/SHOWCASE-BOB.md`](docs/SHOWCASE-BOB.md)** · the **🎓 Progressive Build** tab in `docs/cockpit.html` · zero-setup tiers in **[`docs/ONBOARDING.md`](docs/ONBOARDING.md)**.
+
+</details>
+
+<details>
+<summary>🛰 <b>Governed mesh</b> — drop straight into the finished, governed stack <i>(quickstart path)</i></summary>
+
+<br>
+
+Top-down: **one command** takes a laptop from nothing to a running, governed mesh and proves all four controls (`16/16`) — no Bob required. Then drive Bob as the FinOps **analyst** (Act 1) and platform **operator** (Act 2) and watch the control plane react in the Admin UI.
+
+→ Full command + walkthrough in **[Quickstart](#quickstart)** immediately below (then **[Drive Bob](#drive-bob)**, the watch panes, and the deterministic proof under it).
+
+</details>
+
+---
+
 ## Quickstart
 
 ```bash
@@ -118,8 +163,6 @@ make quickstart
 `make quickstart` is **one command** that takes a laptop from nothing to a running, governed mesh: preflight (**requires** Docker + uv; **warns but continues** if `bob`/`npx` are absent) → bring up the stack → seed (register servers/agents, build the FinOps / Treasury / Operator virtual servers) → configure Bob (FinOps analyst persona) → **prove all four controls (`16/16`, with no Bob required)** → print a copy-paste walkthrough card. It's re-runnable — safe to run again if anything stalls. The Admin UI logs in with `admin@finbyte.demo` / `FinByteAdmin!2026`.
 
 > **Proof is headless.** `make quickstart` finishes `16 passed, 0 failed` even on a box without `bob` or Node (a Linux VM or CI runner): Bob only **drives** the demo — it isn't needed to bring up the stack or prove the controls. `make bob` / `make bob-operator` also fail gracefully if `bob` isn't installed (they still write `.bob/mcp.json`, print an install hint, and exit `0`).
-
-> **Building it up instead of dropping in?** `make quickstart` is the top-down path (zero → finished mesh). For a **developer** audience there's a bottom-up **Dev Day progressive-build track** (`make dev-start`, then `make stage1-build … stage4-mesh`): Bob writes a brand-new MCP server (`sales-tax`) from scratch, then you watch that *same* tool get containerised, governed, and called back through ContextForge — `register → grant → call` — before the four controls switch on. Bonus beat: Bob *extends* an existing service (`fx-rates`). No Docker on the attendee's laptop? `make connect` lets them drive the whole governed mesh with **only Bob** pointed at a teammate's box, a VM, or a Codespace. See **`docs/SHOWCASE-BOB.md`** and the **🎓 Progressive Build** tab in `docs/cockpit.html`.
 
 ### Drive Bob
 
