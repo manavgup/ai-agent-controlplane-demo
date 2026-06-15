@@ -222,39 +222,38 @@
 
   <!-- ════ SETUP ════ -->
   <h2 id="setup"><span class="num">0</span>First — how are you following along?</h2>
-  <p class="lede">Three ways to follow along. Running the whole mesh needs Docker + ~10 images (heavy on conference WiFi) — so most people pick <b>Codespaces + Bob</b> or just <b>Watch</b>.</p>
+  <p class="lede">Three ways to follow along — running the whole mesh needs Docker + ~10 images (heavy on conference WiFi), so most people pick <b>Codespaces + Bob</b> or just <b>Watch</b>. &nbsp;<span style="color:var(--ok);font-weight:700">✅ hands-on</span> · 👁 watch the presenter · ⚙️ automatic.</p>
   <table>
-    <thead><tr><th style="width:24%">Path</th><th style="width:28%">Pick this if…</th><th>What you do</th></tr></thead>
+    <thead><tr>
+      <th style="width:22%"></th>
+      <th>1 · Codespaces + Bob <span class="pill rec">⭐</span></th>
+      <th>2 · Fully local</th>
+      <th>3 · Watch</th>
+    </tr></thead>
     <tbody>
       <tr>
-        <td><b>1 · Codespaces + Bob</b> <span class="pill rec">⭐</span><br><span class="pill">no local Docker</span></td>
-        <td>You want to drive Bob hands-on, but can't (or won't) run Docker on your laptop.</td>
-        <td>The mesh runs in a <b>GitHub Codespace</b> — <b>already built &amp; seeded</b>, so you <b>drive the controls (Stage ③)</b>; you don't build your own tool on this path. Your laptop needs <b>only IBM Bob</b>.
-          <a href="https://codespaces.new/manavgup/ai-agent-controlplane-demo?quickstart=1"><b>Open in Codespaces ↗</b></a> → make port <b>4444 Public</b> → run <code class="inline">make connect</code> in the Codespace → paste the printed <code class="inline">bob mcp add … -t http</code> line into your laptop Bob. <span style="color:var(--block)"><b>Gotcha:</b></span> <code class="inline">-t http</code> (never SSE), empty folder, full token.</td>
+        <td><b>Pick this if…</b></td>
+        <td>You want hands-on Bob, but can't (or won't) run Docker locally.</td>
+        <td>You want the <b>whole</b> arc — including <b>Bob building your own tool</b>.</td>
+        <td>You'd rather just follow along — zero setup.</td>
       </tr>
       <tr>
-        <td><b>2 · Fully local</b><br><span class="pill">Docker + Bob</span></td>
-        <td>You want the <b>whole</b> thing — including <b>Bob building your own tool</b> — on your machine.</td>
-        <td>The only path with the full arc. <code class="inline">make quickstart</code> for the finished mesh (proves 16/16), or walk it: <code class="inline">make stage1-build → stage2-govern → stage3-controls → stage4-mesh</code>. Bob runs natively (SSO already signed in).</td>
+        <td><b>You need</b></td>
+        <td>only <b>IBM Bob</b> (no Docker)</td>
+        <td><b>Docker + Bob</b></td>
+        <td style="color:var(--muted)">nothing</td>
       </tr>
       <tr>
-        <td><b>3 · Watch</b><br><span class="pill">zero install</span></td>
-        <td>You'd rather just follow along — nothing to set up.</td>
-        <td>Read these cards as the presenter runs each step, or open the <b>Companion</b> link/QR they share (it streams the governed activity live). Nothing to install.</td>
+        <td><b>Get started</b></td>
+        <td><a href="https://codespaces.new/manavgup/ai-agent-controlplane-demo?quickstart=1"><b>Open in Codespaces ↗</b></a> → port <b>4444 Public</b> → <code class="inline">make connect</code> → paste the <code class="inline">bob mcp add … -t http</code> line into laptop Bob. <span style="color:var(--block)"><b>Gotcha:</b></span> <code class="inline">-t http</code> (never SSE), empty folder, full token.</td>
+        <td><code class="inline">make quickstart</code> (finished mesh, 16/16) — or walk <code class="inline">stage1-build → stage2-govern → stage3-controls → stage4-mesh</code>.</td>
+        <td>Read these cards, or open the <b>Companion</b> link/QR the presenter shares (streams the governed activity live).</td>
       </tr>
-    </tbody>
-  </table>
-  <p class="lede" style="margin:18px 0 4px"><b>What can you actually do on each path?</b> &nbsp;<span style="color:var(--ok);font-weight:700">✅ hands-on</span> &nbsp;·&nbsp; 👁 watch the presenter &nbsp;·&nbsp; ⚙️ automatic</p>
-  <table>
-    <thead><tr><th style="width:32%">Demo step</th><th>1 · Codespaces + Bob</th><th>2 · Fully local</th><th>3 · Watch</th></tr></thead>
-    <tbody>
-      <tr><td><b>Bring up the mesh</b></td><td>⚙️ auto on Codespace create (<code class="inline">up</code> + <code class="inline">seed</code>)</td><td>✅ <code class="inline">make quickstart</code></td><td style="color:var(--muted)">— presenter's</td></tr>
-      <tr><td><b>Connect Bob</b></td><td>✅ <code class="inline">make connect</code> → paste line → laptop <code class="inline">bob</code></td><td>✅ <code class="inline">make bob</code> / <code class="inline">bob-operator</code></td><td style="color:var(--muted)">—</td></tr>
-      <tr><td><b>① Build</b> — Bob writes <code class="inline">server.py</code>, runs it ungoverned</td><td style="color:var(--muted)">👁 watch</td><td>✅ <b>do</b> — Bob builds live</td><td style="color:var(--muted)">👁 watch</td></tr>
-      <tr><td><b>② Govern</b> — register → grant → call → 108.50</td><td style="color:var(--muted)">👁 watch</td><td>✅ <b>do</b></td><td style="color:var(--muted)">👁 watch</td></tr>
-      <tr><td><b>③ Controls</b> — PII redact · $50k block · injection · no-wire RBAC</td><td style="color:var(--ok);font-weight:600">✅ do (drive as analyst)</td><td>✅ <b>do</b></td><td style="color:var(--muted)">👁 watch</td></tr>
-      <tr><td><b>④ Verify</b> — 16/16 deterministic proof</td><td>✅ <code class="inline">make verify-controls</code></td><td>✅ <b>do</b></td><td style="color:var(--muted)">👁 watch</td></tr>
-      <tr><td><b>Inspect</b> — Admin UI catalog · <code class="inline">make inspect-tools</code></td><td>✅ forwarded <code class="inline">:4444/admin</code></td><td>✅ <code class="inline">localhost</code></td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>① Build</b> <span style="color:var(--muted);font-weight:400">— Bob writes <code class="inline">server.py</code>, ungoverned</span></td><td style="color:var(--muted)">👁 watch</td><td>✅ <b>do</b> — Bob builds live</td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>② Govern</b> <span style="color:var(--muted);font-weight:400">— register → grant → call → 108.50</span></td><td style="color:var(--muted)">👁 watch</td><td>✅ <b>do</b></td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>③ Controls</b> <span style="color:var(--muted);font-weight:400">— PII · $50k block · injection · RBAC</span></td><td style="color:var(--ok);font-weight:600">✅ do (as analyst)</td><td>✅ <b>do</b></td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>④ Verify</b> <span style="color:var(--muted);font-weight:400">— 16/16 proof</span></td><td>✅ <code class="inline">make verify-controls</code></td><td>✅ <b>do</b></td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>Inspect</b> <span style="color:var(--muted);font-weight:400">— Admin UI · <code class="inline">inspect-tools</code></span></td><td>✅ <code class="inline">:4444/admin</code></td><td>✅ <code class="inline">localhost</code></td><td style="color:var(--muted)">👁 watch</td></tr>
     </tbody>
   </table>
   <div class="note"><b>The build is a local-only thing.</b> Bob <b>writing + governing</b> your own tool (Stages ①–②) needs Bob, Docker, <em>and</em> the file all on one side — so it's the <b>Fully local</b> path. <b>Codespaces drives the controls (Stage ③)</b> on the pre-built mesh; <b>Bob is not installed in the Codespace</b> (running <code class="inline">bob</code> there gives <code class="inline">command not found</code>) — you drive it from <b>your laptop's</b> Bob via <code class="inline">make connect</code>.</div>
