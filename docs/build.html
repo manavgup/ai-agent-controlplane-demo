@@ -244,6 +244,19 @@
       </tr>
     </tbody>
   </table>
+  <p class="lede" style="margin:18px 0 4px"><b>What can you actually do on each path?</b> &nbsp;<span style="color:var(--ok);font-weight:700">✅ hands-on</span> &nbsp;·&nbsp; 👁 watch the presenter &nbsp;·&nbsp; ⚙️ automatic</p>
+  <table>
+    <thead><tr><th style="width:32%">Demo step</th><th>1 · Codespaces + Bob</th><th>2 · Fully local</th><th>3 · Watch</th></tr></thead>
+    <tbody>
+      <tr><td><b>Bring up the mesh</b></td><td>⚙️ auto on Codespace create (<code class="inline">up</code> + <code class="inline">seed</code>)</td><td>✅ <code class="inline">make quickstart</code></td><td style="color:var(--muted)">— presenter's</td></tr>
+      <tr><td><b>Connect Bob</b></td><td>✅ <code class="inline">make connect</code> → paste line → laptop <code class="inline">bob</code></td><td>✅ <code class="inline">make bob</code> / <code class="inline">bob-operator</code></td><td style="color:var(--muted)">—</td></tr>
+      <tr><td><b>① Build</b> — Bob writes <code class="inline">server.py</code>, runs it ungoverned</td><td style="color:var(--muted)">👁 watch</td><td>✅ <b>do</b> — Bob builds live</td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>② Govern</b> — register → grant → call → 108.50</td><td style="color:var(--muted)">👁 watch</td><td>✅ <b>do</b></td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>③ Controls</b> — PII redact · $50k block · injection · no-wire RBAC</td><td style="color:var(--ok);font-weight:600">✅ do (drive as analyst)</td><td>✅ <b>do</b></td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>④ Verify</b> — 16/16 deterministic proof</td><td>✅ <code class="inline">make verify-controls</code></td><td>✅ <b>do</b></td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>Inspect</b> — Admin UI catalog · <code class="inline">make inspect-tools</code></td><td>✅ forwarded <code class="inline">:4444/admin</code></td><td>✅ <code class="inline">localhost</code></td><td style="color:var(--muted)">👁 watch</td></tr>
+    </tbody>
+  </table>
   <div class="note"><b>The build is a local-only thing.</b> Bob <b>writing + governing</b> your own tool (Stages ①–②) needs Bob, Docker, <em>and</em> the file all on one side — so it's the <b>Fully local</b> path. <b>Codespaces drives the controls (Stage ③)</b> on the pre-built mesh; <b>Bob is not installed in the Codespace</b> (running <code class="inline">bob</code> there gives <code class="inline">command not found</code>) — you drive it from <b>your laptop's</b> Bob via <code class="inline">make connect</code>.</div>
   <div class="note"><b>Driving Bob yourself? Install it first.</b> Paths <b>1</b> and <b>2</b> need IBM Bob on your laptop — Watch (path 3) doesn't.
     <table style="margin:10px 0 2px">
