@@ -2,9 +2,11 @@
   "name": "IBM Bob × ContextForge — control plane demo",
   "//": "Opens this repo in a GitHub Codespace with Docker + toolchain preinstalled, so the WHOLE governed mesh runs in the cloud. Attendees then install ONLY IBM Bob locally and point it at the forwarded :4444 gateway (see 'make connect'). No local Docker/uv/make needed.",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "//features": "sshd lets `gh codespace ssh` exec/forward into the box (the base image ships no SSH server); needed to drive/verify the mesh from a laptop CLI.",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/node:1": { "version": "20" }
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    "ghcr.io/devcontainers/features/sshd:1": { "version": "latest" }
   },
   "//hostRequirements": "A MINIMUM floor. The mesh runs in ~2-3GB at rest. Set to 2-core/8gb so the cheapest (free-tier-friendly) Codespaces machine is AVAILABLE and the local Dev Containers extension doesn't warn on <16GB Docker. For a faster first build, just pick the 4-core/16gb machine in the Codespaces 'change machine type' menu — this floor doesn't cap it.",
   "hostRequirements": {
