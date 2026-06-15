@@ -205,10 +205,9 @@
   <div class="modebar" id="modebar">
     <span class="mb-label">Following along as</span>
     <div class="mb-opts">
-      <button class="mode active" data-mode="codespaces"><b>Codespaces</b><small>mesh in the cloud · ②</small></button>
-      <button class="mode" data-mode="local"><b>Local laptop</b><small>mesh on your machine · ④</small></button>
-      <button class="mode" data-mode="bobonly"><b>Bob only</b><small>shared gateway</small></button>
-      <button class="mode" data-mode="watch"><b>Watching</b><small>browser / Companion · ①③</small></button>
+      <button class="mode active" data-mode="codespaces"><b>Codespaces + Bob</b><small>no local Docker · drive Stage ③</small></button>
+      <button class="mode" data-mode="local"><b>Fully local</b><small>Docker + Bob · full build</small></button>
+      <button class="mode" data-mode="watch"><b>Watch</b><small>zero setup</small></button>
     </div>
     <span class="mb-now" id="mbNow"></span>
     <div class="mb-detail" id="mbDetail"></div>
@@ -223,34 +222,42 @@
 
   <!-- ════ SETUP ════ -->
   <h2 id="setup"><span class="num">0</span>First — how are you following along?</h2>
-  <p class="lede">Running the whole mesh needs Docker and ~10 images — heavy for a laptop on conference WiFi. Pick what fits; often this browser is all you need.</p>
+  <p class="lede">Three ways to follow along — running the whole mesh needs Docker + ~10 images (heavy on conference WiFi), so most people pick <b>Codespaces + Bob</b> or just <b>Watch</b>. &nbsp;<span style="color:var(--ok);font-weight:700">✅ hands-on</span> · 👁 watch the presenter · ⚙️ automatic.</p>
   <table>
-    <thead><tr><th style="width:25%">Your setup</th><th style="width:27%">Pick this if…</th><th>What you do</th></tr></thead>
+    <thead><tr>
+      <th style="width:22%"></th>
+      <th>1 · Codespaces + Bob <span class="pill rec">⭐</span></th>
+      <th>2 · Fully local</th>
+      <th>3 · Watch</th>
+    </tr></thead>
     <tbody>
       <tr>
-        <td><b>① Browser only</b><br><span class="pill">zero install</span></td>
-        <td>You just want to read along, or your laptop/WiFi isn't cooperating.</td>
-        <td>You're already here — every prompt below is a copy-paste card. Watch the presenter run the rest.</td>
+        <td><b>Pick this if…</b></td>
+        <td>You want hands-on Bob, but can't (or won't) run Docker locally.</td>
+        <td>You want the <b>whole</b> arc — including <b>Bob building your own tool</b>.</td>
+        <td>You'd rather just follow along — zero setup.</td>
       </tr>
       <tr>
-        <td><b>② Bob + cloud mesh</b> <span class="pill rec">⭐</span></td>
-        <td>You want to drive Bob hands-on without running Docker locally.</td>
-        <td>The mesh runs in a <b>GitHub Codespace</b> — <b>already built &amp; seeded</b> on creation, so you <b>skip the stage targets</b> and just drive <b>Stage ③</b>. Your laptop needs <b>only IBM Bob</b>.
-          <a href="https://codespaces.new/manavgup/ai-agent-controlplane-demo?quickstart=1"><b>Open in Codespaces ↗</b></a> → make port <b>4444 Public</b> → run <code class="inline">make connect</code> → paste the printed <code class="inline">bob mcp add … -t http</code> line into your Bob. <span style="color:var(--block)"><b>Gotcha:</b></span> use <code class="inline">-t http</code> (never SSE), from an <b>empty folder</b>, full token.</td>
+        <td><b>You need</b></td>
+        <td>only <b>IBM Bob</b> (no Docker)</td>
+        <td><b>Docker + Bob</b></td>
+        <td style="color:var(--muted)">nothing</td>
       </tr>
       <tr>
-        <td><b>③ Watch the presenter</b><br><span class="pill">watch-along</span></td>
-        <td>You'd rather just watch — zero setup.</td>
-        <td>Open the Companion link/QR the presenter shares (it streams the governed activity). Nothing to install.</td>
+        <td><b>Get started</b></td>
+        <td><a href="https://codespaces.new/manavgup/ai-agent-controlplane-demo?quickstart=1"><b>Open in Codespaces ↗</b></a> → port <b>4444 Public</b> → <code class="inline">make connect</code> → paste the <code class="inline">bob mcp add … -t http</code> line into laptop Bob. <span style="color:var(--block)"><b>Gotcha:</b></span> <code class="inline">-t http</code> (never SSE), empty folder, full token.</td>
+        <td><code class="inline">make quickstart</code> (finished mesh, 16/16) — or walk <code class="inline">stage1-build → stage2-govern → stage3-controls → stage4-mesh</code>. Bob connects <b>automatically</b> — <code class="inline">make bob</code> / <code class="inline">bob-operator</code> write <code class="inline">.bob/mcp.json</code> (<b>no <code class="inline">make connect</code></b> — that's only for the Codespaces/remote Bob).</td>
+        <td>Read these cards, or open the <b>Companion</b> link/QR the presenter shares (streams the governed activity live).</td>
       </tr>
-      <tr>
-        <td><b>④ Fully local</b><br><span class="pill">your machine</span></td>
-        <td>You want it all on your own machine — best set up before the session.</td>
-        <td>One command: <code class="inline">make quickstart</code> → the finished governed mesh, proves 16/16.</td>
-      </tr>
+      <tr><td><b>① Build</b> <span style="color:var(--muted);font-weight:400">— Bob writes <code class="inline">server.py</code>, ungoverned</span></td><td style="color:var(--muted)">👁 watch</td><td>✅ <b>do</b> — Bob builds live</td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>② Govern</b> <span style="color:var(--muted);font-weight:400">— register → grant → call → 108.50</span></td><td style="color:var(--muted)">👁 watch</td><td>✅ <b>do</b></td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>③ Controls</b> <span style="color:var(--muted);font-weight:400">— PII · $50k block · injection · RBAC</span></td><td style="color:var(--ok);font-weight:600">✅ do (as analyst)</td><td>✅ <b>do</b></td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>④ Verify</b> <span style="color:var(--muted);font-weight:400">— 16/16 proof</span></td><td>✅ <code class="inline">make verify-controls</code></td><td>✅ <b>do</b></td><td style="color:var(--muted)">👁 watch</td></tr>
+      <tr><td><b>Inspect</b> <span style="color:var(--muted);font-weight:400">— Admin UI · <code class="inline">inspect-tools</code></span></td><td>✅ <code class="inline">:4444/admin</code></td><td>✅ <code class="inline">localhost</code></td><td style="color:var(--muted)">👁 watch</td></tr>
     </tbody>
   </table>
-  <div class="note"><b>Driving Bob yourself? Install it first.</b> Paths ②, ④, and “Bob only” need IBM Bob on your laptop — Watching (①/③) doesn’t.
+  <div class="note"><b>The build is a local-only thing.</b> Bob <b>writing + governing</b> your own tool (Stages ①–②) needs Bob, Docker, <em>and</em> the file all on one side — so it's the <b>Fully local</b> path. <b>Codespaces drives the controls (Stage ③)</b> on the pre-built mesh; <b>Bob is not installed in the Codespace</b> (running <code class="inline">bob</code> there gives <code class="inline">command not found</code>) — you drive it from <b>your laptop's</b> Bob via <code class="inline">make connect</code>.</div>
+  <div class="note"><b>Driving Bob yourself? Install it first.</b> Paths <b>1</b> and <b>2</b> need IBM Bob on your laptop — Watch (path 3) doesn't.
     <table style="margin:10px 0 2px">
       <thead><tr><th style="width:50%">Bob IDE <span class="pill">desktop editor</span></th><th>Bob Shell <span class="pill port">bob CLI</span></th></tr></thead>
       <tbody>
@@ -266,7 +273,7 @@
   </div>
   <div class="note"><b>Where do I run each command?</b> The split that trips people up — set it once with the <b>Following along as</b> picker above and every step below adapts:
     <table style="margin:10px 0 2px">
-      <thead><tr><th style="width:30%"></th><th>Codespaces (②)</th><th>Local laptop (④)</th></tr></thead>
+      <thead><tr><th style="width:30%"></th><th>Codespaces + Bob (path 1)</th><th>Fully local (path 2)</th></tr></thead>
       <tbody>
         <tr><td><b>The mesh runs…</b></td><td>in the cloud Codespace</td><td>on your machine (Docker)</td></tr>
         <tr><td><b>⌨ <code class="inline">make</code> commands run…</b></td><td>in the <b>Codespace terminal</b></td><td>in your <b>laptop terminal</b></td></tr>
@@ -290,7 +297,7 @@
       <p style="margin:14px 0 4px"><b>② MCP Inspector — the governed tool slice a client actually gets</b></p>
       <div class="cmd">make inspect-mcp<button class="copy" data-copy="make inspect-mcp">copy</button></div>
       <div class="expect"><span class="lbl">You'll see</span> the Inspector on <code class="inline">:6274</code> → <b>8 tools</b>, with <code class="inline">erp-payments-wire</code> <b>absent</b> — least-privilege, proven from the client side.</div>
-      <div class="warnbox" style="margin:8px 0 0;font-size:13.5px"><b>In a Codespace, fill it in by hand</b> — the <code class="inline">--config</code> pre-fill doesn't survive the port-forward, and the inspector may open on <b>SSE</b>. Set <b>Transport Type → Streamable HTTP</b> (not SSE), paste the <code class="inline">…/servers/&lt;UUID&gt;/mcp</code> URL the terminal prints, <b>Via Proxy</b>, add the <code class="inline">Authorization: Bearer …</code> header. Fastest check without this fuss: <b>surface ①, the Admin UI</b>.</div>
+      <div class="warnbox" style="margin:8px 0 0;font-size:13.5px"><b>In a Codespace?</b> The Inspector's UI runs in <i>your laptop browser</i>, so its proxy (port <code class="inline">:6277</code>) must be reachable <i>and</i> must trust the forwarded UI origin. <code class="inline">make inspect-mcp</code> now <b>sets both for you</b> — <code class="inline">MCP_PROXY_FULL_ADDRESS</code> (where the proxy is) and <code class="inline">ALLOWED_ORIGINS</code> (whitelists the <code class="inline">…-6274.app.github.dev</code> origin, else the proxy blocks it with a “DNS-rebinding / invalid origin” error). You only: set port <b>6277 → Public</b>, open the printed URL, fill Transport = <b>Streamable HTTP</b>, the <code class="inline">localhost:4444/servers/…/mcp</code> URL, Via Proxy, the <code class="inline">Authorization</code> header. No-fuss alternative: <b>surface ①, the Admin UI</b>.</div>
 
       <p style="margin:14px 0 4px"><b>③ A2A Inspector — validate the two agent cards</b></p>
       <div class="cmd">make inspect-a2a<button class="copy" data-copy="make inspect-a2a">copy</button></div>
@@ -375,7 +382,7 @@
 
   <div class="step say">
     <div class="step-h"><span class="n">2</span><span class="hat">Operator</span> 🗣 Say this to Bob — register it</div>
-    <div class="cmd bob">Register the sales-tax service at http://sales-tax:8000/mcp.<button class="copy" data-copy="Register the sales-tax service at http://sales-tax:8000/mcp.">copy</button></div>
+    <div class="cmd bob">Register the sales-tax service with finbyte-gateway at http://sales-tax:8000/mcp.<button class="copy" data-copy="Register the sales-tax service with finbyte-gateway at http://sales-tax:8000/mcp.">copy</button></div>
     <div class="expect"><span class="lbl">You'll see</span> Bob call <b>register-mcp-server</b> → sales-tax appears in the catalog, token-gated — but <b>Bob still can't call it</b>. Granting is a separate step. <b>That gate is least-privilege.</b></div>
     <details class="real"><summary>See Bob's actual run</summary>
       <div class="term"><div class="bar">bob — Operator · register</div><pre><span class="tool">[using tool controlplane-register-mcp-server: {"name":"sales-tax","url":"http://sales-tax:8000/mcp"}]</span>
@@ -415,7 +422,7 @@
   <!-- ════ STAGE 3 ════ -->
   <details id="s3" class="stage-card"><summary><span class="stage-caret" aria-hidden="true"></span><span class="stage-title"><span class="num">3</span>Control — the four guardrails fire <span class="pill rec">the payoff</span></span><span class="stage-hint">expand/collapse</span></summary>
   <div class="stage-body">
-  <p class="lede">Being in the catalog buys auth + one seam. The <em>interesting</em> controls live in the FinOps mesh — watch each one bite a real call Bob makes. <b>This is the part a connected-only Bob (option ②) can drive live.</b></p>
+  <p class="lede">Being in the catalog buys auth + one seam. The <em>interesting</em> controls live in the FinOps mesh — watch each one bite a real call Bob makes. <b>This is the part a connected Codespaces Bob (path 1) drives live.</b></p>
   <div class="selfcheck"><b>Self-check: Stage ③ succeeded if</b>
     <ul>
       <li><code class="inline">rcpt_pii</code> shows masked values like <code class="inline">***-**-6789</code> and <code class="inline">[SECRET_REDACTED]</code>.</li>
@@ -537,12 +544,6 @@ limit and requires dual approval (approval=true). FinByte T&E policy §2.</span>
         verifyRun:true,
         verify:'The mesh runs on <b>your laptop</b>. Run these <b>in your laptop terminal</b> — <code class="inline">make monitor</code> and <code class="inline">make inspect-mcp</code> <b>auto-open your browser</b> at <code class="inline">localhost</code> (no port-forwarding): Admin UI <code class="inline">localhost:4444/admin</code>, MCP <code class="inline">localhost:6274</code>, A2A <code class="inline">localhost:8090</code>.',
         detail:'⌨ <b>make</b> commands and 🗣 Bob both run on <b>your laptop</b>; the gateway is at <code class="inline">localhost:4444</code>. Persona switches are automatic — <code class="inline">make bob</code> (analyst), <code class="inline">make bob-operator</code>, and <code class="inline">make bob-install-builder</code> rewrite Bob\'s connection for you. Always launch via those targets from the repo root so the live UUID stays fresh.'},
-      bobonly:{dim:'stage3',now:'Active: <b>Stage ③ prompts</b>. The rest runs where the mesh lives — watch.',
-        sayLabel:'👁 needs the local stack — watch',
-        runLabel:'⌨ runs where the mesh lives',
-        verifyRun:false,
-        verify:'The mesh runs on <b>someone else’s host</b>, so the <code class="inline">make inspect-*</code> commands below <b>aren’t yours to run</b>. Verify from your side with a <b>local</b> Inspector pointed at the gateway URL + token you were given (see the note below), or ask the host to show the Admin UI catalog.',
-        detail:'Your Bob points at <b>someone else\'s gateway</b>. Drive <b>Stage ③\'s</b> prompts live; the ⌨ build/seed commands and Stages ①–②–④ happen on the host running the mesh — watch those.'},
       watch:{dim:'all',now:'All steps are <b>presenter-driven</b> — just follow along.',
         verifyRun:false,
         verify:'Verification is <b>presenter-driven</b> — they’ll put the Admin UI catalog and the inspectors on screen. The commands below are what the presenter runs; nothing for you to install.',
