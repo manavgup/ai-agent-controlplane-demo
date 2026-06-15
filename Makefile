@@ -307,12 +307,11 @@ inspect-mcp: ## Launch MCP Inspector → the 8 governed FinOps tools (auto-wires
 	URL="http://localhost:4444/servers/$$UUID/mcp"; \
 	CFG=$$(mktemp /tmp/mcp-finops-XXXXXX); mv "$$CFG" "$$CFG.json"; CFG="$$CFG.json"; \
 	printf '{"mcpServers":{"FinByte-FinOps":{"type":"streamable-http","url":"%s","headers":{"Authorization":"Bearer %s"}}}}\n' "$$URL" "$$ADMIN" > "$$CFG"; \
-	PROXY_ENV=""; \
 	if [ -n "$$CODESPACE_NAME" ] && [ -n "$$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" ]; then \
 	  PROXY_ADDR="https://$$CODESPACE_NAME-6277.$$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"; \
 	  UI_ORIGIN="https://$$CODESPACE_NAME-6274.$$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"; \
 	  UI_URL="$$UI_ORIGIN/?MCP_PROXY_FULL_ADDRESS=$$PROXY_ADDR"; \
-	  PROXY_ENV="MCP_PROXY_FULL_ADDRESS=$$PROXY_ADDR ALLOWED_ORIGINS=$$UI_ORIGIN"; \
+	  export MCP_PROXY_FULL_ADDRESS="$$PROXY_ADDR"; export ALLOWED_ORIGINS="$$UI_ORIGIN"; \
 	  ( command -v gh >/dev/null 2>&1 && gh codespace ports visibility 6277:public 6274:public -c "$$CODESPACE_NAME" >/dev/null 2>&1 && echo "  ✓ set ports 6274 + 6277 to Public automatically" ) || true; \
 	  echo "CODESPACE detected. The Inspector UI runs in YOUR laptop browser, so its proxy (:6277)"; \
 	  echo "must be reachable — this target pre-wires that for you. You only need to:"; \
@@ -351,7 +350,7 @@ inspect-mcp: ## Launch MCP Inspector → the 8 governed FinOps tools (auto-wires
 	fi; \
 	echo; \
 	echo "(proxy auth disabled for this demo; temp config at $$CFG)"; \
-	DANGEROUSLY_OMIT_AUTH=true $$PROXY_ENV npx -y @modelcontextprotocol/inspector@latest --config "$$CFG" --server FinByte-FinOps
+	DANGEROUSLY_OMIT_AUTH=true npx -y @modelcontextprotocol/inspector@latest --config "$$CFG" --server FinByte-FinOps
 
 inspect-tools: ## List the 8 governed FinOps tools via the MCP Inspector CLI — no browser/proxy, works the SAME in a Codespace or locally
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
