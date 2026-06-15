@@ -353,6 +353,19 @@ inspect-mcp: ## Launch MCP Inspector → the 8 governed FinOps tools (auto-wires
 	echo "(proxy auth disabled for this demo; temp config at $$CFG)"; \
 	DANGEROUSLY_OMIT_AUTH=true $$PROXY_ENV npx -y @modelcontextprotocol/inspector@latest --config "$$CFG" --server FinByte-FinOps
 
+inspect-tools: ## List the 8 governed FinOps tools via the MCP Inspector CLI — no browser/proxy, works the SAME in a Codespace or locally
+	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
+	if [ -z "$$ADMIN" ]; then echo "could not mint the admin token (is the stack up? try 'make quickstart')" >&2; exit 1; fi; \
+	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if s.get('name')=='FinOps']" 2>/dev/null | head -1); \
+	if [ -z "$$UUID" ]; then echo "FinOps server not found — is the stack up and seeded? try 'make quickstart'" >&2; exit 1; fi; \
+	echo "FinOps virtual server — the governed tools a client (Bob) actually sees:"; \
+	echo "(CLI mode: connects straight to localhost:4444 — no browser, no proxy, no port-forward)"; echo; \
+	npx -y @modelcontextprotocol/inspector@latest --cli \
+	  "http://localhost:4444/servers/$$UUID/mcp" --transport http --method tools/list \
+	  --header "Authorization: Bearer $$ADMIN" \
+	  | python3 -c "import sys,json; d=json.load(sys.stdin); t=[x['name'] for x in d.get('tools',[])]; [print('   •',n) for n in sorted(t)]; print(); print('   TOTAL:',len(t),'tools'); print('   erp-payments-wire present?', any('payments-wire' in n for n in t), '(must be False = least-privilege)')" 2>/dev/null \
+	  || { echo '(could not parse tool list — raw output above; check the stack is up + seeded)'; exit 1; }
+
 inspect-a2a: ## Launch the A2A Inspector (clone+build first time) to validate the agent cards
 	@echo "A2A Inspector (a2aproject/a2a-inspector) on http://localhost:8090  (runtime: $(CONTAINER))"; \
 	echo "  point it at:  http://host.docker.internal:9001  (Python Auditor)  ·  :3000 (Rust Payments)"; \

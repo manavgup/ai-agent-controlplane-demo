@@ -14,12 +14,14 @@
     "memory": "8gb",
     "storage": "32gb"
   },
-  "forwardPorts": [4444, 7070, 8090, 6274],
+  "//forwardPorts": "6277 is the MCP Inspector's PROXY — its UI (6274) runs in your laptop browser and talks to the proxy, so 6277 must be forwarded AND set Public or `make inspect-mcp` fails with 'Error Connecting to MCP Inspector Proxy'. (GitHub re-forwards as Private each launch; flip 6277 → Public in the PORTS tab. CLI check needs neither: `make inspect-tools`.)",
+  "forwardPorts": [4444, 7070, 8090, 6274, 6277],
   "portsAttributes": {
     "4444": { "label": "ContextForge gateway — point Bob here (make this Public)", "onAutoForward": "notify" },
     "7070": { "label": "Companion dashboard" },
     "8090": { "label": "A2A Inspector" },
-    "6274": { "label": "MCP Inspector" }
+    "6274": { "label": "MCP Inspector — UI (make Public)" },
+    "6277": { "label": "MCP Inspector — PROXY (make Public for browser Connect)" }
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "customizations": {
