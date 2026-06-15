@@ -119,32 +119,39 @@ to run the finished mesh, `make dev-start` to walk the build.
 | A control doesn't fire | `make verify-controls` proves 16/16 out-of-band; show that |
 | Total meltdown | `make quickstart` is the whole finished mesh in one command |
 
-## Attendee access — when their laptop can't run ContextForge
+## Attendee access — the 3 paths
 
-The mesh needs Docker + ~10 images; conference WiFi + 100 laptops is the real
-enemy, not `make`. Keep the mesh **server-side** and ask attendees for as little as
-possible. Full tiers in `docs/ONBOARDING.md`; the short version:
+The mesh needs Docker + ~10 images; conference WiFi + 100 laptops is the real enemy.
+So attendees pick one of **three** paths (this mirrors the picker in `docs/build.html`).
+Full tiers in `docs/ONBOARDING.md`; the short version:
 
-- **Can't run it locally → GitHub Codespaces (⭐ the fallback).** Repo README has an
-  **Open in GitHub Codespaces** badge (`codespaces.new/manavgup/ai-agent-controlplane-demo`).
-  The devcontainer auto-installs Docker + toolchain and runs `make up && make seed`
-  in the cloud. Then:
+**1 · Codespaces + Bob** ⭐ — *hands-on, no local Docker.*
+The mesh runs in a GitHub Codespace (the **Open in GitHub Codespaces** badge in the
+README; the devcontainer runs `make up && make seed` in the cloud). The attendee drives
+the **controls (Stage ③)** — they do **not** build their own tool on this path.
   1. **PORTS** tab → right-click **4444** → Port Visibility → **Public**.
-  2. `make connect` → prints the one `bob mcp add … -t http …/mcp` line.
-  3. Attendee installs only **IBM Bob**, pastes that line, runs `bob`. All four
-     controls still enforce over the wire.
-  - **Gotcha:** use the `-t http` + `/mcp` form `make connect` prints — **never SSE**
-    (Codespaces proxies buffer SSE → Bob hangs on connect). And run `bob mcp add`
-    from an **empty folder** (a repo clone's `.bob/mcp.json` shadows it).
-- **One shared Codespace** (yours, port public): zero attendee setup, shared state —
-  best for the read-only control beats (redaction, $50k block).
-- **Zero install at all:** open `docs/build.html` (`make dev-start`) — static
-  read-along prompt cards in any browser.
-- **Presenter safety net:** if the room can only watch, share the Companion `:7070`
-  URL/QR and drive everything yourself.
+  2. `make connect` (in the Codespace) → prints the one `bob mcp add … -t http …/mcp` line.
+  3. Install only **IBM Bob** on the laptop, paste that line **from an empty folder**, run `bob`.
+  - **Gotcha:** use the `-t http` + `/mcp` form — **never SSE** (Codespaces proxies buffer
+    SSE → Bob hangs). Empty folder (a repo clone's `.bob/mcp.json` shadows it).
+  - **No `gh`/codespace scope needed** — opening the Codespace and `make connect` are all
+    in-browser / in-Codespace.
 
-> Security note: `make connect` embeds an admin JWT and the port is public for the
-> session — fine for short-lived throwaway-data demos; tear the Codespace down after.
+**2 · Fully local** — *the whole arc, including the build.*
+Needs Docker + Bob locally. `make quickstart` for the finished mesh, or walk
+`stage1-build → stage2-govern → stage3-controls → stage4-mesh`. **The only path where an
+attendee builds their own tool** — building needs Bob, Docker, and the file all on one side.
+
+**3 · Watch** — *zero setup.*
+Open `docs/build.html` (`make dev-start`) for the read-along prompt cards, or watch the
+presenter / the Companion `:7070` stream (share the URL/QR).
+
+> **The build is local-only.** Bob *writing + governing* a tool (Stages ①–②) can't be split
+> across laptop-and-Codespace, so it lives on the **Fully local** path. Codespaces is
+> `make connect` + **Stage ③**; Bob isn't installed in the Codespace (it's the mesh host).
+
+> Security note: `make connect` embeds an admin JWT and the port is public for the session —
+> fine for short-lived throwaway-data demos; tear the Codespace down after.
 
 ---
 
