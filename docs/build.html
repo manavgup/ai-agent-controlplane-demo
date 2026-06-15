@@ -382,7 +382,7 @@
 
   <div class="step say">
     <div class="step-h"><span class="n">2</span><span class="hat">Operator</span> 🗣 Say this to Bob — register it</div>
-    <div class="cmd bob">Register the sales-tax service at http://sales-tax:8000/mcp.<button class="copy" data-copy="Register the sales-tax service at http://sales-tax:8000/mcp.">copy</button></div>
+    <div class="cmd bob">Register the sales-tax service with finbyte-gateway at http://sales-tax:8000/mcp.<button class="copy" data-copy="Register the sales-tax service with finbyte-gateway at http://sales-tax:8000/mcp.">copy</button></div>
     <div class="expect"><span class="lbl">You'll see</span> Bob call <b>register-mcp-server</b> → sales-tax appears in the catalog, token-gated — but <b>Bob still can't call it</b>. Granting is a separate step. <b>That gate is least-privilege.</b></div>
     <details class="real"><summary>See Bob's actual run</summary>
       <div class="term"><div class="bar">bob — Operator · register</div><pre><span class="tool">[using tool controlplane-register-mcp-server: {"name":"sales-tax","url":"http://sales-tax:8000/mcp"}]</span>

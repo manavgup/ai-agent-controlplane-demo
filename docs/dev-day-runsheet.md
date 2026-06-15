@@ -65,7 +65,7 @@ could call it. *That's* the problem." Then **STOP touching the build.**
 make stage2-govern         # containerises sales-tax onto the mesh, retires the bare one
 ```
 Back in the **operator** Bob session, type:
-> Register the sales-tax service at http://sales-tax:8000/mcp. Then list everything
+> Register the sales-tax service with finbyte-gateway at http://sales-tax:8000/mcp. Then list everything
 > ContextForge is governing.
 
 → Bob calls `controlplane-register-mcp-server`; sales-tax joins the catalog. Show it

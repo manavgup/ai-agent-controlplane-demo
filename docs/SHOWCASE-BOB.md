@@ -95,7 +95,7 @@ targets handle the swaps; `make stage2-govern` narrates the whole beat).
    make salestax-up
    ```
 2. **Register** — Bob (operator) onboards it:
-   > **"Register the sales-tax service at http://sales-tax:8000/mcp."**
+   > **"Register the sales-tax service with finbyte-gateway at http://sales-tax:8000/mcp."**
 
    It's in the catalog, token-gated — **but Bob still can't call it.** Exposing a
    tool to an agent is a separate grant. *That gate is least-privilege.*
