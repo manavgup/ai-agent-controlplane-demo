@@ -42,7 +42,7 @@ cat <<'EOF'
 
  Verify what's registered with the gateway (ports already forwarded):
    • Admin UI catalog : open :4444/admin   (fastest — lists every server/tool/agent)
-   • MCP Inspector    : make inspect-mcp    (:6274 — 8 governed tools, wire ABSENT)
+   • MCP Inspector    : make inspect-mcp    (auto-wires the proxy; set port 6277 Public, open the printed URL)
    • A2A Inspector    : make inspect-a2a    (:8090 — Python + Rust agent cards)
 
  Presenter surfaces (also forwarded):  Companion :7070 · Admin UI :4444/admin

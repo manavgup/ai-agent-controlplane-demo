@@ -298,7 +298,7 @@ monitor: ## Open the ContextForge monitor (Admin UI: catalog + observability + l
 	echo "  observability: /admin (Overview, Metrics, Logs tabs)"; \
 	(open http://localhost:4444/admin 2>/dev/null || xdg-open http://localhost:4444/admin 2>/dev/null || true)
 
-inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server (shows the governed tools)
+inspect-mcp: ## Launch MCP Inspector → the 8 governed FinOps tools (auto-wires the proxy in a Codespace OR runs locally)
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
 	if [ -z "$$ADMIN" ]; then echo "could not mint the admin token (is the stack up? try 'make quickstart')" >&2; exit 1; fi; \
 	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if s.get('name')=='FinOps']" 2>/dev/null | head -1); \
@@ -307,32 +307,51 @@ inspect-mcp: ## Launch MCP Inspector pre-pointed at the gateway's FinOps server 
 	URL="http://localhost:4444/servers/$$UUID/mcp"; \
 	CFG=$$(mktemp /tmp/mcp-finops-XXXXXX); mv "$$CFG" "$$CFG.json"; CFG="$$CFG.json"; \
 	printf '{"mcpServers":{"FinByte-FinOps":{"type":"streamable-http","url":"%s","headers":{"Authorization":"Bearer %s"}}}}\n' "$$URL" "$$ADMIN" > "$$CFG"; \
-	echo "MCP Inspector opens pre-pointed at the FinOps virtual server on ContextForge"; \
-	echo "(Streamable HTTP + the right URL — this is the gateway's governed slice, NOT a"; \
-	echo " backend MCP server; everything goes through the one governed seam)."; \
-	echo; \
-	echo "Fill the connection BY HAND (the --config preselect doesn't survive a Codespaces"; \
-	echo "port-forward, and older inspectors default to SSE — the gateway needs HTTP):"; \
-	echo "  1) Transport Type    →  Streamable HTTP   (NOT SSE)"; \
-	echo "  2) URL               →  $$URL"; \
-	echo "  3) Connection Type   →  Via Proxy   (NOT Direct — Direct gets CORS-blocked)"; \
-	echo "  4) Authentication ▸ Custom Headers ▸ + Add :"; \
-	echo "       Header Name  =  Authorization"; \
-	echo "       Header Value =  paste the line below  (make sure the row toggle is ON)"; \
-	echo "  5) Connect  →  you should see 8 tools"; \
+	PROXY_ENV=""; \
+	if [ -n "$$CODESPACE_NAME" ] && [ -n "$$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" ]; then \
+	  PROXY_ADDR="https://$$CODESPACE_NAME-6277.$$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"; \
+	  UI_ORIGIN="https://$$CODESPACE_NAME-6274.$$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"; \
+	  UI_URL="$$UI_ORIGIN/?MCP_PROXY_FULL_ADDRESS=$$PROXY_ADDR"; \
+	  PROXY_ENV="MCP_PROXY_FULL_ADDRESS=$$PROXY_ADDR ALLOWED_ORIGINS=$$UI_ORIGIN"; \
+	  ( command -v gh >/dev/null 2>&1 && gh codespace ports visibility 6277:public 6274:public -c "$$CODESPACE_NAME" >/dev/null 2>&1 && echo "  ✓ set ports 6274 + 6277 to Public automatically" ) || true; \
+	  echo "CODESPACE detected. The Inspector UI runs in YOUR laptop browser, so its proxy (:6277)"; \
+	  echo "must be reachable — this target pre-wires that for you. You only need to:"; \
+	  echo; \
+	  echo "  1) PORTS tab → set port  6277  to  Public   (and 6274 if it isn't already)"; \
+	  echo "  2) Open this URL (proxy is pre-wired — do NOT touch 'Inspector Proxy Address'):"; \
+	  echo "       $$UI_URL"; \
+	  echo "  3) Transport Type    →  Streamable HTTP"; \
+	  echo "  4) Connection Type   →  Via Proxy"; \
+	  echo "  5) URL               →  $$URL"; \
+	  echo "       (leave it as localhost — the proxy reaches the gateway INSIDE the Codespace)"; \
+	  echo "  6) Authentication ▸ Custom Headers ▸ Add  Authorization = the Bearer line below (toggle ON)"; \
+	  echo "  7) Connect  →  8 tools (erp-payments-wire ABSENT = least-privilege)"; \
+	  echo; \
+	  echo "  No-fuss alternative — skip the Inspector, open the Admin UI catalog:"; \
+	  echo "    make monitor  →  /admin → Virtual Servers → FinOps  (shows the 8 tools)"; \
+	else \
+	  echo "MCP Inspector opens pre-pointed at the FinOps virtual server on ContextForge"; \
+	  echo "(Streamable HTTP + the right URL — the gateway's governed slice, via the one seam)."; \
+	  echo; \
+	  echo "If the connection fields are blank, fill them by hand:"; \
+	  echo "  1) Transport Type    →  Streamable HTTP   (NOT SSE)"; \
+	  echo "  2) URL               →  $$URL"; \
+	  echo "  3) Connection Type   →  Via Proxy   (NOT Direct — Direct gets CORS-blocked)"; \
+	  echo "  4) Authentication ▸ Custom Headers ▸ Add  Authorization = the Bearer line below (toggle ON)"; \
+	  echo "  5) Connect  →  8 tools (erp-payments-wire ABSENT)"; \
+	fi; \
 	echo; \
 	echo "  Bearer $$ADMIN"; \
 	echo; \
 	BEARER="Bearer $$ADMIN"; \
-	if command -v pbcopy >/dev/null 2>&1; then printf '%s' "$$BEARER" | pbcopy; echo "  ✓ (also copied to your clipboard — just Cmd-V into Header Value)"; \
-	elif command -v wl-copy >/dev/null 2>&1; then printf '%s' "$$BEARER" | wl-copy; echo "  ✓ (also copied to clipboard via wl-copy)"; \
-	elif command -v xclip >/dev/null 2>&1; then printf '%s' "$$BEARER" | xclip -selection clipboard; echo "  ✓ (also copied to clipboard via xclip)"; \
-	elif command -v xsel >/dev/null 2>&1; then printf '%s' "$$BEARER" | xsel --clipboard; echo "  ✓ (also copied to clipboard via xsel)"; \
+	if command -v pbcopy >/dev/null 2>&1; then printf '%s' "$$BEARER" | pbcopy; echo "  ✓ (also copied to your clipboard)"; \
+	elif command -v wl-copy >/dev/null 2>&1; then printf '%s' "$$BEARER" | wl-copy; echo "  ✓ (copied via wl-copy)"; \
+	elif command -v xclip >/dev/null 2>&1; then printf '%s' "$$BEARER" | xclip -selection clipboard; echo "  ✓ (copied via xclip)"; \
+	elif command -v xsel >/dev/null 2>&1; then printf '%s' "$$BEARER" | xsel --clipboard; echo "  ✓ (copied via xsel)"; \
 	fi; \
 	echo; \
-	echo "You should then see 8 tools — note erp-payments-wire is ABSENT (least-privilege)."; \
-	echo "(proxy auth is disabled for this local demo; temp config at $$CFG)"; \
-	DANGEROUSLY_OMIT_AUTH=true npx -y @modelcontextprotocol/inspector@latest --config "$$CFG" --server FinByte-FinOps
+	echo "(proxy auth disabled for this demo; temp config at $$CFG)"; \
+	DANGEROUSLY_OMIT_AUTH=true $$PROXY_ENV npx -y @modelcontextprotocol/inspector@latest --config "$$CFG" --server FinByte-FinOps
 
 inspect-a2a: ## Launch the A2A Inspector (clone+build first time) to validate the agent cards
 	@echo "A2A Inspector (a2aproject/a2a-inspector) on http://localhost:8090  (runtime: $(CONTAINER))"; \
