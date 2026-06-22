@@ -373,6 +373,11 @@ def register_agent():
     for _ in range(10):
         existing = {g.get("name", "") for g in _gateways()}
         name = _unique_name(initials, existing)
+        # ContextForge enforces a UNIQUE url per gateway, so many agents can't share
+        # one backend url verbatim. Carry the (unique) name as a query suffix: the
+        # url string is unique, the backend ignores the query and serves /mcp normally.
+        sep = "&" if "?" in AGENT_BACKEND_URL else "?"
+        agent_url = f"{AGENT_BACKEND_URL}{sep}agent={name}"
         try:
             r = httpx.post(
                 f"{GW}/gateways",
@@ -380,7 +385,7 @@ def register_agent():
                 timeout=30,
                 json={
                     "name": name,
-                    "url": AGENT_BACKEND_URL,
+                    "url": agent_url,
                     "transport": "STREAMABLEHTTP",
                     "description": f"sales-tax agent built by {initials}",
                 },
