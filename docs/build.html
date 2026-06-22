@@ -583,7 +583,14 @@ limit and requires dual approval (approval=true). FinByte T&E policy §2.</span>
         apply(b.getAttribute('data-mode'));
       });
     });
-    apply('codespaces');
+    /* honor ?mode=codespaces|local|watch deep-links (e.g. from follow.html's
+       "How do you want to take part?" chooser) so visitors land on their lane */
+    var initMode='codespaces';
+    try{var p=new URLSearchParams(location.search).get('mode');if(p&&info[p])initMode=p;}catch(e){}
+    document.querySelectorAll('.modebar button.mode').forEach(function(x){
+      x.classList.toggle('active',x.getAttribute('data-mode')===initMode);
+    });
+    apply(initMode);
   })();
 
   /* ── where am I: scroll-spy, progress bar, click-to-open ── */

@@ -72,25 +72,25 @@
   .ctrl .verdict{display:inline-block;margin-top:7px;font-weight:800;font-size:12px;padding:3px 10px;border-radius:7px}
   .v-block{background:var(--block-bg);color:var(--block)} .v-mask{background:#edf5ff;color:var(--ibm-dark)}
 
-  /* "try it yourself" — the brave lane */
-  details.brave{background:var(--bob-bg);border:2px solid var(--bob-line);border-radius:var(--radius);
-    box-shadow:var(--shadow);margin:0 0 22px;overflow:hidden}
-  details.brave>summary{cursor:pointer;list-style:none;padding:16px 20px;font-size:18px;font-weight:700;color:var(--bob);
-    display:flex;align-items:center;gap:10px;user-select:none}
-  details.brave>summary::-webkit-details-marker{display:none}
-  details.brave>summary::after{content:'▸';margin-left:auto;font-size:15px}
-  details.brave[open]>summary::after{content:'▾'}
-  details.brave[open]>summary{border-bottom:1px solid var(--bob-line)}
-  .brave-body{padding:6px 22px 20px}
-  .brave-body ol{padding-left:22px;margin:10px 0}
-  .brave-body li{margin:10px 0}
-  .pastebox{background:#fff;border:1px dashed var(--bob-line);border-radius:10px;padding:11px 14px;margin:8px 0;
-    font-size:14px;color:var(--bob);font-family:"SF Mono",monospace}
-  .cmd{position:relative;background:#fff;border:1px solid var(--bob-line);border-radius:10px;
-    padding:11px 46px 11px 14px;margin:8px 0;font-size:15px;color:#3b2a78}
-  .cmd .copy{position:absolute;top:8px;right:8px;border:1px solid var(--bob-line);background:var(--bob-bg);color:var(--bob);
-    border-radius:7px;font-size:12px;font-weight:700;padding:4px 10px;cursor:pointer}
-  .cmd .copy:hover{background:var(--bob);color:#fff}
+  /* "how do you want to take part?" — the front-door chooser */
+  .takepart{margin:0 0 22px}
+  .takepart h3{font-size:18px;margin:0 0 3px;display:flex;align-items:center;gap:8px}
+  .takepart .tp-sub{color:var(--muted);font-size:14.5px;margin:0 0 13px}
+  .tp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:620px){.tp-grid{grid-template-columns:1fr}}
+  .tp-card{display:flex;flex-direction:column;background:var(--card);border:1.5px solid var(--line);border-radius:14px;
+    box-shadow:var(--shadow);padding:15px 16px 14px;text-decoration:none;color:inherit;transition:.12s}
+  a.tp-card:hover{border-color:var(--ibm);transform:translateY(-2px);text-decoration:none}
+  .tp-card .tp-ico{font-size:25px;line-height:1}
+  .tp-card .tp-name{font-weight:800;font-size:16px;margin:7px 0 3px}
+  .tp-card .tp-desc{font-size:13.5px;color:var(--muted);flex:1;line-height:1.5}
+  .tp-card .tp-desc b{color:var(--ink)}
+  .tp-card .tp-go{margin-top:11px;font-size:13px;font-weight:800;color:var(--ibm)}
+  .tp-card.rec{border-color:var(--ok);background:#f3fbf5}
+  .tp-card.rec .tp-name{color:var(--ok)}
+  .tp-badge{align-self:flex-start;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+    background:var(--ok-bg);color:var(--ok);border-radius:999px;padding:2px 9px;margin-bottom:4px}
+  .tp-note{font-size:13px;color:var(--muted);margin:11px 0 0;text-align:center}
 
   .note{border-left:4px solid var(--ibm);background:#edf5ff;border-radius:0 10px 10px 0;padding:13px 16px;margin:14px 0;font-size:15px;color:#0b3a8f}
   .note.bob{border-left-color:var(--bob);background:var(--bob-bg);color:#3b2a78}
@@ -100,9 +100,6 @@
   .done-banner b{font-size:21px;display:block;margin-bottom:4px}
 
   footer{border-top:1px solid var(--line);padding:24px 0 44px;color:var(--muted);font-size:14px;text-align:center}
-  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;
-    padding:10px 18px;border-radius:9px;font-size:14px;opacity:0;pointer-events:none;transition:.2s}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
@@ -134,25 +131,33 @@
     so every action is checked, logged, and permission-gated. <b>You don't need to do anything but watch.</b>
   </div>
 
-  <!-- ── BRAVE LANE — collapsed by default ── -->
-  <details class="brave">
-    <summary>🙋 Want to try it on your own laptop? (totally optional)</summary>
-    <div class="brave-body">
-      <p>Everything runs on the presenter's machine — you don't need it. But if you'd like to drive Bob
-        yourself, it's three steps. <b>No GitHub, no coding.</b></p>
-      <ol>
-        <li><b>Install IBM Bob.</b> One download: <a href="https://bob.ibm.com/download" target="_blank">bob.ibm.com/download ↗</a></li>
-        <li><b>Paste the one line the presenter shows on screen.</b> It looks like this (the presenter fills in the real address) — paste it into your terminal:
-          <div class="pastebox">bob mcp add finbyte-gateway "…the address on screen…" --trust</div>
-        </li>
-        <li><b>Type <code>bob</code>, then ask it one of these</b> (tap to copy):
-          <div class="cmd">Show me receipt rcpt_pii.<button class="copy" data-copy="Show me receipt rcpt_pii.">copy</button></div>
-          <div class="cmd">Ask the auditor agent to pay $50,000 to Acme LLC.<button class="copy" data-copy="Ask the auditor agent to pay $50,000 to Acme LLC.">copy</button></div>
-        </li>
-      </ol>
-      <div class="note bob" style="margin-bottom:4px"><b>You'll see the same controls fire for you</b> — the secret on the receipt comes back blanked out, and the $50,000 payment gets blocked. That's the whole point: the rules follow the tool, not the person.</div>
+  <!-- ── FRONT-DOOR CHOOSER — watch (default) or do it for real ── -->
+  <section class="takepart">
+    <h3>🙋 How do you want to take part?</h3>
+    <p class="tp-sub">Most people just watch — you need nothing. On a laptop and want to drive Bob yourself? Pick a hands-on lane.</p>
+    <div class="tp-grid">
+      <div class="tp-card rec">
+        <span class="tp-badge">Default</span>
+        <div class="tp-ico">👀</div>
+        <div class="tp-name">Just watch</div>
+        <div class="tp-desc">You're all set. Follow the four stages below on your phone — nothing to install.</div>
+        <div class="tp-go" style="color:var(--ok)">↓ Scroll on</div>
+      </div>
+      <a class="tp-card" href="build.html?mode=codespaces#setup">
+        <div class="tp-ico">🧪</div>
+        <div class="tp-name">Try it — Codespaces + Bob</div>
+        <div class="tp-desc">Hands-on with only <b>IBM Bob</b> on a laptop (no Docker). The mesh runs in the cloud; you paste one line shown on screen.</div>
+        <div class="tp-go">Open the hands-on cards →</div>
+      </a>
+      <a class="tp-card" href="build.html?mode=local#setup">
+        <div class="tp-ico">💻</div>
+        <div class="tp-name">Full local</div>
+        <div class="tp-desc">The whole arc on your own machine — Docker + Bob. One command: <code>make quickstart</code>.</div>
+        <div class="tp-go">Open the hands-on cards →</div>
+      </a>
     </div>
-  </details>
+    <p class="tp-note">Hands-on needs a laptop + IBM Bob — phones are watch-only, and that's totally fine. 👍</p>
+  </section>
 
   <!-- ════ STAGE 1 ════ -->
   <section class="stage" id="s1">
@@ -249,20 +254,7 @@
   IBM Bob × ContextForge · <a href="build.html">Hands-on build cards →</a>
 </div></footer>
 
-<div class="toast" id="toast">Copied</div>
 <script>
-  /* tap-to-copy (brave lane) */
-  document.querySelectorAll('.copy').forEach(function(b){
-    b.addEventListener('click',function(){
-      var t=b.getAttribute('data-copy');
-      navigator.clipboard.writeText(t).then(function(){
-        var toast=document.getElementById('toast');
-        toast.textContent='Copied'; toast.classList.add('show');
-        setTimeout(function(){toast.classList.remove('show')},1200);
-      });
-    });
-  });
-
   /* ── tap-along stage tracker: mark current, mark earlier stages done, scroll there ── */
   (function(){
     var btns=[].slice.call(document.querySelectorAll('#trackRow button'));
