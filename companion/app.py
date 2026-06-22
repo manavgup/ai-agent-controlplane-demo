@@ -17,12 +17,19 @@ import os
 import subprocess
 
 import httpx
-from flask import Flask, Response, jsonify, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 
 GW = os.environ.get("GATEWAY_URL", "http://localhost:4444")
 TOKEN = os.environ.get("GATEWAY_TOKEN", "")
 FINOPS = os.environ.get("FINOPS_UUID", "")
 H = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
+
+# ── room agent registration: each attendee names an agent with their initials and
+# really registers it with ContextForge; the catalog (and the live count) climbs.
+# All point at the one shared sales-tax backend (configurable so we can test against
+# any reachable backend on a live Codespace where sales-tax isn't up yet).
+AGENT_PREFIX = "salestax"
+AGENT_BACKEND_URL = os.environ.get("AGENT_BACKEND_URL", "http://sales-tax:8000/mcp")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS = os.path.join(ROOT, "docs")
@@ -315,6 +322,93 @@ def run(scenario):
     return jsonify(res)
 
 
+# ── room agent registration ─────────────────────────────────────────────────
+def _gateways():
+    """Registered MCP backends (ContextForge calls them 'gateways')."""
+    try:
+        g = httpx.get(f"{GW}/gateways", headers=H, timeout=10).json()
+        return g if isinstance(g, list) else []
+    except Exception:
+        return []
+
+
+def _room_agent_names(gws=None):
+    """Names of agents the room built this session, newest last."""
+    gws = _gateways() if gws is None else gws
+    return [
+        g.get("name", "")
+        for g in gws
+        if isinstance(g, dict) and g.get("name", "").startswith(AGENT_PREFIX + "-")
+    ]
+
+
+def _sanitize_initials(s):
+    s = "".join(ch for ch in (s or "").upper() if ch.isalnum())[:5]
+    return s or "ANON"
+
+
+def _initials_of(name):
+    """salestax-MG -> MG ; salestax-MG-2 -> MG."""
+    return name[len(AGENT_PREFIX) + 1 :].split("-")[0] if "-" in name else name
+
+
+def _unique_name(initials, existing):
+    base = f"{AGENT_PREFIX}-{initials}"
+    if base not in existing:
+        return base
+    i = 2
+    while f"{base}-{i}" in existing:
+        i += 1
+    return f"{base}-{i}"
+
+
+@app.route("/api/register-agent", methods=["GET", "POST"])
+def register_agent():
+    """Really register a uniquely-named sales-tax agent with ContextForge, so the
+    live count climbs. Dedup the name; retry (advancing the suffix) on collision."""
+    initials = _sanitize_initials(
+        request.values.get("initials") or request.values.get("ini")
+    )
+    last_err = None
+    for _ in range(10):
+        existing = {g.get("name", "") for g in _gateways()}
+        name = _unique_name(initials, existing)
+        try:
+            r = httpx.post(
+                f"{GW}/gateways",
+                headers=H,
+                timeout=30,
+                json={
+                    "name": name,
+                    "url": AGENT_BACKEND_URL,
+                    "transport": "STREAMABLEHTTP",
+                    "description": f"sales-tax agent built by {initials}",
+                },
+            )
+            if r.status_code < 300:
+                return jsonify(
+                    {
+                        "ok": True,
+                        "name": name,
+                        "initials": initials,
+                        "count": len(_room_agent_names()),
+                    }
+                )
+            last_err = f"{r.status_code} {r.text[:160]}"
+            # name-collision races just loop: the next scan sees `name` taken and
+            # advances the suffix. Other 4xx/5xx also retry a few times.
+        except Exception as e:
+            last_err = str(e)
+    return jsonify({"ok": False, "error": last_err or "register failed", "initials": initials}), 502
+
+
+@app.route("/api/agents")
+def agents():
+    names = _room_agent_names()
+    recent = [_initials_of(n) for n in names][-14:][::-1]
+    return jsonify({"count": len(names), "recent": recent})
+
+
 @app.route("/api/evidence/<scenario>")
 def evidence(scenario):
     info = LAST.get(scenario)
@@ -356,6 +450,11 @@ def index():
     return Response(PAGE, mimetype="text/html")
 
 
+@app.route("/wall")
+def wall():
+    return Response(WALL, mimetype="text/html")
+
+
 PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
 <title>FinByte Control-Plane Companion</title>
 <style>
@@ -390,6 +489,20 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
  .evbox pre{background:#000;border-radius:6px;padding:9px;margin:0;font-family:'IBM Plex Mono',monospace;
             font-size:11px;white-space:pre-wrap;word-break:break-word;color:#cfcfcf}
  .gOk{color:var(--ok)} .gNo{color:#ff8389} .warnp{color:#f1c21b;font-size:12px}
+ /* room agent registration bar + live count */
+ .roombar{background:linear-gradient(90deg,rgba(15,98,254,.18),rgba(105,41,196,.18));border:1px solid #393939;
+   border-radius:10px;padding:14px 16px;margin:0 0 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+ .roomcount{font-size:15px;color:#c6c6c6}
+ .roomcount b{font-size:26px;color:#fff;font-variant-numeric:tabular-nums;vertical-align:middle;margin:0 2px}
+ #roomUp{color:var(--ok);font-weight:800;font-size:20px}
+ .roomreg{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+ .roomreg input{background:#000;border:1px solid #393939;border-radius:6px;color:#fff;padding:8px 10px;
+   font-size:14px;width:130px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace}
+ .roomreg input::placeholder{color:#6f6f6f;text-transform:none}
+ .roomreg .small{color:#8d8d8d}
+ .wall-link{margin-left:auto;color:#78a9ff;font-size:13px;text-decoration:none;border:1px solid #393939;
+   padding:7px 12px;border-radius:6px;white-space:nowrap}
+ .wall-link:hover{border-color:#78a9ff}
  /* phones (Tier-1 attendees): stack the sidebar over the cards, full-width cards */
  @media(max-width:760px){
    .wrap{grid-template-columns:1fr}
@@ -398,6 +511,8 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
    .gallery{float:none;display:inline-block;margin:0 0 8px}
    main{padding:18px 16px}
    header{padding:16px 18px}
+   .roombar{flex-direction:column;align-items:flex-start}
+   .wall-link{margin-left:0}
  }
 </style></head><body>
 <header>
@@ -415,6 +530,15 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
    <h3>Total tools in catalog</h3><div id="toolcount" class="chip"></div>
  </div>
  <main>
+   <div class="roombar">
+     <div class="roomcount">🛠️ Agents built by the room: <b id="roomN">—</b> <span id="roomUp"></span></div>
+     <div class="roomreg">
+       <input id="ini" maxlength="5" placeholder="your initials" autocapitalize="characters" onkeydown="if(event.key==='Enter')registerAgent()">
+       <button onclick="registerAgent()">Register my agent ▶</button>
+       <span id="regout" class="small"></span>
+     </div>
+     <a class="wall-link" href="/wall" target="_blank">📺 Open wall</a>
+   </div>
    <div class="runall"><button onclick="runAll()">▶ Run all scenarios</button>
      <span class="small">&nbsp;or run each below. Results come live from the gateway via /rpc.</span></div>
    <div class="grid" id="grid"></div>
@@ -487,7 +611,66 @@ async function loadState(){
  const hidden=`<span class="chip ${s.wire_hidden_from_finops?'ok':'no'}">${s.wire_hidden_from_finops?'✓ wire NOT exposed to Bob':'⚠ wire exposed'}</span>`;
  document.getElementById('finops').innerHTML=fin+hidden;
 }
+let lastN=null;
+async function pollAgents(){
+ try{
+   const a=await (await fetch('/api/agents')).json();
+   const el=document.getElementById('roomN'); if(el)el.textContent=a.count;
+   if(lastN!==null && a.count>lastN){const u=document.getElementById('roomUp'); if(u){u.textContent='↑'; setTimeout(()=>u.textContent='',1200);}}
+   lastN=a.count;
+ }catch(e){}
+}
+async function registerAgent(){
+ const ini=document.getElementById('ini').value;
+ const out=document.getElementById('regout'); out.textContent='registering…';
+ try{
+   const r=await (await fetch('/api/register-agent?initials='+encodeURIComponent(ini),{method:'POST'})).json();
+   if(r.ok){out.textContent='✓ '+r.name+' — agents: '+r.count; document.getElementById('ini').value=''; pollAgents();}
+   else out.textContent='⚠ '+(r.error||'failed');
+ }catch(e){out.textContent='⚠ '+e;}
+}
 loadState();
+pollAgents();
+setInterval(pollAgents, 3000);
+</script></body></html>"""
+
+
+WALL = r"""<!doctype html><html><head><meta charset="utf-8">
+<title>Agents built by the room</title>
+<style>
+ *{box-sizing:border-box} html,body{height:100%}
+ body{margin:0;background:radial-gradient(circle at 50% 35%,#0b1738,#000);color:#fff;
+   font-family:'IBM Plex Sans',-apple-system,Segoe UI,Roboto,sans-serif;
+   display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;overflow:hidden}
+ .eyebrow{font-size:2.2vw;letter-spacing:.3em;text-transform:uppercase;color:#78a9ff;font-weight:700}
+ .num{font-size:34vh;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;
+   background:linear-gradient(135deg,#4589ff,#a56eff);-webkit-background-clip:text;background-clip:text;color:transparent;
+   transition:transform .25s} .num.bump{transform:scale(1.08)}
+ .label{font-size:2.6vw;color:#c6c6c6;margin-top:1vh}
+ .chips{margin-top:5vh;display:flex;flex-wrap:wrap;gap:1vh 1.2vw;justify-content:center;max-width:88vw;max-height:24vh;overflow:hidden}
+ .chip{font-family:'IBM Plex Mono',monospace;font-size:2.2vw;font-weight:700;padding:.6vh 1.4vw;border-radius:999px;
+   background:#161c33;border:1px solid #2a335c;color:#cfe0ff}
+ .chip.fresh{background:#24a148;color:#fff;border-color:#24a148}
+ .ctx{position:fixed;bottom:3vh;font-size:1.6vw;color:#5a6b8c}
+</style></head><body>
+ <div class="eyebrow">IBM Bob × ContextForge</div>
+ <div class="num" id="n">0</div>
+ <div class="label">agents built by the room — registered with the control plane, live</div>
+ <div class="chips" id="chips"></div>
+ <div class="ctx">name yours on the dashboard → watch it land here</div>
+<script>
+ let last=null;
+ async function tick(){
+  try{
+   const a=await (await fetch('/api/agents')).json();
+   const n=document.getElementById('n');
+   if(last!==null && a.count>last){n.classList.add('bump'); setTimeout(()=>n.classList.remove('bump'),260);}
+   n.textContent=a.count; last=a.count;
+   const c=document.getElementById('chips');
+   c.innerHTML=(a.recent||[]).map((x,i)=>`<span class="chip${i===0?' fresh':''}">${(x+'').replace(/[<>&]/g,'')}</span>`).join('');
+  }catch(e){}
+ }
+ tick(); setInterval(tick, 2000);
 </script></body></html>"""
 
 

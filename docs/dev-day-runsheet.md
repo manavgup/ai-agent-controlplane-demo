@@ -46,6 +46,17 @@ tiers. `build.html` stays the deeper, coder version for the technical crowd.
   `bob mcp add … -t http` line. Points their Bob at the same gateway.
 - **Tier 3 — Do it all yourself** (Docker + Bob): `make quickstart` on their own machine.
 
+### 🛠️ Audience participation — build the room's agents
+
+During the Build/Govern beat, invite everyone to **name an agent with their initials and register it**:
+- **Phones (Tier 1):** on the Companion dashboard, type initials → **Register my agent ▶** (no install) —
+  it really registers `salestax-<INITIALS>` with ContextForge.
+- **Bob drivers (Tier 2/3):** *"Register an MCP server named `salestax-<YOUR-INITIALS>` at http://sales-tax:8000/mcp."*
+- **Watch it climb:** project the Companion's `/wall` (giant count + initials landing live). Each registration
+  is a real catalog entry; names dedup + retry so repeats still bump the count.
+- **Before each session:** `make agents-reset` (also folded into `make demo-reset`) clears `salestax-*` → back to 0.
+- Requires the `sales-tax` backend up (Stage ②); the Companion's `AGENT_BACKEND_URL` is configurable for testing.
+
 ### Where the single control plane runs (how the whole room connects)
 
 One Docker Compose stack on **one host** (a GitHub Codespace is the recommended single instance — the

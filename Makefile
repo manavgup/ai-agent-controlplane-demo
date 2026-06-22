@@ -410,11 +410,15 @@ cockpit-down: ## Tear down the cockpit (kill session/panes + remove a2a-inspecto
 verify-controls: ## Run the money-shot proof suite (assert block/allow)
 	@bash scripts/money-shots/run-all.sh
 
-demo-reset: ## Clean-reset the gateway to a known-good state (recreate + reseed)
+demo-reset: ## Clean-reset the gateway to a known-good state (recreate + reseed + clear room agents)
 	$(COMPOSE) up -d --force-recreate gateway
 	@for i in $$(seq 1 30); do curl -sf localhost:4444/health >/dev/null 2>&1 && break || sleep 2; done
 	@$(MAKE) seed
+	@bash scripts/agents-reset.sh || true
 	@echo "reset done — run 'make verify-controls' to confirm 16/16"
+
+agents-reset: ## Remove all room-built salestax-* agents from the catalog (reset the live "agents built by the room" count to 0)
+	@bash scripts/agents-reset.sh
 
 logs: ## Tail gateway logs (raw; blocked calls show as ERROR 'invocation failed')
 	$(COMPOSE) logs -f gateway
