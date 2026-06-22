@@ -1,0 +1,39 @@
+name: Publish follow-along (GitHub Pages)
+
+# Serves the docs/ folder as a static site so the follow-along pages get a stable
+# public URL (great for a slide QR): https://<owner>.github.io/<repo>/follow.html
+# One-time: repo Settings ▸ Pages ▸ Source = "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let one deploy finish before the next starts; don't cancel an in-flight publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Upload docs/ as the site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deploy
+        uses: actions/deploy-pages@v4

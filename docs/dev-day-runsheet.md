@@ -8,6 +8,40 @@ changes. The audience never sees a JWT or a UUID — those are backstage.
 
 ---
 
+## 🚀 Fire up ContextForge from Codespaces (the thing I keep forgetting)
+
+The whole governed mesh runs in the cloud; the devcontainer does the work for you.
+
+1. GitHub → this repo → green **Code** button → **Codespaces** tab → **Create codespace on main**.
+   (Or the **Open in Codespaces** badge in the README.)
+2. Wait a few minutes. `.devcontainer/post-create.sh` auto-runs **`make up && make seed`** —
+   that *is* ContextForge: the gateway on port **4444** + the full mesh, seeded. You'll see a
+   **"READY"** banner in the terminal when it's done.
+3. **If you reopened an existing Codespace** (post-create only runs the first time) or the banner
+   didn't appear, just run it yourself in the Codespace terminal:
+   ```bash
+   make up && make seed
+   ```
+4. **PORTS** tab → right-click **4444** → **Port Visibility → Public**.
+5. `make connect` → prints the filled-in `bob mcp add … -t http …/mcp` line for laptop Bob.
+6. Sanity check: open **`:4444/admin`** (`admin@finbyte.demo` / `FinByteAdmin!2026`) — the
+   ContextForge admin UI listing every server/tool/agent. (Forwarded ports are private by default;
+   the admin UI works in-Codespace without flipping visibility.)
+
+> ⚠️ Use the `-t http` + `/mcp` form `make connect` prints — **never SSE** (Codespaces proxies
+> buffer SSE and Bob hangs). Paste it **from an empty folder** (a repo clone's `.bob/mcp.json`
+> shadows it). Tear the Codespace/port down after — `make connect` embeds an admin token.
+
+## 👀 Audience follow-along (non-coders, no GitHub)
+
+Put the QR (`docs/assets/follow-qr.png`) on a slide → it opens
+**`follow.html`**: a plain-English, tap-along "YOU ARE HERE" stage tracker. Zero setup, no terminal.
+A collapsed "🙋 Want to try it yourself?" card holds the optional hands-on lane (install Bob, paste
+the one `make connect` line you show on screen, type `bob`). `build.html` stays the deeper, coder
+version for the technical crowd.
+
+---
+
 ## PRE-STAGE — do this OFF-stage, before the room (≈10 min)
 
 This pre-bakes everything fragile so the only *live* thing on stage is Bob talking.
