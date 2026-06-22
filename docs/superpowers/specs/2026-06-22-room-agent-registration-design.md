@@ -61,6 +61,14 @@ phone → POST /api/register-agent?initials=MG
 phone/wall ← GET /api/agents (poll) → {count:N, recent:[...]}  → counter climbs
 ```
 
+## Implementation note (discovered during build)
+
+ContextForge enforces a **unique `url` per gateway**, so N agents cannot share one
+backend url verbatim (it returns `409 "Gateway already exists"`). We carry the unique
+name as a query suffix — `…/mcp?agent=<name>` — so the url string is unique while the
+backend ignores the query and serves `/mcp` normally. Verified live: 10 concurrent
+registrations (incl. 3× `MG`) → 10 entries, dedup names `salestax-MG / -2 / -3`, count 0→10.
+
 ## Edge cases
 - Empty/garbage initials → `ANON`. Over 5 chars → truncated.
 - Name collision / gateway race → retry with next suffix (bounded).
