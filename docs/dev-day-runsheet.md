@@ -51,7 +51,10 @@ tiers. `build.html` stays the deeper, coder version for the technical crowd.
 During the Build/Govern beat, invite everyone to **name an agent with their initials and register it**:
 - **Phones (Tier 1):** on the Companion dashboard, type initials → **Register my agent ▶** (no install) —
   it really registers `salestax-<INITIALS>` with ContextForge.
-- **Bob drivers (Tier 2/3):** *"Register an MCP server named `salestax-<YOUR-INITIALS>` at http://sales-tax:8000/mcp."*
+- **Bob drivers (Tier 2/3):** connect to the **Operator** persona (`make connect` / `make bob-operator`), then:
+  *"Register an MCP server named `salestax-<YOUR-INITIALS>` at http://sales-tax:8000/mcp?agent=<YOUR-INITIALS>."*
+  (The `?agent=` suffix keeps each URL unique — ContextForge requires it; the backend ignores the query.)
+  Tier 2 registers against the **shared** cloud gateway → lands on the same wall; Tier 3 registers on their **own** gateway.
 - **Watch it climb:** project the Companion's `/wall` (giant count + initials landing live). Each registration
   is a real catalog entry; names dedup + retry so repeats still bump the count.
 - **Before each session:** `make agents-reset` (also folded into `make demo-reset`) clears `salestax-*` → back to 0.

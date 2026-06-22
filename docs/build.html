@@ -421,7 +421,8 @@
     </details>
   </div>
   <div class="note bob"><b>🛠️ Join the room's agent count.</b> Name an agent with <b>your initials</b> and register it — the live count climbs on every phone and on the projected <code class="inline">/wall</code>.
-    <div class="cmd bob" style="margin-top:8px">Register an MCP server named salestax-&lt;YOUR-INITIALS&gt; at http://sales-tax:8000/mcp.<button class="copy" data-copy="Register an MCP server named salestax-<YOUR-INITIALS> at http://sales-tax:8000/mcp.">copy</button></div>
+    <div class="cmd bob" style="margin-top:8px">Register an MCP server named salestax-&lt;YOUR-INITIALS&gt; at http://sales-tax:8000/mcp?agent=&lt;YOUR-INITIALS&gt;.<button class="copy" data-copy="Register an MCP server named salestax-<YOUR-INITIALS> at http://sales-tax:8000/mcp?agent=<YOUR-INITIALS>.">copy</button></div>
+    <span style="font-size:13px;color:var(--muted)">The <code class="inline">?agent=…</code> suffix keeps each agent's URL unique (ContextForge requires it; the backend ignores the query). Connect Bob to the <b>Operator</b> persona first (<code class="inline">make connect</code> / <code class="inline">make bob-operator</code>).</span><br>
     No laptop? On the <b>dashboard</b> (the “Run it live” link) just type your initials → <b>Register my agent ▶</b>. Reset between sessions with <code class="inline">make agents-reset</code>.</div>
 
   <div class="step run">
