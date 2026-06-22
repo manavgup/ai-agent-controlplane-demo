@@ -98,6 +98,21 @@
   .tp-wait{margin-top:12px;font-size:13px;font-weight:700;color:var(--muted);line-height:1.4}
   .tp-note{font-size:13px;color:var(--muted);margin:11px 0 0;text-align:center}
 
+  /* "the big picture" — optional architecture diagram, collapsed for non-coders */
+  details.bigpic{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+    margin:0 0 22px;overflow:hidden}
+  details.bigpic>summary{cursor:pointer;list-style:none;padding:15px 18px;font-size:16px;font-weight:700;
+    display:flex;align-items:center;gap:9px;user-select:none}
+  details.bigpic>summary::-webkit-details-marker{display:none}
+  details.bigpic>summary::after{content:'▸';margin-left:auto;font-size:14px;color:var(--muted)}
+  details.bigpic[open]>summary::after{content:'▾'}
+  details.bigpic[open]>summary{border-bottom:1px solid var(--line)}
+  .bigpic-body{padding:14px 18px 18px}
+  .bigpic-body p{margin:0 0 12px;color:var(--muted);font-size:14.5px}
+  .bigpic-body p b{color:var(--ink)}
+  .bigpic-body img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:9px}
+  .bigpic-body a.zoom{font-size:13px;font-weight:700;display:inline-block;margin-top:9px}
+
   .note{border-left:4px solid var(--ibm);background:#edf5ff;border-radius:0 10px 10px 0;padding:13px 16px;margin:14px 0;font-size:15px;color:#0b3a8f}
   .note.bob{border-left-color:var(--bob);background:var(--bob-bg);color:#3b2a78}
 
@@ -174,6 +189,16 @@
     </div>
     <p class="tp-note">Phones can watch and tap the live dashboard. Driving the AI yourself (🧪 / 💻) needs a laptop + IBM Bob.</p>
   </section>
+
+  <!-- ── optional: the architecture diagram, one tap away ── -->
+  <details class="bigpic">
+    <summary>🗺️ The big picture — how it all connects (optional)</summary>
+    <div class="bigpic-body">
+      <p>Bob never touches the tools directly. <b>Every move — every tool call and every agent-to-agent call — passes through one checkpoint</b> (the control plane), which checks it, hides secrets, and records it before anything happens.</p>
+      <a href="diagrams/architecture.svg" target="_blank" rel="noopener"><img src="diagrams/architecture.svg" alt="IBM Bob connects through the ContextForge gateway (with an OPA policy sidecar) to six MCP servers and two cross-language A2A agents; the gateway governs every call."></a>
+      <a class="zoom" href="diagrams/architecture.svg" target="_blank" rel="noopener">⤢ Open full-size (pinch to zoom on a phone) →</a>
+    </div>
+  </details>
 
   <!-- ════ STAGE 1 ════ -->
   <section class="stage" id="s1">

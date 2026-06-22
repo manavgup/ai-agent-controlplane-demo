@@ -34,11 +34,48 @@ The whole governed mesh runs in the cloud; the devcontainer does the work for yo
 
 ## 👀 Audience follow-along (non-coders, no GitHub)
 
-Put the QR (`docs/assets/follow-qr.png`) on a slide → it opens
-**`follow.html`**: a plain-English, tap-along "YOU ARE HERE" stage tracker. Zero setup, no terminal.
-A collapsed "🙋 Want to try it yourself?" card holds the optional hands-on lane (install Bob, paste
-the one `make connect` line you show on screen, type `bob`). `build.html` stays the deeper, coder
-version for the technical crowd.
+Put the QR (`docs/assets/follow-qr.png`) on a slide → it opens **`follow.html`**: a plain-English,
+tap-along "YOU ARE HERE" stage tracker, plus a **"How do you want to take part?"** chooser with three
+tiers. `build.html` stays the deeper, coder version for the technical crowd.
+
+- **Tier 1 — Follow along + run it** (browser only, phone or laptop, no install): watch the stages
+  **and run the scenarios** on the shared Companion dashboard. Run `make companion`, set port 7070
+  Public, then `make follow-link` → it prints the `follow.html?dash=<:7070 url>` link to share (QR it).
+  That lights up the page's **▶ Run it live** button.
+- **Tier 2 — Drive Bob yourself** (laptop + IBM Bob, no Docker): `make connect` → paste the one
+  `bob mcp add … -t http` line. Points their Bob at the same gateway.
+- **Tier 3 — Do it all yourself** (Docker + Bob): `make quickstart` on their own machine.
+
+### Where the single control plane runs (how the whole room connects)
+
+One Docker Compose stack on **one host** (a GitHub Codespace is the recommended single instance — the
+devcontainer runs `make up && make seed`; you add `make companion`). Only **two ports** are exposed:
+
+```
+   ┌──────────────── ONE HOST (a GitHub Codespace) ─────────────┐
+   │   :7070  Companion ──┐                                     │
+   │   (holds token,      ├──► :4444 Gateway ──► OPA            │
+   │    calls gateway)    │    (ContextForge)    6 MCP servers  │
+   │                      │                      2 A2A agents   │
+   └──────────┼───────────┴────────────────────────────────────┘
+        PUBLIC :7070                 PUBLIC :4444
+              │                            │
+   ┌──────────┴───┐          ┌─────────────┴┐          ┌─────────────────┐
+   │ TIER 1       │          │ TIER 2       │          │ TIER 3          │
+   │ browser      │          │ laptop + Bob │          │ their OWN stack │
+   │ phone/laptop │          │ (no Docker)  │          │ make quickstart │
+   └──────────────┘          └──────────────┘          └─────────────────┘
+   ── all hit the SAME instance ──►              ◄── separate, per person
+```
+
+- **Tier 1** → the public **:7070** Companion (it calls :4444 server-side, so phones need nothing).
+- **Tier 2** → the public **:4444** gateway directly, via `bob mcp add`.
+- **Tier 3** is the exception — their own local stack, not the shared instance.
+
+**Caveats:** one instance = one gateway DB + one OPA. Read/block/allow control scenarios are safe for a
+whole room at once; *mutating* operator beats (register-a-server, reset) collide — keep those
+presenter-driven or send power users to Tier 3. For a big room hammering "Run all," size the Codespace
+up (4-core/16GB); Tiers 1+2 share that one box.
 
 ---
 
