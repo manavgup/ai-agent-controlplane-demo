@@ -90,6 +90,12 @@
   .tp-card.rec .tp-name{color:var(--ok)}
   .tp-badge{align-self:flex-start;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
     background:var(--ok-bg);color:var(--ok);border-radius:999px;padding:2px 9px;margin-bottom:4px}
+  .tp-tier{align-self:flex-start;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--muted);margin-bottom:4px}
+  .tp-runbtn{align-self:flex-start;display:inline-block;margin-top:12px;background:var(--ok);color:#fff;
+    border-radius:9px;padding:9px 16px;font-weight:800;font-size:14.5px;text-decoration:none}
+  .tp-runbtn:hover{filter:brightness(1.06);text-decoration:none}
+  .tp-wait{margin-top:12px;font-size:13px;font-weight:700;color:var(--muted);line-height:1.4}
   .tp-note{font-size:13px;color:var(--muted);margin:11px 0 0;text-align:center}
 
   .note{border-left:4px solid var(--ibm);background:#edf5ff;border-radius:0 10px 10px 0;padding:13px 16px;margin:14px 0;font-size:15px;color:#0b3a8f}
@@ -131,32 +137,42 @@
     so every action is checked, logged, and permission-gated. <b>You don't need to do anything but watch.</b>
   </div>
 
-  <!-- ── FRONT-DOOR CHOOSER — watch (default) or do it for real ── -->
+  <!-- ── FRONT-DOOR CHOOSER — 3 tiers by how much is on your machine ── -->
   <section class="takepart">
     <h3>🙋 How do you want to take part?</h3>
-    <p class="tp-sub">Most people just watch — you need nothing. On a laptop and want to drive Bob yourself? Pick a hands-on lane.</p>
+    <p class="tp-sub">Everyone can watch <b>and</b> run the scenarios in a browser — no install. On a laptop? Go deeper and drive the AI yourself.</p>
     <div class="tp-grid">
-      <div class="tp-card rec">
-        <span class="tp-badge">Default</span>
+
+      <!-- TIER 1 — browser only: watch here + run on the shared live dashboard -->
+      <div class="tp-card rec" id="runlive">
+        <span class="tp-badge">Everyone · phone or laptop</span>
         <div class="tp-ico">👀</div>
-        <div class="tp-name">Just watch</div>
-        <div class="tp-desc">You're all set. Follow the four stages below on your phone — nothing to install.</div>
-        <div class="tp-go" style="color:var(--ok)">↓ Scroll on</div>
+        <div class="tp-name">Follow along + run it</div>
+        <div class="tp-desc">Right here in your browser. Watch the four stages below — and <b>run the scenarios yourself</b> on the live dashboard. Nothing to install.</div>
+        <a id="runlive-btn" class="tp-runbtn" target="_blank" rel="noopener" style="display:none">▶ Run it live →</a>
+        <div id="runlive-wait" class="tp-wait">▶ Your presenter will share the live dashboard link</div>
       </div>
+
+      <!-- TIER 2 — laptop + Bob, no Docker: drive the agent against the cloud control plane -->
       <a class="tp-card" href="build.html?mode=codespaces#setup">
+        <span class="tp-tier">Laptop · intermediate</span>
         <div class="tp-ico">🧪</div>
-        <div class="tp-name">Try it — Codespaces + Bob</div>
-        <div class="tp-desc">Hands-on with only <b>IBM Bob</b> on a laptop (no Docker). The mesh runs in the cloud; you paste one line shown on screen.</div>
+        <div class="tp-name">Drive Bob yourself</div>
+        <div class="tp-desc">Install <b>IBM Bob</b> (no Docker) and connect to the control plane running in the cloud. Type prompts; watch the AI get governed.</div>
         <div class="tp-go">Open the hands-on cards →</div>
       </a>
+
+      <!-- TIER 3 — everything local: build + govern end to end -->
       <a class="tp-card" href="build.html?mode=local#setup">
+        <span class="tp-tier">Laptop · advanced</span>
         <div class="tp-ico">💻</div>
-        <div class="tp-name">Full local</div>
-        <div class="tp-desc">The whole arc on your own machine — Docker + Bob. One command: <code>make quickstart</code>.</div>
+        <div class="tp-name">Do it all yourself</div>
+        <div class="tp-desc">Run the whole stack on your own machine — Docker + Bob. One command: <code>make quickstart</code>. Build the tool and govern it end to end.</div>
         <div class="tp-go">Open the hands-on cards →</div>
       </a>
+
     </div>
-    <p class="tp-note">Hands-on needs a laptop + IBM Bob — phones are watch-only, and that's totally fine. 👍</p>
+    <p class="tp-note">Phones can watch and tap the live dashboard. Driving the AI yourself (🧪 / 💻) needs a laptop + IBM Bob.</p>
   </section>
 
   <!-- ════ STAGE 1 ════ -->
@@ -255,6 +271,21 @@
 </div></footer>
 
 <script>
+  /* ── Tier-1 "Run it live": wire the live Companion dashboard from ?dash=<url>.
+     The presenter shares this page with ?dash appended (see `make follow-link`).
+     Only accept http(s) so a crafted ?dash=javascript:... can't run. ── */
+  (function(){
+    var btn=document.getElementById('runlive-btn');
+    var wait=document.getElementById('runlive-wait');
+    if(!btn||!wait)return;
+    var dash='';
+    try{
+      var p=new URLSearchParams(location.search).get('dash');
+      if(p&&/^https?:\/\//i.test(p))dash=p;
+    }catch(e){}
+    if(dash){btn.href=dash;btn.style.display='';wait.style.display='none';}
+  })();
+
   /* ── tap-along stage tracker: mark current, mark earlier stages done, scroll there ── */
   (function(){
     var btns=[].slice.call(document.querySelectorAll('#trackRow button'));

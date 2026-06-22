@@ -390,6 +390,15 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
  .evbox pre{background:#000;border-radius:6px;padding:9px;margin:0;font-family:'IBM Plex Mono',monospace;
             font-size:11px;white-space:pre-wrap;word-break:break-word;color:#cfcfcf}
  .gOk{color:var(--ok)} .gNo{color:#ff8389} .warnp{color:#f1c21b;font-size:12px}
+ /* phones (Tier-1 attendees): stack the sidebar over the cards, full-width cards */
+ @media(max-width:760px){
+   .wrap{grid-template-columns:1fr}
+   .side{border-right:0;border-bottom:1px solid #393939}
+   .grid{grid-template-columns:1fr}
+   .gallery{float:none;display:inline-block;margin:0 0 8px}
+   main{padding:18px 16px}
+   header{padding:16px 18px}
+ }
 </style></head><body>
 <header>
  <a class="gallery" href="/proof" target="_blank">📸 Static evidence gallery →</a>

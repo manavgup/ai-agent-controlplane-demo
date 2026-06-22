@@ -178,6 +178,9 @@ bob-install-builder: ## Write .bob/mcp.json for the BUILDER persona (calls the d
 connect: ## Dev Day [CODESPACES lane]: print the ONE 'bob mcp add' command for a laptop Bob to drive THIS (pre-seeded) gateway — no Docker/uv/make locally; no stageN targets needed. Auto-detects a Codespace; set GATEWAY_URL=... for a VM.
 	@bash scripts/connect.sh
 
+follow-link: ## Dev Day [Tier 1]: print the ONE link to share so phone/laptop attendees get the live "Run it" dashboard wired into follow.html (?dash=). Pairs with `make companion`. Auto-detects a Codespace; set COMPANION_URL=... for a VM.
+	@bash scripts/follow-link.sh
+
 # Launch Bob FROM THE REPO ROOT so it always reads THIS dir's .bob/mcp.json.
 # Running `bob` from the bob-personas/ subfolder (or any other dir) is the #1
 # "No MCP servers configured" trap — Bob looks for .bob/mcp.json relative to its
