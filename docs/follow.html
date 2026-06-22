@@ -272,9 +272,13 @@
         b.classList.toggle('done',j<i);
       });
     }
+    /* a tap should win over scroll-sync while it animates to the section,
+       so the stage you tapped stays lit instead of snapping back mid-scroll */
+    var tapLock=0;
     btns.forEach(function(b,i){
       b.addEventListener('click',function(){
         setCurrent(i);
+        tapLock=Date.now()+1100;
         var el=document.getElementById(b.getAttribute('data-go'));
         if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
       });
@@ -282,11 +286,15 @@
     /* also follow along automatically as the viewer scrolls */
     var ids=btns.map(function(b){return b.getAttribute('data-go');});
     window.addEventListener('scroll',function(){
+      if(Date.now()<tapLock)return;
       var line=130,cur=0;
       ids.forEach(function(id,i){
         var el=document.getElementById(id);
         if(el&&el.getBoundingClientRect().top<=line)cur=i;
       });
+      /* at the very bottom the last short stage can't reach the top line —
+         pin it so "Proof" lights up when you scroll to the end */
+      if(window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-4)cur=ids.length-1;
       setCurrent(cur);
     },{passive:true});
   })();
