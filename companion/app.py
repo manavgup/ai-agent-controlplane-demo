@@ -433,6 +433,12 @@ def agents():
     return jsonify({"count": len(names), "recent": recent})
 
 
+@app.route("/api/prompts")
+def api_prompts():
+    """The canonical drive prompts (public, no token) — single source for any surface."""
+    return jsonify({"prompts": [{"say": s, "gets": g} for s, g in DRIVE_PROMPTS]})
+
+
 # ── connect: hand laptop (Tier-2) attendees a ready-to-paste Bob connection so
 # they never have to TYPE the ~470-char token. OFF by default: unlike the rest of
 # the companion (which keeps the bearer server-side), this reveals the token to the
@@ -444,15 +450,35 @@ EXPOSE_CONNECT = os.environ.get("EXPOSE_CONNECT", "").strip().lower() not in (
     "no",
     "off",
 )
+# Public-URL overrides for presenters NOT on a Codespace (a VM, a tunnel). These
+# mirror what scripts/follow-link.sh / connect.sh honor, so /qr + /bob/settings.json
+# point at the same host the shared link does. COMPANION_URL is the same name
+# follow-link.sh uses for the dashboard.
 GATEWAY_PUBLIC_URL = os.environ.get("GATEWAY_PUBLIC_URL", "").rstrip("/")
+COMPANION_PUBLIC_URL = (
+    os.environ.get("COMPANION_PUBLIC_URL") or os.environ.get("COMPANION_URL") or ""
+).rstrip("/")
 
-# Proven drive prompts (match `make connect` / scripts/connect.sh — the explicit
-# wording names the tool/agent so Bob makes the right call on stage).
-DRIVE_PROMPTS = [
-    ("Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.", "PII + secret redacted before the model sees it"),
-    ("Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.", "injected instructions neutralized → [INJECTION_BLOCKED]"),
-    ("Ask the auditor agent to pay $50,000 to Acme LLC.", "blocked by control-plane policy (over the $10k cap)"),
-]
+
+def _load_drive_prompts():
+    """The proven drive prompts — single source of truth in docs/assets/prompts.json
+    (the explicit wording names the tool/agent so Bob makes the right call). Falls
+    back to a hardcoded copy if the file is missing/unreadable."""
+    fallback = [
+        ("Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.", "PII + secret redacted before the model sees it"),
+        ("Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.", "injected instructions neutralized → [INJECTION_BLOCKED]"),
+        ("Ask the auditor agent to pay $50,000 to Acme LLC.", "blocked by control-plane policy (over the $10k cap)"),
+    ]
+    try:
+        with open(os.path.join(DOCS, "assets", "prompts.json")) as f:
+            drive = json.load(f).get("drive", [])
+        pairs = [(p["say"], p.get("gets", "")) for p in drive if p.get("say")]
+        return pairs or fallback
+    except Exception:
+        return fallback
+
+
+DRIVE_PROMPTS = _load_drive_prompts()
 
 
 def _codespace_base(port):
@@ -468,7 +494,10 @@ def _public_gw_base():
 
 
 def _companion_base():
-    """This companion's own attendee-facing URL (for the settings.json download)."""
+    """This companion's own attendee-facing URL (for the QR + settings.json). Honors
+    COMPANION_URL so a tunnel/VM presenter gets the same host follow-link.sh prints."""
+    if COMPANION_PUBLIC_URL:
+        return COMPANION_PUBLIC_URL
     port = int(os.environ.get("PORT", "7070"))
     return _codespace_base(port) or f"http://localhost:{port}"
 

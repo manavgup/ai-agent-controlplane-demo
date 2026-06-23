@@ -217,6 +217,9 @@ companion-connect: ## THE presenter command: makes ports public + ensures sales-
 	@$(MAKE) --no-print-directory ports-public
 	@EXPOSE_CONNECT=1 $(MAKE) companion
 
+check-prompts: ## Verify the static docs still match the canonical drive prompts in docs/assets/prompts.json (the companion + connect.sh read it at runtime; this guards the embedded copies).
+	@python3 scripts/check-prompts.py
+
 ports-public: ## Make the gateway (4444) + Companion (7070) ports Public in THIS Codespace (needs gh + codespace scope). Use instead of clicking the PORTS tab.
 	@if [ -z "$$CODESPACE_NAME" ]; then \
 	  echo "Not in a Codespace — set port visibility in the PORTS tab (right-click 4444 & 7070 → Public)."; exit 0; fi; \
