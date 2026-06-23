@@ -12,12 +12,20 @@ gateway log lines. A link to the static screenshot gallery is in the header.
 Run:  make companion   (mints token + FinOps UUID, then serves on :7070)
 """
 
+import io
 import json
 import os
 import subprocess
 
 import httpx
 from flask import Flask, Response, jsonify, request, send_from_directory
+
+try:
+    import qrcode  # optional: generate the join QR server-side (make companion adds it)
+
+    _HAVE_QR = True
+except Exception:
+    _HAVE_QR = False
 
 GW = os.environ.get("GATEWAY_URL", "http://localhost:4444")
 TOKEN = os.environ.get("GATEWAY_TOKEN", "")
@@ -582,6 +590,43 @@ def wall():
     return Response(WALL, mimetype="text/html")
 
 
+# ── the join QR + serving the follow-along pages straight from :7070, so the whole
+# attendee experience lives on ONE public port (no GitHub Pages dependency). ──
+def _follow_link():
+    base = _companion_base()
+    # follow.html (served below) reads ?dash=<dashboard> and wires "▶ Run it live";
+    # the dashboard IS this companion's root, so dash = our own base.
+    return f"{base}/follow.html?dash={base}"
+
+
+@app.route("/qr.png")
+def qr_png():
+    if not _HAVE_QR:
+        return ("qrcode not installed — run via `make companion` (adds qrcode[pil])", 501)
+    img = qrcode.make(_follow_link())
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return Response(buf.getvalue(), mimetype="image/png")
+
+
+@app.route("/qr")
+def qr_page():
+    return Response(QR_PAGE.replace("__LINK__", _follow_link()), mimetype="text/html")
+
+
+# Serve the docs/ pages (follow.html, path-*.html, assets, diagrams) from the
+# companion. send_from_directory blocks path traversal; we only serve known
+# static extensions, so this can't leak source.
+_DOC_EXT = (".html", ".css", ".js", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".ico")
+
+
+@app.route("/<path:fn>")
+def docfile(fn):
+    if fn.endswith(_DOC_EXT) and os.path.isfile(os.path.join(DOCS, fn)):
+        return send_from_directory(DOCS, fn)
+    return ("not found", 404)
+
+
 PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
 <title>FinByte Control-Plane Companion</title>
 <style>
@@ -923,6 +968,27 @@ fetch('/api/connect').then(r=>r.json()).then(d=>{
   }
 }).catch(e=>{document.getElementById('err').style.display='block';document.getElementById('err').textContent='Could not load connect info: '+e;});
 </script></body></html>"""
+
+
+QR_PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scan to join — IBM Bob × ContextForge</title>
+<style>
+ *{box-sizing:border-box} body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+   gap:22px;background:#0b0b0b;color:#f4f4f4;font-family:'IBM Plex Sans',-apple-system,Segoe UI,Roboto,sans-serif;text-align:center;padding:30px}
+ .eyebrow{font-size:14px;letter-spacing:.18em;text-transform:uppercase;font-weight:800;color:#78a9ff}
+ h1{margin:0;font-size:30px;font-weight:700}
+ .qr{background:#fff;padding:22px;border-radius:18px;box-shadow:0 10px 50px rgba(15,98,254,.35)}
+ .qr img{display:block;width:min(62vh,420px);height:auto;image-rendering:pixelated}
+ .url{font-family:'IBM Plex Mono',monospace;font-size:13px;color:#8d8d8d;word-break:break-all;max-width:560px}
+ .hint{font-size:18px;color:#c6c6c6}
+</style></head><body>
+ <div class="eyebrow">IBM Bob × ContextForge</div>
+ <h1>📲 Scan to take part</h1>
+ <div class="qr"><img src="/qr.png" alt="Scan with your phone camera to join"></div>
+ <div class="hint">Point your phone camera here → watch the stages and <b>run the scenarios live</b>. No install.</div>
+ <div class="url">__LINK__</div>
+</body></html>"""
 
 
 if __name__ == "__main__":

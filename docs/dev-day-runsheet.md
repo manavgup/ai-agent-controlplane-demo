@@ -22,13 +22,17 @@ The whole governed mesh runs in the cloud; the devcontainer does the work for yo
    ```bash
    make up && make seed
    ```
-4. **PORTS** tab → set **both** ports **Public** (right-click → Port Visibility → Public):
-   **4444** (the gateway) **and 7070** (the Companion). Both are needed for a room — phones hit
-   `:7070`, and Tier-2 laptops download their connect config from `:7070/bob/settings.json`.
+4. **Make both ports Public** — `4444` (gateway) **and** `7070` (Companion). Either:
+   - **`make ports-public`** (one command — uses `gh`; needs the codespace scope you set once), or
+   - **PORTS** tab → right-click each → Port Visibility → **Public**.
+
+   Both are needed for a room: phones hit `:7070`, and Tier-2 laptops pull their connect config from `:7070/bob/settings.json`.
 5. **`make companion-connect`** — the one presenter command. It auto-starts the `sales-tax` backend
-   (so agent registration resolves), then serves the Tier-1 dashboard **and** the Tier-2
-   **🔌 Connect Bob** page (copy/download — no token typing) on `:7070`.
-6. `make follow-link` → prints the `follow.html?dash=<:7070 url>` link to share/QR (lights up **▶ Run it live**).
+   (so agent registration resolves), then serves **everything on `:7070`**: the follow-along pages,
+   the Tier-1 dashboard, the Tier-2 **🔌 Connect Bob** page, and the join **QR**.
+6. **Show the QR:** open **`<:7070 url>/qr`** in a browser tab and full-screen it — attendees scan it
+   to land on the follow-along page wired to your live dashboard. (`make follow-link` prints that `/qr`
+   URL plus the raw link. No GitHub Pages needed — it's all served from `:7070`.)
 7. `make connect` (optional) → the presenter-terminal `bob mcp add … -t http …/mcp` line. Attendees normally
    self-serve from the Connect Bob page instead, so this is mainly your own backup.
 8. Sanity check: open **`:4444/admin`** (`admin@finbyte.demo` / `FinByteAdmin!2026`) — the

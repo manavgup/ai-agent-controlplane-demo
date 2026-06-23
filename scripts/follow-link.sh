@@ -18,9 +18,6 @@ if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
 else B=; D=; R=; GRN=; YEL=; CYN=; fi
 warn(){ printf "  ${YEL}!${R} %s\n" "$*"; }
 
-# Stable Pages URL for the watch-along page (override if your Pages path differs).
-FOLLOW_BASE="${FOLLOW_BASE:-https://manavgup.github.io/ai-agent-controlplane-demo/follow.html}"
-
 # Where is the Companion (port 7070)?
 if [ -n "${COMPANION_URL:-}" ]; then
   DASH="${COMPANION_URL%/}"; WHERE="COMPANION_URL override"
@@ -30,6 +27,11 @@ else
   DASH="http://localhost:7070"; WHERE="localhost (same machine only — set COMPANION_URL or run in a Codespace for a room)"
 fi
 
+# The Companion now SERVES follow.html itself, so the whole attendee flow lives on
+# ONE public port (:7070) — no GitHub Pages needed. Override FOLLOW_BASE to point at
+# a hosted Pages copy instead (e.g. for a static printed-slide QR).
+FOLLOW_BASE="${FOLLOW_BASE:-${DASH}/follow.html}"
+
 # These Companion URLs contain no '&' or '#', so they survive as a query value
 # unencoded and stay readable/copyable. URLSearchParams in follow.html decodes it.
 LINK="${FOLLOW_BASE}?dash=${DASH}"
@@ -38,7 +40,9 @@ printf "\n${B}Companion (live dashboard):${R} %s   ${D}(%s)${R}\n" "$DASH" "$WHE
 printf "\n${B}Hand THIS to the room (Tier 1 — watch + run the scenarios, no install):${R}\n"
 printf "  ${CYN}%s${R}\n\n" "$LINK"
 echo "  → opens the follow-along page with the '▶ Run it live' button pointed at your dashboard."
-echo "  ${D}(QR it on a slide, paste it in chat, or shorten it. Re-run after any reseed/restart.)${R}"
+printf "\n${B}Easiest — project the ready-made QR${R} (attendees scan it off the screen):\n"
+printf "  ${CYN}%s/qr${R}\n" "$DASH"
+echo "  ${D}(open that in a browser tab, full-screen it — it encodes the link above. Re-run after any restart.)${R}"
 
 case "$DASH" in
   https://*app.github.dev*)

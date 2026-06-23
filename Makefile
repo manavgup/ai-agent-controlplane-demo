@@ -210,11 +210,19 @@ salestax-ensure: ## (internal) make sure the sales-tax backend is running — ag
 companion: salestax-ensure ## Run the browser companion dashboard on :7070 (auto-ensures the sales-tax backend so registration works)
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
 	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if isinstance(s,dict) and s.get('name')=='FinOps']" 2>/dev/null | head -1); \
-	echo "Companion → http://localhost:7070  (FinOps $$UUID)"; \
-	GATEWAY_TOKEN=$$ADMIN FINOPS_UUID=$$UUID uv run --with flask --with httpx python companion/app.py
+	echo "Companion → http://localhost:7070  (FinOps $$UUID)  ·  join QR at :7070/qr"; \
+	GATEWAY_TOKEN=$$ADMIN FINOPS_UUID=$$UUID uv run --with flask --with httpx --with "qrcode[pil]" python companion/app.py
 
 companion-connect: ## Like 'make companion' but ALSO serves /connect so Tier-2 attendees self-serve the Bob connect line (copy/download — no typing the token). Reveals the token to the browser; throwaway demo only.
 	@EXPOSE_CONNECT=1 $(MAKE) companion
+
+ports-public: ## Make the gateway (4444) + Companion (7070) ports Public in THIS Codespace (needs gh + codespace scope). Use instead of clicking the PORTS tab.
+	@if [ -z "$$CODESPACE_NAME" ]; then \
+	  echo "Not in a Codespace — set port visibility in the PORTS tab (right-click 4444 & 7070 → Public)."; exit 0; fi; \
+	if gh codespace ports visibility 4444:public 7070:public -c "$$CODESPACE_NAME"; then \
+	  echo "✔ ports 4444 + 7070 are now Public"; \
+	else \
+	  echo "!! couldn't set visibility. Try: gh auth refresh -h github.com -s codespace   (then re-run), or use the PORTS tab."; fi
 
 quickstart: .env ## ONE command: preflight → stack → seed → Bob → verify → walkthrough card
 	@bash scripts/quickstart.sh
