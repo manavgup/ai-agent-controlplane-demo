@@ -204,6 +204,9 @@ companion: ## Run the browser companion dashboard on :7070 (watch the control pl
 	echo "Companion → http://localhost:7070  (FinOps $$UUID)"; \
 	GATEWAY_TOKEN=$$ADMIN FINOPS_UUID=$$UUID uv run --with flask --with httpx python companion/app.py
 
+companion-connect: ## Like 'make companion' but ALSO serves /connect so Tier-2 attendees self-serve the Bob connect line (copy/download — no typing the token). Reveals the token to the browser; throwaway demo only.
+	@EXPOSE_CONNECT=1 $(MAKE) companion
+
 quickstart: .env ## ONE command: preflight → stack → seed → Bob → verify → walkthrough card
 	@bash scripts/quickstart.sh
 

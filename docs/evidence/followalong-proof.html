@@ -128,6 +128,26 @@
     </table>
   </div>
 
+  <div class="card">
+    <div class="tier-h"><span class="pill p-bob">Tier 2 · connect</span> 🔌</div>
+    <p class="lede" style="margin-top:0">The connect line carries a ~470-char token — impossible to retype off a slide. New <b>🔌 Connect Bob</b> page on the companion (<code>/connect</code>) lets attendees <b>copy or download</b> it, never type it.</p>
+    <div class="grid2">
+      <figure>
+        <img src="followalong/07-connect.png" alt="The Connect Bob page with copy + download options">
+        <figcaption><b><code>/connect</code></b> — one-click <b>Copy command</b> (Analyst &amp; Operator), <b>Download settings.json</b>, or one fixed <code>curl … /bob/settings.json</code> line. The token is dimmed on screen but copied in full. Below: the three proven drive prompts.</figcaption>
+      </figure>
+      <div>
+        <p style="margin-top:0"><b>Verified tonight:</b></p>
+        <ul class="tight">
+          <li>Copy source is the <b>full 612-char command</b> (display dimmed to 164) — no silent truncation.</li>
+          <li><code>/bob/settings.json</code> returns valid JSON with the complete <b>472-char</b> token.</li>
+          <li>Off by default — the endpoint is gated behind <code>EXPOSE_CONNECT=1</code> (a.k.a. <code>make companion-connect</code>), since it reveals the token to the browser.</li>
+          <li>Drive prompts now match <code>make connect</code> everywhere (the explicit "use the … tools" / "ask the auditor agent" wording that reliably forces the tool call).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
   <!-- ───────────── 2. AGENTS CREATED & REGISTERED ───────────── -->
   <h2 class="sec"><span class="n">2</span>Agents created &amp; registered — live count 0 → 12</h2>
   <p class="lede">I fired <b>12 registrations concurrently</b> at the live Companion (<code>/api/register-agent</code>), exactly as a room of phones would. Each becomes a real ContextForge catalog entry pointing at the running <code>sales-tax</code> backend. The room count and projector wall update live.</p>

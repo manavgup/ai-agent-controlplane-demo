@@ -414,6 +414,123 @@ def agents():
     return jsonify({"count": len(names), "recent": recent})
 
 
+# ── connect: hand laptop (Tier-2) attendees a ready-to-paste Bob connection so
+# they never have to TYPE the ~470-char token. OFF by default: unlike the rest of
+# the companion (which keeps the bearer server-side), this reveals the token to the
+# browser — same exposure as putting it on a slide. Enable with EXPOSE_CONNECT=1. ──
+EXPOSE_CONNECT = os.environ.get("EXPOSE_CONNECT", "").strip().lower() not in (
+    "",
+    "0",
+    "false",
+    "no",
+    "off",
+)
+GATEWAY_PUBLIC_URL = os.environ.get("GATEWAY_PUBLIC_URL", "").rstrip("/")
+
+# Proven drive prompts (match `make connect` / scripts/connect.sh — the explicit
+# wording names the tool/agent so Bob makes the right call on stage).
+DRIVE_PROMPTS = [
+    ("Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.", "PII + secret redacted before the model sees it"),
+    ("Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.", "injected instructions neutralized → [INJECTION_BLOCKED]"),
+    ("Ask the auditor agent to pay $50,000 to Acme LLC.", "blocked by control-plane policy (over the $10k cap)"),
+]
+
+
+def _codespace_base(port):
+    """The public forwarded URL for a port when running in a GitHub Codespace."""
+    name = os.environ.get("CODESPACE_NAME")
+    dom = os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN")
+    return f"https://{name}-{port}.{dom}" if name and dom else None
+
+
+def _public_gw_base():
+    """The gateway URL ATTENDEES use — not the companion's internal localhost."""
+    return GATEWAY_PUBLIC_URL or _codespace_base(4444) or GW.rstrip("/")
+
+
+def _companion_base():
+    """This companion's own attendee-facing URL (for the settings.json download)."""
+    port = int(os.environ.get("PORT", "7070"))
+    return _codespace_base(port) or f"http://localhost:{port}"
+
+
+def _server_uuids():
+    """name -> virtual-server UUID from the gateway (Analyst=FinOps, Operator)."""
+    out = {}
+    try:
+        for s in httpx.get(f"{GW}/servers", headers=H, timeout=10).json():
+            if isinstance(s, dict) and s.get("name"):
+                out[s["name"]] = s.get("id")
+    except Exception:
+        pass
+    return out
+
+
+def _persona_block(base, uuid):
+    url = f"{base}/servers/{uuid}/mcp"
+    return {
+        "uuid": uuid,
+        "url": url,
+        "command": f'bob mcp add finbyte-gateway "{url}" -t http '
+        f'-H "Authorization: Bearer {TOKEN}" --trust',
+        "settings": {
+            "mcpServers": {
+                "finbyte-gateway": {
+                    "httpUrl": url,
+                    "headers": {"Authorization": f"Bearer {TOKEN}"},
+                }
+            }
+        },
+    }
+
+
+def _connect_info():
+    base = _public_gw_base()
+    ids = _server_uuids()
+    finops = ids.get("FinOps") or FINOPS
+    operator = ids.get("Operator")
+    cbase = _companion_base()
+    return {
+        "base": base,
+        "companion": cbase,
+        "local": base.startswith("http://localhost"),
+        "analyst": _persona_block(base, finops) if finops else None,
+        "operator": _persona_block(base, operator) if operator else None,
+        "oneliner": f"mkdir -p .bob && curl -fsSL {cbase}/bob/settings.json "
+        f"-o .bob/settings.json && bob",
+        "prompts": [{"say": s, "gets": g} for s, g in DRIVE_PROMPTS],
+    }
+
+
+@app.route("/api/connect")
+def api_connect():
+    if not EXPOSE_CONNECT:
+        return jsonify({"error": "connect disabled — start with EXPOSE_CONNECT=1"}), 403
+    return jsonify(_connect_info())
+
+
+@app.route("/bob/settings.json")
+def bob_settings():
+    """A ready .bob/settings.json so attendees `curl` it instead of typing the token."""
+    if not EXPOSE_CONNECT:
+        return jsonify({"error": "connect disabled — start with EXPOSE_CONNECT=1"}), 403
+    info = _connect_info()
+    persona = (request.args.get("persona") or "analyst").lower()
+    blk = info["operator"] if persona == "operator" else info["analyst"]
+    if not blk:
+        return jsonify({"error": f"{persona} server not found — run 'make seed'"}), 404
+    resp = Response(json.dumps(blk["settings"], indent=2), mimetype="application/json")
+    resp.headers["Content-Disposition"] = 'attachment; filename="settings.json"'
+    return resp
+
+
+@app.route("/connect")
+def connect_page():
+    if not EXPOSE_CONNECT:
+        return Response(CONNECT_OFF, mimetype="text/html", status=403)
+    return Response(CONNECT_PAGE, mimetype="text/html")
+
+
 @app.route("/api/evidence/<scenario>")
 def evidence(scenario):
     info = LAST.get(scenario)
@@ -452,7 +569,12 @@ def screenshot(fn):
 
 @app.route("/")
 def index():
-    return Response(PAGE, mimetype="text/html")
+    link = (
+        '<a class="wall-link" href="/connect" target="_blank">🔌 Connect Bob (laptop)</a>'
+        if EXPOSE_CONNECT
+        else ""
+    )
+    return Response(PAGE.replace("<!--CONNECT_LINK-->", link), mimetype="text/html")
 
 
 @app.route("/wall")
@@ -543,6 +665,7 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
        <span id="regout" class="small"></span>
      </div>
      <a class="wall-link" href="/wall" target="_blank">📺 Open wall</a>
+     <!--CONNECT_LINK-->
    </div>
    <div class="runall"><button onclick="runAll()">▶ Run all scenarios</button>
      <span class="small">&nbsp;or run each below. Results come live from the gateway via /rpc.</span></div>
@@ -676,6 +799,129 @@ WALL = r"""<!doctype html><html><head><meta charset="utf-8">
   }catch(e){}
  }
  tick(); setInterval(tick, 2000);
+</script></body></html>"""
+
+
+CONNECT_OFF = r"""<!doctype html><meta charset="utf-8">
+<title>Connect Bob — disabled</title>
+<body style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#161616;color:#f4f4f4;padding:40px;max-width:640px;margin:0 auto">
+<h1 style="font-size:20px">🔌 Connect Bob — turned off</h1>
+<p style="color:#8d8d8d;line-height:1.6">This endpoint hands the gateway token to the browser so laptop attendees can connect
+without typing it. It's <b>off by default</b>. Presenter: restart the companion with
+<code style="background:#262626;padding:2px 6px;border-radius:4px">EXPOSE_CONNECT=1 make companion</code> to enable it.</p>
+</body>"""
+
+
+CONNECT_PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect Bob — drive the control plane from your laptop</title>
+<style>
+ :root{--ibm:#0F62FE;--ok:#24a148;--bob:#a56eff;--bg:#161616;--card:#262626;--mut:#8d8d8d;--line:#393939}
+ *{box-sizing:border-box} body{margin:0;font-family:'IBM Plex Sans',-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:#f4f4f4;line-height:1.55}
+ .wrap{max-width:780px;margin:0 auto;padding:0 20px 60px}
+ header{background:linear-gradient(135deg,#0F62FE 0%,#6929c4 100%);padding:30px 0 26px;margin-bottom:24px}
+ header .wrap{display:flex;flex-direction:column;gap:6px}
+ .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;opacity:.9}
+ h1{margin:4px 0 2px;font-size:25px} header p{margin:0;opacity:.95;font-size:15px}
+ .back{color:#fff;opacity:.85;font-size:13px;font-weight:600;text-decoration:none}
+ .step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:0 0 16px}
+ .step h2{font-size:17px;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+ .n{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--ibm);color:#fff;font-weight:800;font-size:15px;flex:none}
+ .sub{color:var(--mut);font-size:13.5px;margin:0 0 12px}
+ .cmd{position:relative;background:#000;border:1px solid var(--line);border-radius:8px;padding:12px 12px 12px 13px;
+   font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#e0e0e0;white-space:pre-wrap;word-break:break-all;margin:8px 0}
+ .cmd .tok{color:#6f6f6f}
+ .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+ button,a.btn{background:var(--ibm);color:#fff;border:0;border-radius:7px;padding:9px 15px;font-size:13.5px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+ button:hover,a.btn:hover{filter:brightness(1.1)}
+ button.ghost,a.btn.ghost{background:#393939}
+ .persona{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;margin:14px 0 2px}
+ .tag{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:999px;background:#1d2a4d;color:#78a9ff}
+ .tag.op{background:#33244d;color:var(--bob)}
+ .prompt{background:#1c1c1c;border:1px solid var(--line);border-left:3px solid var(--bob);border-radius:0 7px 7px 0;padding:9px 12px;margin:8px 0;font-size:14px}
+ .prompt .say{font-family:'IBM Plex Mono',monospace;font-size:13px;color:#e8ddff}
+ .prompt .gets{color:var(--mut);font-size:12.5px;margin-top:3px}
+ .warn{border-left:3px solid #f1c21b;background:#2a2410;border-radius:0 7px 7px 0;padding:11px 14px;margin:12px 0;color:#f5e6a8;font-size:13.5px}
+ .copied{color:var(--ok);font-weight:800;font-size:13px;margin-left:6px}
+ .muted{color:var(--mut);font-size:12.5px}
+ code{background:#000;border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-family:'IBM Plex Mono',monospace;font-size:.86em}
+ #err{display:none;background:#2a1416;border:1px solid #da1e28;border-radius:8px;padding:14px;color:#ffb3ba;margin:8px 0}
+</style></head><body>
+<header><div class="wrap">
+  <a class="back" href="/">← Back to the dashboard</a>
+  <div class="eyebrow">Tier 2 · laptop + IBM Bob</div>
+  <h1>🔌 Connect Bob to the control plane</h1>
+  <p>Copy or download — you never type the token. Then drive the AI and watch it get governed.</p>
+</div></header>
+<div class="wrap">
+
+  <div id="err"></div>
+
+  <div class="step">
+    <h2><span class="n">1</span>Install IBM Bob (once)</h2>
+    <p class="sub">macOS/Linux, one command. Needs Node ≥ 22.15.</p>
+    <div class="cmd" id="install">curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash</div>
+    <div class="row"><button onclick="cp('install',this)">Copy</button></div>
+  </div>
+
+  <div class="step">
+    <h2><span class="n">2</span>Connect — pick ONE</h2>
+    <p class="sub">From an <b>empty folder</b> (not a clone of the repo — its <code>.bob/mcp.json</code> would shadow this).</p>
+
+    <div class="persona"><span class="tag">Analyst</span> 8 governed tools, no wire — the main demo</div>
+    <div class="muted">A · paste the command:</div>
+    <div class="cmd" id="cmd-analyst">loading…</div>
+    <div class="row"><button onclick="cp('cmd-analyst',this)">Copy command</button>
+      <a class="btn ghost" id="dl-analyst" href="/bob/settings.json?persona=analyst">⬇ Download settings.json</a></div>
+
+    <div class="muted" style="margin-top:14px">B · or one fixed line — downloads the config, no token to copy:</div>
+    <div class="cmd" id="oneliner">loading…</div>
+    <div class="row"><button onclick="cp('oneliner',this)">Copy one-liner</button></div>
+
+    <div class="persona"><span class="tag op">Operator</span> advanced — register your own agent</div>
+    <div class="muted">re-add pointed at the Operator server:</div>
+    <div class="cmd" id="cmd-operator">loading…</div>
+    <div class="row"><button onclick="cp('cmd-operator',this)">Copy command</button>
+      <a class="btn ghost" id="dl-operator" href="/bob/settings.json?persona=operator">⬇ Download settings.json</a></div>
+
+    <div class="warn"><b>Gotchas:</b> <code>-t http</code> (never <code>-t sse</code>) · empty folder · the token is ~470 chars — that's why you <b>copy/download, don't type</b>. Reset later with <code>bob mcp remove finbyte-gateway</code>.</div>
+  </div>
+
+  <div class="step">
+    <h2><span class="n">3</span>Drive it — type these to Bob</h2>
+    <p class="sub">Launch <code>bob</code> from the same folder, then ask (one at a time):</p>
+    <div id="prompts"></div>
+    <p class="muted">Operator extra: <span class="prompt say" style="display:inline">Register an MCP server named salestax-&lt;YOUR-INITIALS&gt; at http://sales-tax:8000/mcp?agent=&lt;YOUR-INITIALS&gt;.</span> → your agent lands on the wall.</p>
+  </div>
+
+</div>
+<script>
+function cp(id,btn){
+  const el=document.getElementById(id);
+  const t=el.dataset.full||el.innerText;   // copy the FULL token, not the dimmed display
+  navigator.clipboard.writeText(t).then(()=>{
+    const s=document.createElement('span');s.className='copied';s.textContent='✓ copied';
+    btn.after(s);setTimeout(()=>s.remove(),1400);
+  });
+}
+function tokenize(cmd){
+  // dim the long bearer token so the page reads cleanly (it's still copied in full)
+  return cmd.replace(/(Bearer )([A-Za-z0-9._-]{20,})/,(m,p,t)=>p+'<span class="tok">'+t.slice(0,12)+'…['+t.length+' chars]</span>');
+}
+fetch('/api/connect').then(r=>r.json()).then(d=>{
+  if(d.error){document.getElementById('err').style.display='block';document.getElementById('err').textContent=d.error;return;}
+  const A=d.analyst,O=d.operator;
+  if(A){const e=document.getElementById('cmd-analyst');e.dataset.full=A.command;e.innerHTML=tokenize(A.command);}
+  if(O){const e=document.getElementById('cmd-operator');e.dataset.full=O.command;e.innerHTML=tokenize(O.command);}
+  else{document.getElementById('cmd-operator').textContent='Operator server not found — run make seed';document.getElementById('dl-operator').style.display='none';}
+  document.getElementById('oneliner').textContent=d.oneliner;
+  document.getElementById('prompts').innerHTML=(d.prompts||[]).map(p=>
+    `<div class="prompt"><div class="say">${p.say.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div><div class="gets">→ ${p.gets}</div></div>`).join('');
+  if(d.local){
+    const e=document.getElementById('err');e.style.display='block';
+    e.innerHTML='⚠ The gateway URL is <b>localhost</b> — only Bob on THIS machine can use it. For a room, run the stack in a Codespace (port 4444 Public) or set <code>GATEWAY_PUBLIC_URL</code>.';
+  }
+}).catch(e=>{document.getElementById('err').style.display='block';document.getElementById('err').textContent='Could not load connect info: '+e;});
 </script></body></html>"""
 
 
