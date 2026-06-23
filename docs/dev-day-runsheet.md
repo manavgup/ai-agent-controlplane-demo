@@ -22,15 +22,25 @@ The whole governed mesh runs in the cloud; the devcontainer does the work for yo
    ```bash
    make up && make seed
    ```
-4. **PORTS** tab → set **both** ports **Public** (right-click → Port Visibility → Public):
+4. **Bring up the `sales-tax` backend** — attendees register agents against it, and the lite
+   `make up` stack doesn't include it. Fresh Codespaces do this in post-create; on a **reopened**
+   one (or if you skipped it) run:
+   ```bash
+   make stage1-scaffold && make salestax-up
+   ```
+   > **Without this, every registration 422s** (`Gateway URL DNS resolution failed and
+   > SSRF_DNS_FAIL_CLOSED`) — on phones (Register my agent ▶) **and** Tier-2 Bob (the Operator
+   > register prompt), because both point at `http://sales-tax:8000/mcp`. Verify:
+   > `docker exec $(docker ps --format '{{.Names}}' | grep gateway) python3 -c "import urllib.request;print(urllib.request.urlopen('http://sales-tax:8000/health',timeout=5).status)"` → `200`.
+5. **PORTS** tab → set **both** ports **Public** (right-click → Port Visibility → Public):
    **4444** (the gateway) **and 7070** (the Companion). Both are needed for a room — phones hit
    `:7070`, and Tier-2 laptops download their connect config from `:7070/bob/settings.json`.
-5. Start the Companion with the connect page on: **`make companion-connect`** (= `EXPOSE_CONNECT=1 make companion`).
+6. Start the Companion with the connect page on: **`make companion-connect`** (= `EXPOSE_CONNECT=1 make companion`).
    This serves the Tier-1 dashboard **and** the Tier-2 **🔌 Connect Bob** page (copy/download — no token typing).
-6. `make follow-link` → prints the `follow.html?dash=<:7070 url>` link to share/QR (lights up **▶ Run it live**).
-7. `make connect` (optional) → the presenter-terminal `bob mcp add … -t http …/mcp` line. Attendees normally
+7. `make follow-link` → prints the `follow.html?dash=<:7070 url>` link to share/QR (lights up **▶ Run it live**).
+8. `make connect` (optional) → the presenter-terminal `bob mcp add … -t http …/mcp` line. Attendees normally
    self-serve from the Connect Bob page instead, so this is mainly your own backup.
-8. Sanity check: open **`:4444/admin`** (`admin@finbyte.demo` / `FinByteAdmin!2026`) — the
+9. Sanity check: open **`:4444/admin`** (`admin@finbyte.demo` / `FinByteAdmin!2026`) — the
    ContextForge admin UI listing every server/tool/agent. (Forwarded ports are private by default;
    the admin UI works in-Codespace without flipping visibility.)
 

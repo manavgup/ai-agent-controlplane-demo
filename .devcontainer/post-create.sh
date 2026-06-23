@@ -29,6 +29,19 @@ else
   echo "!! up/seed hit a snag — run 'make up && make seed' yourself once the Codespace finishes opening"
 fi
 
+# The room-registration beat (phones + Tier-2 Bob) registers agents against the
+# sales-tax backend at http://sales-tax:8000/mcp. The lite `make up` stack does NOT
+# include it, so without this every registration 422s with SSRF_DNS_FAIL_CLOSED.
+# Scaffold a known-good server (the generated one is untracked) + run it on the mesh.
+say "Bringing up the sales-tax backend (needed so attendees can register agents)"
+make stage1-scaffold >/dev/null 2>&1 || true
+if make salestax-up; then
+  echo "sales-tax up — agent registration will resolve"
+else
+  echo "!! sales-tax didn't come up (often a Docker Hub pull limit). Retry: make salestax-up"
+  echo "   — until it's up, phone/Bob agent registration returns 422 (DNS fail-closed)."
+fi
+
 cat <<'EOF'
 
 ══════════════════════════════════════════════════════════════════════════════
