@@ -32,15 +32,10 @@ fi
 # The room-registration beat (phones + Tier-2 Bob) registers agents against the
 # sales-tax backend at http://sales-tax:8000/mcp. The lite `make up` stack does NOT
 # include it, so without this every registration 422s with SSRF_DNS_FAIL_CLOSED.
-# Scaffold a known-good server (the generated one is untracked) + run it on the mesh.
+# salestax-ensure is idempotent and only scaffolds server.py if it's missing (so it
+# won't clobber a real or Bob-built one).
 say "Bringing up the sales-tax backend (needed so attendees can register agents)"
-make stage1-scaffold >/dev/null 2>&1 || true
-if make salestax-up; then
-  echo "sales-tax up — agent registration will resolve"
-else
-  echo "!! sales-tax didn't come up (often a Docker Hub pull limit). Retry: make salestax-up"
-  echo "   — until it's up, phone/Bob agent registration returns 422 (DNS fail-closed)."
-fi
+make salestax-ensure || echo "   — until sales-tax is up, agent registration returns 422; retry: make salestax-up"
 
 cat <<'EOF'
 

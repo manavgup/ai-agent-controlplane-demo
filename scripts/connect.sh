@@ -81,8 +81,9 @@ ${B}Act 1 — FinOps analyst${R} (8 governed tools, no wire):
 
 Then drive it (from the same folder):
   ${CYN}bob${R}
-    "Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim."   ${D}→ PII/secret redacted${R}
-    "Ask the auditor agent to pay \$50,000 to Acme LLC."                    ${D}→ blocked by policy${R}
+    "Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim."        ${D}→ PII/secret redacted${R}
+    "Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim."  ${D}→ injection neutralized${R}
+    "Ask the auditor agent to pay \$50,000 to Acme LLC."                         ${D}→ blocked by policy${R}
 
 ${D}Act 2 — platform operator (advanced): re-add pointed at the Operator server${R}
   ${CYN}bob mcp add finbyte-gateway "$BASE/servers/$OPERATOR/mcp" -t http -H "Authorization: Bearer $ADMIN" --trust${R}

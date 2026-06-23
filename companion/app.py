@@ -356,8 +356,11 @@ def _sanitize_initials(s):
 
 
 def _initials_of(name):
-    """salestax-MG -> MG ; salestax-MG-2 -> MG."""
-    return name[len(AGENT_PREFIX) + 1 :].split("-")[0] if "-" in name else name
+    """salestax-MG -> MG ; salestax-MG-2 -> MG. Strip to alnum: names can also be
+    created directly via an Operator-persona Bob, and these land on the projector
+    /wall, so don't trust them to be already-sanitized."""
+    raw = name[len(AGENT_PREFIX) + 1 :].split("-")[0] if "-" in name else name
+    return "".join(ch for ch in raw if ch.isalnum())[:8]
 
 
 def _unique_name(initials, existing):
@@ -408,10 +411,18 @@ def register_agent():
                     }
                 )
             last_err = f"{r.status_code} {r.text[:160]}"
-            # name-collision races just loop: the next scan sees `name` taken and
-            # advances the suffix. Other 4xx/5xx also retry a few times.
+            # Retry ONLY on a name/url collision: the next scan sees `name` taken and
+            # advances the suffix. Anything else is deterministic (e.g. 422
+            # SSRF_DNS_FAIL_CLOSED when the sales-tax backend is down) — fail fast
+            # instead of hammering the gateway 10× (each a 30s timeout = ~5min hang).
+            blob = r.text.lower()
+            if r.status_code != 409 and "already exists" not in blob:
+                if "dns" in blob or "ssrf" in blob:
+                    last_err = "sales-tax backend unreachable — run `make salestax-up`"
+                break
         except Exception as e:
             last_err = str(e)
+            break  # a network error to the local gateway won't fix itself by retrying
     return jsonify({"ok": False, "error": last_err or "register failed", "initials": initials}), 502
 
 
