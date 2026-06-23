@@ -22,20 +22,18 @@ The whole governed mesh runs in the cloud; the devcontainer does the work for yo
    ```bash
    make up && make seed
    ```
-4. **Make both ports Public** — `4444` (gateway) **and** `7070` (Companion). Either:
-   - **`make ports-public`** (one command — uses `gh`; needs the codespace scope you set once), or
-   - **PORTS** tab → right-click each → Port Visibility → **Public**.
-
-   Both are needed for a room: phones hit `:7070`, and Tier-2 laptops pull their connect config from `:7070/bob/settings.json`.
-5. **`make companion-connect`** — the one presenter command. It auto-starts the `sales-tax` backend
-   (so agent registration resolves), then serves **everything on `:7070`**: the follow-along pages,
-   the Tier-1 dashboard, the Tier-2 **🔌 Connect Bob** page, and the join **QR**.
-6. **Show the QR:** open **`<:7070 url>/qr`** in a browser tab and full-screen it — attendees scan it
-   to land on the follow-along page wired to your live dashboard. (`make follow-link` prints that `/qr`
-   URL plus the raw link. No GitHub Pages needed — it's all served from `:7070`.)
-7. `make connect` (optional) → the presenter-terminal `bob mcp add … -t http …/mcp` line. Attendees normally
+4. **`make companion-connect`** — the **one** presenter command. It:
+   makes ports **4444 + 7070 Public** (via `gh`), **ensures the `sales-tax` backend** is up (so
+   registration resolves), then serves **everything on `:7070`** — the follow-along pages, the Tier-1
+   dashboard, the Tier-2 **🔌 Connect Bob** page, and the join **QR**.
+   > If `gh` can't set visibility (no codespace scope), it tells you — then flip **4444 + 7070 → Public**
+   > in the **PORTS** tab by hand. Both are needed: phones hit `:7070`, Tier-2 laptops pull config from `:7070/bob/settings.json`.
+5. **Show the QR:** on the dashboard click **📲 Join QR** (top-right) — or open **`<:7070 url>/qr`** — and
+   full-screen it. Attendees scan → they land on the follow-along page wired to your live dashboard.
+   (No GitHub Pages needed — it's all served from `:7070`. `make follow-link` also prints these URLs.)
+6. `make connect` (optional) → the presenter-terminal `bob mcp add … -t http …/mcp` line. Attendees normally
    self-serve from the Connect Bob page instead, so this is mainly your own backup.
-8. Sanity check: open **`:4444/admin`** (`admin@finbyte.demo` / `FinByteAdmin!2026`) — the
+7. Sanity check: open **`:4444/admin`** (`admin@finbyte.demo` / `FinByteAdmin!2026`) — the
    ContextForge admin UI listing every server/tool/agent. (Forwarded ports are private by default;
    the admin UI works in-Codespace without flipping visibility.)
 

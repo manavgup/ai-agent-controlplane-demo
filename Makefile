@@ -213,7 +213,8 @@ companion: salestax-ensure ## Run the browser companion dashboard on :7070 (auto
 	echo "Companion → http://localhost:7070  (FinOps $$UUID)  ·  join QR at :7070/qr"; \
 	GATEWAY_TOKEN=$$ADMIN FINOPS_UUID=$$UUID uv run --with flask --with httpx --with "qrcode[pil]" python companion/app.py
 
-companion-connect: ## Like 'make companion' but ALSO serves /connect so Tier-2 attendees self-serve the Bob connect line (copy/download — no typing the token). Reveals the token to the browser; throwaway demo only.
+companion-connect: ## THE presenter command: makes ports public + ensures sales-tax + serves the dashboard, /connect (Bob copy/download — no token typing) and the join QR on :7070. Reveals the token to the browser; throwaway demo only.
+	@$(MAKE) --no-print-directory ports-public
 	@EXPOSE_CONNECT=1 $(MAKE) companion
 
 ports-public: ## Make the gateway (4444) + Companion (7070) ports Public in THIS Codespace (needs gh + codespace scope). Use instead of clicking the PORTS tab.

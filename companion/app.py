@@ -675,6 +675,8 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
  .wall-link{margin-left:auto;color:#78a9ff;font-size:13px;text-decoration:none;border:1px solid #393939;
    padding:7px 12px;border-radius:6px;white-space:nowrap}
  .wall-link:hover{border-color:#78a9ff}
+ .qr-link{margin-left:auto;background:var(--ibm);border-color:var(--ibm);color:#fff;font-weight:700}
+ .qr-link:hover{filter:brightness(1.1);border-color:var(--ibm)}
  /* phones (Tier-1 attendees): stack the sidebar over the cards, full-width cards */
  @media(max-width:760px){
    .wrap{grid-template-columns:1fr}
@@ -709,6 +711,7 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
        <button onclick="registerAgent()">Register my agent ▶</button>
        <span id="regout" class="small"></span>
      </div>
+     <a class="wall-link qr-link" href="/qr" target="_blank">📲 Join QR</a>
      <a class="wall-link" href="/wall" target="_blank">📺 Open wall</a>
      <!--CONNECT_LINK-->
    </div>
