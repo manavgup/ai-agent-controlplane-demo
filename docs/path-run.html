@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run it in your browser — your steps (Tier 1)</title>
+<link rel="stylesheet" href="assets/path.css">
+</head>
+<body class="t-run">
+
+<header class="hero"><div class="wrap">
+  <a class="back" href="follow.html">← Back to “How do you want to take part?”</a>
+  <span class="eyebrow">Everyone · phone or laptop · no install</span>
+  <h1>Run it in your browser</h1>
+  <p class="tag">Three taps on one shared dashboard. Nothing to install — works on a phone.</p>
+</div></header>
+
+<main><div class="wrap">
+
+  <div class="intro">
+    You don't install anything. The presenter shares <b>one link</b> — the live control-plane
+    dashboard. On it you'll <b>register an agent</b> with your initials and <b>run three governed
+    scenarios</b>, watching the control plane check, mask, and block each one in real time.
+  </div>
+
+  <!-- STEP 1 -->
+  <section class="step">
+    <h2><span class="num">1</span>Open the live dashboard</h2>
+    <p class="sub">Scan the QR on screen, or tap the link your presenter shares.</p>
+    <a id="runlive-btn" class="runbtn" target="_blank" rel="noopener" style="display:none">▶ Run it live →</a>
+    <p id="runlive-wait" class="runwait">▶ Waiting for your presenter to share the dashboard link (it lights up here automatically).</p>
+    <div class="note">This is the <b>same control plane</b> everyone in the room is using — one shared instance running in the cloud. Your taps land on it live.</div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="step">
+    <h2><span class="num">2</span>Build &amp; register your agent</h2>
+    <p class="sub">Put your initials on an agent and watch the room's count climb.</p>
+    <ul class="tight">
+      <li>Type <b>your initials</b> into the box at the top of the dashboard.</li>
+      <li>Tap <b>Register my agent ▶</b>.</li>
+      <li>Watch <b>“Agents built by the room: N ↑”</b> tick up — on your phone and on the projected wall.</li>
+    </ul>
+    <div class="expect"><span class="lbl">You'll see</span> a real catalog entry appear, e.g. <b>salestax-MG</b>. If someone shares your initials, it auto-numbers (<b>salestax-MG-2</b>). Every registration is a genuine ContextForge server — the count is real.</div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="step">
+    <h2><span class="num">3</span>Run the three governed scenarios</h2>
+    <p class="sub">One tap each. Watch the control plane act before anything happens.</p>
+    <table class="fires">
+      <thead><tr><th>Tap this on the dashboard</th><th>What the control plane does</th></tr></thead>
+      <tbody>
+        <tr><td><b>Show receipt with PII</b></td><td><span class="verdict v-mask">REDACTED</span> SSN/card/key hidden → <code>***-**-6789</code>, <code>[SECRET_REDACTED]</code></td></tr>
+        <tr><td><b>Show injected receipt</b></td><td><span class="verdict v-block">NEUTRALIZED</span> hidden instruction defused → <code>[INJECTION_BLOCKED]</code></td></tr>
+        <tr><td><b>Pay the $50,000 invoice</b></td><td><span class="verdict v-block">BLOCKED</span> over the $10k auto-approve cap — needs dual approval</td></tr>
+      </tbody>
+    </table>
+    <div class="expect"><span class="lbl">The point</span> every action is <b>checked, masked, logged, and permission-gated</b> at one checkpoint — before the AI ever touches the data or moves the money.</div>
+  </section>
+
+  <a class="nextcard" href="path-bob.html">
+    <span class="ico">🧪</span>
+    <span><span class="nx">Want to drive the AI yourself?</span><br><span class="nd">Install IBM Bob on your laptop and connect to this same control plane.</span></span>
+    <span class="go">→</span>
+  </a>
+
+</div></main>
+
+<footer><div class="wrap">IBM Bob × ContextForge · <a href="follow.html">All the ways to take part →</a></div></footer>
+<div id="toast"></div>
+<script src="assets/path.js"></script>
+</body>
+</html>

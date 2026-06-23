@@ -1,0 +1,99 @@
+/* Shared styling for the three per-tier "your steps" pages
+   (path-run.html · path-bob.html · path-diy.html).
+   Reuses the IBM design tokens from follow.html + the step/cmd components from build.html. */
+:root{
+  --ibm:#0f62fe; --ibm-dark:#0043ce; --ink:#161616; --muted:#525252;
+  --line:#e0e0e0; --bg:#f4f4f7; --card:#ffffff; --code-bg:#f2f4f8;
+  --ok:#198038; --ok-bg:#defbe6; --warn:#8a6d00; --warn-bg:#fff8e1; --block:#da1e28; --block-bg:#fff1f1;
+  --bob:#6929c4; --bob-bg:#f6f3ff; --bob-line:#dcccff;
+  --radius:14px; --shadow:0 1px 3px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.05);
+  --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);background:var(--bg);
+  font:17px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+code,.inline{font-family:var(--mono)}
+.inline{background:var(--code-bg);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:.86em}
+a{color:var(--ibm);text-decoration:none} a:hover{text-decoration:underline}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px}
+
+/* hero — color-coded per tier via a body class */
+header.hero{color:#fff;padding:34px 0 28px;background:linear-gradient(135deg,#0f62fe 0%,#6929c4 100%)}
+body.t-run header.hero{background:linear-gradient(135deg,#198038 0%,#0f62fe 100%)}
+body.t-bob header.hero{background:linear-gradient(135deg,#0f62fe 0%,#6929c4 100%)}
+body.t-diy header.hero{background:linear-gradient(135deg,#393939 0%,#0043ce 100%)}
+header.hero .wrap{display:flex;flex-direction:column;gap:7px}
+.back{color:#fff;opacity:.9;font-size:13.5px;font-weight:600;align-self:flex-start}
+.back:hover{opacity:1;text-decoration:none}
+.eyebrow{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;
+  background:rgba(255,255,255,.18);border-radius:999px;padding:3px 11px;align-self:flex-start}
+header.hero h1{margin:6px 0 2px;font-size:29px;line-height:1.15;font-weight:700}
+header.hero p.tag{margin:0;font-size:17px;opacity:.95}
+
+main{padding:24px 0 60px}
+.intro{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:18px 20px;margin:0 0 20px;font-size:16px}
+.intro b{color:var(--ink)}
+
+/* a numbered step block */
+.step{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:18px 20px 16px;margin:0 0 16px}
+.step>h2{margin:0 0 4px;font-size:20px;line-height:1.25;display:flex;align-items:center;gap:11px}
+.step>h2 .num{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;flex:none;
+  background:var(--ibm);color:#fff;font-size:16px;font-weight:800}
+body.t-run .step>h2 .num{background:var(--ok)}
+body.t-diy .step>h2 .num{background:#393939}
+.step .sub{color:var(--muted);font-size:14px;margin:0 0 13px 43px}
+@media(max-width:560px){.step .sub{margin-left:0}}
+
+/* command / Bob-prompt chips (from build.html) */
+.cmd{position:relative;background:var(--code-bg);border:1px solid var(--line);border-radius:9px;
+  padding:10px 54px 10px 13px;margin:9px 0;font:13.5px/1.5 var(--mono);white-space:pre-wrap;word-break:break-word}
+.cmd .copy{position:absolute;top:7px;right:7px;border:1px solid var(--line);background:#fff;color:var(--muted);
+  border-radius:6px;font-size:11px;padding:3px 9px;cursor:pointer;font-family:inherit}
+.cmd .copy:hover{border-color:var(--ibm);color:var(--ibm)}
+.cmd.bob{background:var(--bob-bg);border-color:var(--bob-line);color:#3b2a78;padding-left:42px;font-family:inherit;font-size:15px}
+.cmd.bob::before{content:"🗣";position:absolute;left:12px;top:10px;font-size:16px}
+.cmd.bob .copy:hover{border-color:var(--bob);color:var(--bob)}
+
+.hat{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.05em;padding:2px 9px;border-radius:999px;
+  background:var(--bob-bg);color:var(--bob);border:1px solid var(--bob-line);vertical-align:middle}
+
+.expect{background:#f0faf3;border:1px solid #c7ebd3;border-radius:8px;padding:8px 12px;margin-top:9px;font-size:13.5px;color:#0e4f2b}
+.expect b{color:var(--ok)}
+.expect .lbl{font-weight:800;text-transform:uppercase;font-size:10.5px;letter-spacing:.05em;color:var(--ok);margin-right:7px}
+
+.note{border-left:4px solid var(--ibm);background:#edf5ff;border-radius:0 9px 9px 0;padding:12px 16px;margin:12px 0;color:#0b3a8f;font-size:14.5px}
+.note.bob{border-left-color:var(--bob);background:var(--bob-bg);color:#3b2a78}
+.warnbox{border-left:4px solid var(--warn);background:var(--warn-bg);border-radius:0 9px 9px 0;padding:12px 16px;margin:12px 0;color:#5b4708;font-size:14.5px}
+
+/* result/verdict table */
+table.fires{width:100%;border-collapse:collapse;margin:10px 0 2px;font-size:14px}
+table.fires th,table.fires td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+table.fires th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.verdict{display:inline-block;font-weight:800;font-size:11.5px;padding:2px 9px;border-radius:6px;white-space:nowrap}
+.v-block{background:var(--block-bg);color:var(--block)} .v-mask{background:#edf5ff;color:var(--ibm-dark)}
+.v-ok{background:var(--ok-bg);color:var(--ok)}
+
+/* the big "run it live" button (Tier 1) */
+.runbtn{display:inline-block;background:var(--ok);color:#fff;border-radius:10px;padding:12px 22px;
+  font-weight:800;font-size:17px;text-decoration:none;margin:4px 0}
+.runbtn:hover{filter:brightness(1.06);text-decoration:none}
+.runwait{font-size:14px;font-weight:700;color:var(--muted);margin:4px 0}
+
+ul.tight{margin:6px 0 0;padding-left:20px}ul.tight li{margin:3px 0}
+
+.nextcard{display:flex;gap:12px;align-items:center;background:var(--card);border:1.5px solid var(--line);
+  border-radius:14px;box-shadow:var(--shadow);padding:14px 18px;margin:22px 0 0;text-decoration:none;color:inherit;transition:.12s}
+a.nextcard:hover{border-color:var(--ibm);transform:translateY(-2px);text-decoration:none}
+.nextcard .ico{font-size:26px}
+.nextcard .nx{font-weight:800;font-size:15.5px}.nextcard .nd{font-size:13px;color:var(--muted)}
+.nextcard .go{margin-left:auto;font-weight:800;color:var(--ibm)}
+
+footer{border-top:1px solid var(--line);padding:22px 0 44px;color:var(--muted);font-size:14px;text-align:center}
+footer a{font-weight:700}
+
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:#161616;color:#fff;
+  padding:9px 16px;border-radius:9px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:50}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}

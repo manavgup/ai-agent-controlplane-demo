@@ -159,31 +159,30 @@
     <div class="tp-grid">
 
       <!-- TIER 1 — browser only: watch here + run on the shared live dashboard -->
-      <div class="tp-card rec" id="runlive">
+      <a class="tp-card rec" id="runlive-card" href="path-run.html">
         <span class="tp-badge">Everyone · phone or laptop</span>
         <div class="tp-ico">👀</div>
         <div class="tp-name">Follow along + run it</div>
         <div class="tp-desc">Right here in your browser. Watch the four stages below — and <b>run the scenarios yourself</b> on the live dashboard. Nothing to install.</div>
-        <a id="runlive-btn" class="tp-runbtn" target="_blank" rel="noopener" style="display:none">▶ Run it live →</a>
-        <div id="runlive-wait" class="tp-wait">▶ Your presenter will share the live dashboard link</div>
-      </div>
+        <div class="tp-go">See your steps →</div>
+      </a>
 
       <!-- TIER 2 — laptop + Bob, no Docker: drive the agent against the cloud control plane -->
-      <a class="tp-card" href="build.html?mode=codespaces#setup">
+      <a class="tp-card" href="path-bob.html">
         <span class="tp-tier">Laptop · intermediate</span>
         <div class="tp-ico">🧪</div>
         <div class="tp-name">Drive Bob yourself</div>
         <div class="tp-desc">Install <b>IBM Bob</b> (no Docker) and connect to the control plane running in the cloud. Type prompts; watch the AI get governed.</div>
-        <div class="tp-go">Open the hands-on cards →</div>
+        <div class="tp-go">See your steps →</div>
       </a>
 
       <!-- TIER 3 — everything local: build + govern end to end -->
-      <a class="tp-card" href="build.html?mode=local#setup">
+      <a class="tp-card" href="path-diy.html">
         <span class="tp-tier">Laptop · advanced</span>
         <div class="tp-ico">💻</div>
         <div class="tp-name">Do it all yourself</div>
         <div class="tp-desc">Run the whole stack on your own machine — Docker + Bob. One command: <code>make quickstart</code>. Build the tool and govern it end to end.</div>
-        <div class="tp-go">Open the hands-on cards →</div>
+        <div class="tp-go">See your steps →</div>
       </a>
 
     </div>
@@ -296,19 +295,19 @@
 </div></footer>
 
 <script>
-  /* ── Tier-1 "Run it live": wire the live Companion dashboard from ?dash=<url>.
-     The presenter shares this page with ?dash appended (see `make follow-link`).
-     Only accept http(s) so a crafted ?dash=javascript:... can't run. ── */
+  /* ── Tier-1: the presenter shares this page with ?dash=<companion url> appended
+     (see `make follow-link`). Forward that param to the Tier-1 steps page so its
+     "Run it live" button lights up. Only accept http(s) so a crafted
+     ?dash=javascript:... can't run. ── */
   (function(){
-    var btn=document.getElementById('runlive-btn');
-    var wait=document.getElementById('runlive-wait');
-    if(!btn||!wait)return;
+    var card=document.getElementById('runlive-card');
+    if(!card)return;
     var dash='';
     try{
       var p=new URLSearchParams(location.search).get('dash');
       if(p&&/^https?:\/\//i.test(p))dash=p;
     }catch(e){}
-    if(dash){btn.href=dash;btn.style.display='';wait.style.display='none';}
+    if(dash)card.href='path-run.html?dash='+encodeURIComponent(dash);
   })();
 
   /* ── tap-along stage tracker: mark current, mark earlier stages done, scroll there ── */
