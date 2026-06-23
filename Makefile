@@ -198,7 +198,16 @@ bob-operator: bob-install-operator ## Launch Bob as the platform OPERATOR (cwd-p
 	@command -v bob >/dev/null 2>&1 || { printf "  IBM Bob (bob) isn't on your PATH — install IBM Bob Shell to drive the demo.\n  .bob/mcp.json (operator persona) was still written; install IBM Bob Shell (https://bob.ibm.com/download), then 'make bob-operator' will launch it.\n  The stack is fully provable WITHOUT Bob:  make verify-controls  (-> 16/16).\n"; exit 0; }
 	@bob
 
-companion: ## Run the browser companion dashboard on :7070 (watch the control plane while using Bob)
+salestax-ensure: ## (internal) make sure the sales-tax backend is running — agent registration points at it
+	@if docker ps --format '{{.Names}}' 2>/dev/null | grep -q 'sales-tax'; then \
+	  echo "✔ sales-tax backend already up (agent registration will resolve)"; \
+	else \
+	  echo "→ sales-tax backend not running — starting it (the room's agents register against it)…"; \
+	  [ -f mcp-servers/sales-tax/server.py ] || $(MAKE) --no-print-directory stage1-scaffold; \
+	  $(MAKE) --no-print-directory salestax-up || echo "!! sales-tax didn't start (often a Docker Hub pull limit). Registration 422s until it's up — retry: make salestax-up"; \
+	fi
+
+companion: salestax-ensure ## Run the browser companion dashboard on :7070 (auto-ensures the sales-tax backend so registration works)
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
 	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if isinstance(s,dict) and s.get('name')=='FinOps']" 2>/dev/null | head -1); \
 	echo "Companion → http://localhost:7070  (FinOps $$UUID)"; \
