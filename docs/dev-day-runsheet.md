@@ -22,9 +22,15 @@ The whole governed mesh runs in the cloud; the devcontainer does the work for yo
    ```bash
    make up && make seed
    ```
-4. **PORTS** tab → right-click **4444** → **Port Visibility → Public**.
-5. `make connect` → prints the filled-in `bob mcp add … -t http …/mcp` line for laptop Bob.
-6. Sanity check: open **`:4444/admin`** (`admin@finbyte.demo` / `FinByteAdmin!2026`) — the
+4. **PORTS** tab → set **both** ports **Public** (right-click → Port Visibility → Public):
+   **4444** (the gateway) **and 7070** (the Companion). Both are needed for a room — phones hit
+   `:7070`, and Tier-2 laptops download their connect config from `:7070/bob/settings.json`.
+5. Start the Companion with the connect page on: **`make companion-connect`** (= `EXPOSE_CONNECT=1 make companion`).
+   This serves the Tier-1 dashboard **and** the Tier-2 **🔌 Connect Bob** page (copy/download — no token typing).
+6. `make follow-link` → prints the `follow.html?dash=<:7070 url>` link to share/QR (lights up **▶ Run it live**).
+7. `make connect` (optional) → the presenter-terminal `bob mcp add … -t http …/mcp` line. Attendees normally
+   self-serve from the Connect Bob page instead, so this is mainly your own backup.
+8. Sanity check: open **`:4444/admin`** (`admin@finbyte.demo` / `FinByteAdmin!2026`) — the
    ContextForge admin UI listing every server/tool/agent. (Forwarded ports are private by default;
    the admin UI works in-Codespace without flipping visibility.)
 
@@ -39,9 +45,9 @@ tap-along "YOU ARE HERE" stage tracker, plus a **"How do you want to take part?"
 tiers. `build.html` stays the deeper, coder version for the technical crowd.
 
 - **Tier 1 — Follow along + run it** (browser only, phone or laptop, no install): watch the stages
-  **and run the scenarios** on the shared Companion dashboard. Run `make companion`, set port 7070
-  Public, then `make follow-link` → it prints the `follow.html?dash=<:7070 url>` link to share (QR it).
-  That lights up the page's **▶ Run it live** button.
+  **and run the scenarios** on the shared Companion dashboard. With `make companion-connect` running and
+  **7070 Public** (steps 4–5 above), `make follow-link` prints the `follow.html?dash=<:7070 url>` link to
+  share (QR it). That lights up the page's **▶ Run it live** button.
 - **Tier 2 — Drive Bob yourself** (laptop + IBM Bob, no Docker): attendees **don't type the token**.
   Run the companion with `EXPOSE_CONNECT=1 make companion` (a.k.a. `make companion-connect`), share the
   dashboard link, and they click **🔌 Connect Bob (laptop)** → **Copy command** or **Download settings.json**
@@ -65,7 +71,7 @@ During the Build/Govern beat, invite everyone to **name an agent with their init
 ### Where the single control plane runs (how the whole room connects)
 
 One Docker Compose stack on **one host** (a GitHub Codespace is the recommended single instance — the
-devcontainer runs `make up && make seed`; you add `make companion`). Only **two ports** are exposed:
+devcontainer runs `make up && make seed`; you add `make companion-connect`). Only **two ports** are exposed:
 
 ```
    ┌──────────────── ONE HOST (a GitHub Codespace) ─────────────┐
