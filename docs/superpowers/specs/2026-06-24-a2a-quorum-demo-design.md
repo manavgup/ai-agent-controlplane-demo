@@ -183,3 +183,14 @@ votes are already audited and the finale already blocks.
 
 None blocking. Threshold values (Strict $5k, wire $10k/$12k) are demo knobs and
 can be tuned during implementation.
+
+## Architecture revision (post-Codex review)
+
+Pivoted from per-attendee A2A registration to a hybrid model after an independent review flagged the per-phone catalog write on a public tunnel as the main live-demo risk:
+
+- **Crowd votes are local** to the Companion (in-memory Approve/Reject), so attendee taps never write to `/a2a`. Removes tool-materialization races, fan-out latency at scale, and public catalog spam.
+- **The governed-agent proof is a fixed set of 5 `room-*` voters** seeded once at `make seed` (stance encoded in the name: strict/lenient/random). The quorum fans a vote to those 5 through `/rpc` — real, authn'd, audited.
+- **Finale unchanged:** the $50k Acme wire is attempted and OPA denies it at the $10k cap.
+- **Quorum fan-out uses `concurrent.futures.wait()`** (not `as_completed(timeout=...)`, which raises on timeout and could crash the live scenario).
+- **Presenter controls:** a Freeze toggle on crowd voting; a `CROWD_CAP` on distinct voters.
+- Stances are amount-driven: strict rejects ≥ $10k, lenient approves up to $100k, random is a deterministic per-agent coin.
