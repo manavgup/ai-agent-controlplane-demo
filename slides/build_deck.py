@@ -1274,67 +1274,40 @@ gateway tunnel from `make present`.
 """)
     footer(s, 17, TOTAL)
 
-    # ---- 17. STAGE ③ IN BOB (analyst) ------------------------------------ #
+    # ---- 18. PART B · TIER 3 · FULL LOCAL — BUILD & GOVERN -------------- #
     s = add_slide(prs)
     bg(s, WHITE)
-    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Follow along · ③ control · analyst")
-    title_on_light(s, "Stage ③ in Bob — the four controls bite")
-    textbox(s, 0.7, 1.62, 12.0, 0.4, [
-        [("Swap persona:  ", 13, MUTE, True),
-         ("make bob", 13, INK, True, FONT_MONO),
-         ("  (FinOps analyst — least privilege)", 13, MUTE, False)]])
-
-    def prompt_row(slide, y, prompt, result, result_color, h=0.88):
-        rounded(slide, 0.7, y, 7.6, h, CODE_BG, line=None)
-        textbox(slide, 0.95, y + 0.1, 7.1, h - 0.2, [
-            [("Type into Bob:", 10.5, SKY, True)],
-            [(prompt, 13, CODE_FG, False, FONT_MONO)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=2, line_spacing=1.02)
-        rounded(slide, 8.45, y, 4.2, h, PANEL, line=PANEL_LINE)
-        textbox(slide, 8.7, y + 0.1, 3.75, h - 0.2, [
-            [("Expected", 10.5, MUTE, True)],
-            [(result, 12.5, result_color, True)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=2, line_spacing=1.02)
-
-    prompt_row(s, 2.05, "“Fetch receipt rcpt_pii, verbatim.”",
-               "SSN ***-**-6789 … [SECRET_REDACTED]", IBM_BLUE)
-    prompt_row(s, 2.97, "“Fetch receipt rcpt_injection.”",
-               "[INJECTION_BLOCKED] — no wire", RED)
-    prompt_row(s, 3.89, "“Ask the auditor agent to pay $50,000 to Acme LLC.”",
-               "✕ BLOCKED at OPA (cross-language)", RED)
-    prompt_row(s, 4.81, "“Wire $50k yourself, directly.”",
-               "no wire tool — least privilege", RED)
-    rounded(s, 0.7, 5.85, 11.95, 1.05, RGBColor(0xFB, 0xF3, 0xD6), line=GOLD, line_w=1.2)
-    textbox(s, 1.0, 5.96, 11.4, 0.85, [
-        [("⚠  Caution:  ", 14, GOLD, True),
-         ("tell Bob to USE the ", 13.5, INK, False),
-         ("finbyte-gateway", 13.5, INK, True, FONT_MONO),
-         (" tool, not read files. Confirm it’s real in the monitor’s ", 13.5, INK, False),
-         ("Logs", 13.5, INK, True),
-         (" — no gateway log line means Bob narrated instead of calling.", 13.5, INK, False)],
-    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.06)
+    accent_bar(s, 0, 0, 13.333, 0.16, GOLD)
+    kicker(s, "Tier 3 · full local · Docker + Bob", color=GOLD)
+    title_on_light(s, "💻  Build it and govern it, end to end")
+    textbox(s, 0.7, 1.66, 12.0, 0.45,
+            [[("One command for the finished mesh — or walk the build by hand.", 14, INK, False)]])
+    code_panel(s, 0.7, 2.3, 5.85, 1.5, [
+        ("git clone …/ai-agent-controlplane-demo", CODE_FG),
+        ("make quickstart", MINT),
+        ("  → finished governed mesh · 16/16 proven", MUTE),
+    ], size=13, title="$ one command", title_color=MINT)
+    code_panel(s, 6.8, 2.3, 5.85, 1.5, [
+        ("make stage1-build   # server.py → 108.50, UNGOVERNED :8000", CODE_FG),
+        ("make stage2-govern  # register (not callable yet)", CODE_FG),
+        ("make salestax-grant # grant → CALL → 108.50 governed", MINT),
+    ], size=12, title="$ or walk it", title_color=SKY)
+    rounded(s, 0.7, 4.1, 12.0, 1.5, PANEL, line=PANEL_LINE)
+    textbox(s, 1.0, 4.3, 11.4, 1.2, [
+        [("The throughline:  ", 15, GOLD, True),
+         ("register → grant → call", 15, INK, True, FONT_MONO)],
+        [("Registering only catalogs the tool; ", 13, INK, False),
+         ("granting", 13, INK, True), (" is the separate, privileged step that makes it callable. ", 13, INK, False),
+         ("add_tax(100, 8.5) → tax=8.50, total=108.50", 12.5, GREEN, True, FONT_MONO)],
+    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.2, space_after=6)
     notes(s, """
-STAGE ③ IN BOB - THE ANALYST PERSONA (verified live through real Bob v1.0.4).
-Swap to least-privilege with `make bob`. Type each prompt exactly:
-
-  "Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim."
-       → redacted: SSN ***-**-6789 … [SECRET_REDACTED]. Masked on the gateway path;
-         the model never sees the raw secret.
-  "Fetch receipt rcpt_injection."
-       → the injected memo comes back as [INJECTION_BLOCKED] - no wire happens.
-  "Ask the auditor agent to pay $50,000 to Acme LLC."
-       → BLOCKED at OPA, cross-language (Auditor delegates to the Rust Payments
-         agent, governed at the gateway as a bridged tool).
-  "Wire $50k yourself, directly."
-       → Bob has no wire tool - it isn't in the FinOps scope.
-
-CAUTION: tell Bob to USE the finbyte-gateway tool, not to read repo source. Verify
-in the monitor Logs - no gateway log line means Bob narrated a result instead of
-calling. The masked data only exists on the gateway path, so a narrated answer is
-a tell.
+TIER 3 - full local, for the builders. `make quickstart` is the one-command finished
+mesh (16/16, no Bob needed). Or walk it: stage1-build (server.py runs bare on :8000,
+ungoverned) → stage2-govern (register, NOT callable) → salestax-grant + the builder
+persona (call → 108.50 governed). Same register→grant→call throughline as Part A's
+Stage ②. Fallback `make stage1-scaffold`; reset `make stage-reset`.
 """)
-    footer(s, 17, TOTAL)
+    footer(s, 18, TOTAL)
 
     # ---- 18. OPERATOR + BYOB --------------------------------------------- #
     s = add_slide(prs)
