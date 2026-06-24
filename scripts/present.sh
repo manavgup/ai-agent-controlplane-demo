@@ -94,5 +94,8 @@ EOF
   else printf "  ${YEL}!${R} open this yourself: %s\n" "$QR_URL"; fi ) >/dev/null 2>&1 &
 
 # ── 5) run the Companion pointed at the tunnels (foreground; Ctrl-C ends it) ───
+# free :7070 if a previous Companion is still bound to it (avoids "address in use")
+pkill -f "python companion/app.py" 2>/dev/null || true
+sleep 1
 COMPANION_URL="$CF7070" GATEWAY_PUBLIC_URL="$CF4444" EXPOSE_CONNECT=1 \
   make --no-print-directory companion
