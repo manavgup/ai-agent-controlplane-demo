@@ -1343,107 +1343,70 @@ control. Then `make verify-controls` proves all of it deterministically: 16 pass
 """)
     footer(s, 19, TOTAL)
 
-    # ---- 19. WATCH THE CONTROL PLANE ------------------------------------- #
+    # ---- 20. PART B · WATCH THE CONTROL PLANE --------------------------- #
     s = add_slide(prs)
     bg(s, WHITE)
     accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Follow along · watch it")
-    title_on_light(s, "Watch the control plane — three tools")
+    kicker(s, "See the governance for yourself")
+    title_on_light(s, "Watch the control plane — the tools")
     tools = [
-        ("ContextForge monitor", "make monitor", IBM_BLUE,
-         "Admin UI /admin (Overview · Metrics · Logs). The governance audit trail."),
-        ("MCP Inspector", "make inspect-mcp", GREEN,
-         "Streamable HTTP to the gateway FinOps endpoint + bearer. 8 governed tools (wire ABSENT); call get_receipt → REDACTED in the inspector."),
-        ("A2A Inspector", "make inspect-a2a", RGBColor(0x6A, 0x3B, 0xC0),
-         "Point at host.docker.internal:9001 (Python Auditor) and :3000 (Rust Payments) to validate both agent cards."),
+        ("🛡️  Admin UI", "make monitor", "The catalog + live Logs. The dashboard's 🛡️ Agentic AI Control Plane link opens it — MCP Servers shows YOUR salestax-<INI>."),
+        ("🔍  MCP Inspector", "make inspect-mcp", "The 8 governed FinOps tools — wire ABSENT; get_receipt returns REDACTED live."),
+        ("🤝  A2A Inspector", "make inspect-a2a", "The Python auditor + Rust payments agent cards — the cross-language pair the $50k block fires across."),
     ]
-    cw = (12.0 - 2 * 0.4) / 3
-    cx = 0.7
-    for head, cmd, col, body in tools:
-        rounded(s, cx, 1.95, cw, 3.2, PANEL, line=PANEL_LINE)
-        accent_bar(s, cx, 1.95, cw, 0.12, col)
-        textbox(s, cx + 0.26, 2.22, cw - 0.52, 0.7, [[(head, 16, INK, True, FONT_BODY)]],
-                line_spacing=1.0)
-        textbox(s, cx + 0.26, 2.92, cw - 0.52, 0.4, [[(cmd, 13, col, True, FONT_MONO)]])
-        textbox(s, cx + 0.26, 3.5, cw - 0.52, 1.6, [[(body, 13, INK, False)]],
-                line_spacing=1.14)
-        cx += cw + 0.4
-    rounded(s, 0.7, 5.4, 11.95, 1.2, DARK_BG, line=None)
-    textbox(s, 1.0, 5.54, 11.4, 1.0, [
-        [("Prefer one command?  ", 15, GOLD, True),
-         ("make cockpit", 14, MINT, True, FONT_MONO),
-         (" tiles Bob + four live watch panes (logs · OPA · MCP · A2A) in one tmux window,",
-          13.5, WHITE, False)],
-        [("opens the HOW-TO page, and starts the Companion dashboard on :7070. Real ecosystem tools — not a bespoke dashboard.",
-          13.5, RGBColor(0x9F, 0xB3, 0xD9), False, FONT_BODY, True)],
-    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.12, space_after=3)
+    y = 1.95
+    for head, cmd, body in tools:
+        rounded(s, 0.7, y, 12.0, 1.45, PANEL, line=PANEL_LINE)
+        accent_bar(s, 0.7, y, 0.12, 1.45, IBM_BLUE)
+        textbox(s, 1.05, y + 0.18, 5.0, 0.4, [[(head, 15, INK, True, FONT_BODY)]])
+        textbox(s, 1.05, y + 0.62, 5.0, 0.34, [[(cmd, 12, IBM_BLUE, True, FONT_MONO)]])
+        textbox(s, 6.1, y + 0.2, 6.4, 1.1, [[(body, 12.5, MUTE, False)]], line_spacing=1.14, anchor=MSO_ANCHOR.MIDDLE)
+        y += 1.6
+    textbox(s, 0.7, 6.85, 12.0, 0.4,
+            [[("One command for all of it: ", 13, INK, False), ("make cockpit", 13, IBM_BLUE, True, FONT_MONO),
+              (" — tmux tiles Bob + watch panes + the Companion.", 13, INK, False)]])
     notes(s, """
-WATCH THE CONTROL PLANE - THE THREE TOOLS. Real ecosystem tools, not a bespoke
-dashboard - what attendees already use.
-
-  make monitor      → ContextForge Admin UI /admin (Overview, Metrics, Logs) - the
-                      governance audit trail live.
-  make inspect-mcp  → MCP Inspector. Streamable HTTP to the gateway's FinOps
-                      virtual-server endpoint (/servers/<uuid>/mcp + bearer), NOT a
-                      backend. Shows 8 governed FinOps tools with wire ABSENT; call
-                      get_receipt and the output is REDACTED right in the inspector.
-  make inspect-a2a  → A2A Inspector. Point at host.docker.internal:9001 (Python
-                      Auditor) and :3000 (Rust Payments) to validate both agent
-                      cards. Builds its image on first run (~1-2 min) - lead it.
-
-ONE-COMMAND OPTION: `make cockpit` tiles a Bob pane + four watch panes (logs,
-logs-opa, inspect-mcp, inspect-a2a) in one tmux window, opens the HOW-TO page, and
-starts the Companion dashboard on :7070. COCKPIT_PERSONA=operator for Act 2.
-`make cockpit-down` tears it down.
-""")
-    footer(s, 19, TOTAL)
-
-    # ---- 20. TROUBLESHOOTING --------------------------------------------- #
-    s = add_slide(prs)
-    bg(s, WHITE)
-    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Follow along · troubleshooting")
-    title_on_light(s, "If something doesn’t fire")
-    tbl = [
-        ("Stage ① build wobbled / no server.py", "make stage1-scaffold drops in the reference _solution.py. make stage-reset wipes server.py + container to repeat the beat clean."),
-        ("Stage ② tool registered but not callable", "That’s the point — registering only catalogs it. Run make salestax-grant (adds add_tax to the Builder vserver) + make bob-install-builder, then restart Bob."),
-        ("Bob shows no tools / “Disconnected” then connects", "The virtual-server UUID changes on every reseed — re-run the matching make bob / bob-operator / bob-install-builder, restart Bob. “bob mcp list” Disconnected is static until a session."),
-        ("Bob describes a result instead of doing it", "Bob read the repo source and narrated. Tell it to USE the finbyte-gateway tool; verify in the monitor Logs (no log = narrated)."),
-        ("Wrapper exits / 401 from the gateway", "Wrapper needs DATABASE_URL=sqlite:////tmp/mcpwrapper.db (baked in). Token must be a REGISTERED user (admin@finbyte.demo); the make targets use the right one."),
-        ("A control didn’t fire / 16/16 failed", "make demo-reset, then make verify-controls. A2A Inspector first run builds its image (~1-2 min)."),
-    ]
-    ry = 1.78
-    rh = 0.78
-    for i, (sym, fix) in enumerate(tbl):
-        fillc = PANEL if i % 2 == 0 else WHITE
-        rounded(s, 0.7, ry, 12.0, rh, fillc, line=PANEL_LINE, line_w=0.75)
-        textbox(s, 0.95, ry + 0.07, 3.7, rh - 0.14, [[(sym, 12, RED, True)]],
-                anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.0)
-        textbox(s, 4.8, ry + 0.07, 7.6, rh - 0.14, [[(fix, 11, INK, False)]],
-                anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.02)
-        ry += rh + 0.04
-    notes(s, """
-TROUBLESHOOTING (appendix reference). Progressive-build gotchas + the originals:
-
-- Stage ① build wobbled / no server.py: make stage1-scaffold drops in the reference
-  _solution.py; make stage-reset wipes server.py + the container to repeat clean.
-- Stage ② "registered but not callable": that is register → grant → call by design.
-  Registering only catalogs the tools. Run make salestax-grant (adds add_tax to the
-  Builder virtual server) and make bob-install-builder, then restart Bob.
-- Bob shows no tools / "Disconnected" then connects: the virtual-server UUID changes
-  on EVERY reseed. Re-run the matching install (make bob / bob-operator /
-  bob-install-builder) and restart Bob. "bob mcp list" Disconnected is static.
-- Bob narrates instead of calling: tell it to USE the finbyte-gateway tool; verify
-  in the monitor Logs (no gateway log line = narrated).
-- Wrapper exits / 401: the wrapper needs DATABASE_URL set to a writable path (baked:
-  sqlite:////tmp/mcpwrapper.db); token must be a REGISTERED user (admin@finbyte.demo).
-- A control didn't fire / 16/16 failed: make demo-reset, then make verify-controls.
-  A2A Inspector first run builds its image (~1-2 min).
-
-Reset between runs: make demo-reset (or make stage-reset for just the build beat).
-Tear down: make down.
+WATCH THE CONTROL PLANE. Three real ecosystem tools. The Admin UI (make monitor, or
+the dashboard's new 🛡️ Agentic AI Control Plane link) - MCP Servers lists every
+registered server INCLUDING the room's salestax-<INI> agents. MCP Inspector - the 8
+governed FinOps tools, wire absent, redaction live. A2A Inspector - the Python + Rust
+agent cards. `make cockpit` tiles everything.
 """)
     footer(s, 20, TOTAL)
+
+    # ---- 21. PART B · TROUBLESHOOTING ----------------------------------- #
+    s = add_slide(prs)
+    bg(s, DARK_BG)
+    accent_bar(s, 0, 0, 13.333, 0.16, GOLD)
+    textbox(s, 0.7, 0.5, 12.0, 0.4, [[("FOLLOW ALONG — APPENDIX", 13, SKY, True)]])
+    title_on_light(s, "Troubleshooting", y=0.92, size=32, x=0.7, color=WHITE)
+    items = [
+        ("Stage-1 build wobbles", "make stage1-scaffold  ·  make stage-reset"),
+        ("Registered but not callable", "make salestax-grant + make bob-install-builder (grant is separate)"),
+        ("UUID changed after reseed", "re-run the matching make bob / bob-operator / bob-install-builder"),
+        ("Bob narrates instead of acting", "tell it to USE the finbyte-gateway tools; check monitor Logs"),
+        ("Registration 422 (DNS / SSRF)", "the sales-tax backend isn't up → make salestax-up"),
+        ("Phone can't open the Codespaces URL", "expected — GitHub public ports 404 anon; use make present (cloudflared)"),
+    ]
+    y = 1.9
+    for head, fix in items:
+        textbox(s, 0.7, y, 5.4, 0.6, [[(head, 13.5, WHITE, True)]], anchor=MSO_ANCHOR.MIDDLE)
+        textbox(s, 6.2, y, 6.45, 0.6, [[(fix, 12.5, MINT, False, FONT_MONO)]], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.05)
+        y += 0.78
+    textbox(s, 0.7, 6.7, 12.0, 0.4,
+            [[("Nuke it from orbit: ", 13, RGBColor(0x9F, 0xB3, 0xD9), False),
+              ("make demo-reset", 13, GOLD, True, FONT_MONO),
+              ("  ·  reset the room count: ", 13, RGBColor(0x9F, 0xB3, 0xD9), False),
+              ("make agents-reset", 13, GOLD, True, FONT_MONO)]])
+    notes(s, """
+TROUBLESHOOTING. The usual stage gotchas, plus the two we hit building the room
+demo: 422 SSRF_DNS_FAIL_CLOSED means the sales-tax backend isn't up (make
+salestax-up; make present/companion now auto-ensure it). And a phone can't reach a
+Codespaces "public" forwarded port - that's GitHub returning 404 to anonymous
+clients, not a bug - which is exactly why `make present` tunnels through cloudflared.
+make demo-reset for a clean slate; make agents-reset to zero the wall count.
+""")
+    footer(s, 21, TOTAL)
 
     prs.save(OUT_PPTX)
     return OUT_PPTX, TOTAL, have_png
