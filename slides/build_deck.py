@@ -1203,47 +1203,34 @@ generated live - never hardcode it. Reset the room count with `make agents-reset
 """)
     footer(s, 15, TOTAL, dark=True)
 
-    # ---- 15. BRING IT UP : quickstart + dev-start ------------------------ #
+    # ---- 16. PART B · TIER 1 · PHONE ------------------------------------ #
     s = add_slide(prs)
     bg(s, WHITE)
-    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Follow along · two front doors")
-    title_on_light(s, "Bring it up — finished mesh, or build it up")
-    code_panel(s, 0.7, 1.9, 12.0, 1.5, [
-        ("$ make quickstart   # nothing → running governed mesh, proves 16/16", RGBColor(0x7B, 0xE3, 0xA6)),
-        ("$ make dev-start    # opens docs/cockpit.html → 🎓 Progressive Build card", RGBColor(0x7B, 0xE3, 0xA6)),
-    ], size=15, title="from the repo root", title_color=GOLD)
-    rounded(s, 0.7, 3.65, 5.95, 2.75, PANEL, line=PANEL_LINE)
-    textbox(s, 1.0, 3.8, 5.4, 2.5, [
-        [("🛰  Governed mesh", 16, IBM_BLUE, True)],
-        [("make quickstart", 13.5, INK, True, FONT_MONO)],
-        [("Top-down: one command → the finished, governed stack, 16/16 — no Bob required.",
-          13, INK, False)],
-        [("Then drive Bob as analyst (Act 1) + operator (Act 2).", 13, INK, False)],
-    ], anchor=MSO_ANCHOR.TOP, line_spacing=1.12, space_after=4)
-    rounded(s, 6.85, 3.65, 5.8, 2.75, RGBColor(0xEA, 0xF1, 0xFF), line=IBM_BLUE, line_w=1.3)
-    textbox(s, 7.15, 3.8, 5.25, 2.5, [
-        [("🎓  Progressive build", 16, GREEN, True)],
-        [("make dev-start", 13.5, INK, True, FONT_MONO)],
-        [("Bottom-up: opens the cockpit card and walks Bob through stages ①–④, ",
-          13, INK, False), ("carrying the tool you build.", 13, INK, True)],
-        [("This is the developer path — the rest of Part B.", 13, INK, False)],
-    ], anchor=MSO_ANCHOR.TOP, line_spacing=1.12, space_after=4)
+    accent_bar(s, 0, 0, 13.333, 0.16, GREEN)
+    kicker(s, "Tier 1 · phone or laptop · no install", color=GREEN)
+    title_on_light(s, "📱  Scan, register, run it")
+    textbox(s, 0.7, 1.66, 12.0, 0.45,
+            [[("Scan the QR on screen → the follow-along page → tap ", 14, INK, False),
+              ("Run it live", 14, INK, True), (". Nothing to install.", 14, INK, False)]])
+    rows = [
+        ("1  Register your agent", "Type your initials → Register my agent ▶ → the /wall count climbs."),
+        ("2  Run the scenarios", "One tap each: PII → REDACTED · injection → NEUTRALIZED · $50k → BLOCKED."),
+        ("3  Watch the wall", "Every action checked, masked, logged, gated — at one seam, live."),
+    ]
+    y = 2.35
+    for head, body in rows:
+        rounded(s, 0.7, y, 12.0, 1.18, PANEL, line=PANEL_LINE)
+        accent_bar(s, 0.7, y, 0.12, 1.18, GREEN)
+        textbox(s, 1.05, y + 0.18, 11.4, 0.4, [[(head, 16, INK, True, FONT_BODY)]])
+        textbox(s, 1.05, y + 0.62, 11.4, 0.45, [[(body, 13, MUTE, False)]])
+        y += 1.34
     notes(s, """
-FOLLOW ALONG - TWO FRONT DOORS, SAME STACK.
-
-  make quickstart - top-down: nothing → running governed mesh, runs verify-controls
-                    (16 passed, 0 failed), prints a walkthrough card. No Bob needed.
-                    Idempotent - re-run if anything stalls.
-  make dev-start  - bottom-up: opens docs/cockpit.html on the 🎓 Progressive Build
-                    tab, which has every copy-paste Bob prompt for stages ①–④.
-
-For Dev Day we drive the PROGRESSIVE BUILD (dev-start). Keep the cockpit page open -
-it's your teleprompter. PRESENTER TIP: run `make quickstart` before the talk to
-cache images, then `make stage-reset` so Stage ① starts from a clean (no server.py)
-slate.
+TIER 1 - the inclusive entry. They already registered an agent live in Part A; here
+they run the three governed scenarios from the dashboard with one tap each. The
+point: zero install, real governance. The dashboard URL is the cloudflared tunnel
+from `make present`; the QR is on screen.
 """)
-    footer(s, 15, TOTAL)
+    footer(s, 16, TOTAL)
 
     # ---- 16. DRIVE BOB : STAGE ① + ② ------------------------------------- #
     s = add_slide(prs)
