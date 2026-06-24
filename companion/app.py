@@ -467,24 +467,6 @@ def _sanitize_initials(s):
     return s or "ANON"
 
 
-def _initials_of(name):
-    """salestax-MG -> MG ; salestax-MG-2 -> MG. Strip to alnum: names can also be
-    created directly via an Operator-persona Bob, and these land on the projector
-    /wall, so don't trust them to be already-sanitized."""
-    raw = name[len(AGENT_PREFIX) + 1 :].split("-")[0] if "-" in name else name
-    return "".join(ch for ch in raw if ch.isalnum())[:8]
-
-
-def _unique_name(initials, existing):
-    base = f"{AGENT_PREFIX}-{initials}"
-    if base not in existing:
-        return base
-    i = 2
-    while f"{base}-{i}" in existing:
-        i += 1
-    return f"{base}-{i}"
-
-
 @app.route("/api/vote", methods=["GET", "POST"])
 def vote():
     """Record one local crowd vote (approve/reject) on the $50k wire. No gateway
