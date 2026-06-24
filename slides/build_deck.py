@@ -801,7 +801,7 @@ Same Bob binary, three actors, three scopes. The analyst literally cannot do wha
 the operator can; the builder calls only what it was granted. That is the AI agent
 control plane made literal - an agent operating the very plane that governs it.
 """)
-    footer(s, 7, TOTAL)
+    footer(s, 8, TOTAL)
 
     # ---- 8. STAGE ③ · CONTROL #1 : POLICY -------------------------------- #
     s = add_slide(prs)
@@ -857,7 +857,7 @@ is allowed.
 CLI fallback if Bob is flaky: `make verify-controls` asserts this deterministically.
 Have the monitor Logs up to show the decision.
 """)
-    footer(s, 8, TOTAL)
+    footer(s, 9, TOTAL)
 
     # ---- 9. STAGE ③ · CONTROL #2 : DATA PROTECTION ----------------------- #
     s = add_slide(prs)
@@ -904,7 +904,7 @@ Two plugins, both on tool_post_invoke:
 Why post-invoke matters: this is the LAST line of defense before untrusted backend
 text becomes model context. Exec framing: this is DLP for agent tool output.
 """)
-    footer(s, 9, TOTAL)
+    footer(s, 10, TOTAL)
 
     # ---- 10. STAGE ③ · CONTROL #3 : INJECTION ---------------------------- #
     s = add_slide(prs)
@@ -956,7 +956,7 @@ Because the gateway sanitizes tool OUTPUT, the model never gets the chance to ob
 it. Combine with #1: even if an injection slipped through, the wire is still
 policy-gated. Defense in depth, one seam.
 """)
-    footer(s, 10, TOTAL)
+    footer(s, 11, TOTAL)
 
     # ---- 11. STAGE ③ · CONTROL #4 : RBAC + RATE LIMIT -------------------- #
     s = add_slide(prs)
@@ -1015,7 +1015,7 @@ then fire the same tool repeatedly. `make demo-reset` clears lockouts.
 
 Exec line: "RBAC says who; rate limits say how often. Both are gateway primitives."
 """)
-    footer(s, 11, TOTAL)
+    footer(s, 12, TOTAL)
 
     # ---- 12. STAGE ④ : MESH (architecture + proof) ----------------------- #
     s = add_slide(prs)
@@ -1087,7 +1087,7 @@ CAPTURED PROOF: docs/evidence/index.html - the whole run (build → govern → 4
 with real gateway responses + Admin-UI screenshots + the 16/16 suite output. Open it
 if a control ever refuses to fire live. Stage runbook: docs/dev-day-runsheet.md.
 """)
-    footer(s, 12, TOTAL)
+    footer(s, 13, TOTAL)
 
     # ---- 13. ALSO IN THE BOX + TAKEAWAYS + CTA --------------------------- #
     s = add_slide(prs)
@@ -1153,7 +1153,7 @@ source: github.com/IBM/mcp-context-forge. Everything ran locally - the appendix
 walks the whole progressive build with `make dev-start`. If short on time, stop
 here and point to the appendix.
 """)
-    footer(s, 13, TOTAL, dark=True)
+    footer(s, 14, TOTAL, dark=True)
 
     # ===================== PART B : FOLLOW-ALONG ====================== #
     # ---- 15. PART B · CHOOSER: 3 WAYS TO TAKE PART ----------------------- #
