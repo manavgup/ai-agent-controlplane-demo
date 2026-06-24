@@ -43,6 +43,9 @@ help:
 	@printf "  \033[36m%-22s\033[0m %s\n" "verify-controls" "Prove all four controls headlessly → \"16 passed, 0 failed\""
 	@printf "  \033[36m%-22s\033[0m %s\n" "demo" "Stage-gated end-to-end walkthrough (pauses at each stage)"
 	@printf "  \033[36m%-22s\033[0m %s\n" "check" "Verify ALL prerequisites are installed + live stack status"
+	@printf "\n\033[1m🎤 PRESENT TO A ROOM\033[0m\n"
+	@printf "  \033[36m%-22s\033[0m %s\n" "present" "Public room: cloudflared tunnels + Companion + opens the join QR (phones on ANY network)"
+	@printf "  \033[36m%-22s\033[0m %s\n" "companion" "Just the dashboard on :7070 (watch the control plane locally)"
 	@printf "\n\033[1m🎓 DEV DAY — PROGRESSIVE BUILD (two lanes — pick one)\033[0m\n"
 	@printf "  \033[36m%-22s\033[0m %s\n" "dev-start" "Open the prompt-card page (start here — copy-paste Bob prompts per stage)"
 	@printf "  \033[2m── LOCAL lane · Docker on your laptop · walk it, or jump with 'make quickstart' ──\033[0m\n"
@@ -59,7 +62,6 @@ help:
 	@printf "  \033[36m%-22s\033[0m %s\n" "bob-install-operator" "Write .bob/mcp.json for the operator persona (no launch)"
 	@printf "  \033[36m%-22s\033[0m %s\n" "bob-config" "Print the analyst MCP config (to paste elsewhere)"
 	@printf "  \033[36m%-22s\033[0m %s\n" "bob-config-operator" "Print the operator MCP config"
-	@printf "  \033[36m%-22s\033[0m %s\n" "connect" "Print the 1 command to point a REMOTE/LOCAL Bob at this gateway (Codespaces/BYOB)"
 	@printf "\n\033[1m🛰  STACK\033[0m\n"
 	@printf "  \033[36m%-22s\033[0m %s\n" "up" "Build + start the stack (gateway, OPA, 6 MCP servers, 2 A2A agents)"
 	@printf "  \033[36m%-22s\033[0m %s\n" "down" "Stop the stack"
@@ -178,6 +180,9 @@ bob-install-builder: ## Write .bob/mcp.json for the BUILDER persona (calls the d
 connect: ## Dev Day [CODESPACES lane]: print the ONE 'bob mcp add' command for a laptop Bob to drive THIS (pre-seeded) gateway — no Docker/uv/make locally; no stageN targets needed. Auto-detects a Codespace; set GATEWAY_URL=... for a VM.
 	@bash scripts/connect.sh
 
+follow-link: ## Dev Day [Tier 1]: print the ONE link to share so phone/laptop attendees get the live "Run it" dashboard wired into follow.html (?dash=). Pairs with `make companion`. Auto-detects a Codespace; set COMPANION_URL=... for a VM.
+	@bash scripts/follow-link.sh
+
 # Launch Bob FROM THE REPO ROOT so it always reads THIS dir's .bob/mcp.json.
 # Running `bob` from the bob-personas/ subfolder (or any other dir) is the #1
 # "No MCP servers configured" trap — Bob looks for .bob/mcp.json relative to its
@@ -195,11 +200,38 @@ bob-operator: bob-install-operator ## Launch Bob as the platform OPERATOR (cwd-p
 	@command -v bob >/dev/null 2>&1 || { printf "  IBM Bob (bob) isn't on your PATH — install IBM Bob Shell to drive the demo.\n  .bob/mcp.json (operator persona) was still written; install IBM Bob Shell (https://bob.ibm.com/download), then 'make bob-operator' will launch it.\n  The stack is fully provable WITHOUT Bob:  make verify-controls  (-> 16/16).\n"; exit 0; }
 	@bob
 
-companion: ## Run the browser companion dashboard on :7070 (watch the control plane while using Bob)
+salestax-ensure: ## (internal) make sure the sales-tax backend is running — agent registration points at it
+	@if docker ps --format '{{.Names}}' 2>/dev/null | grep -q 'sales-tax'; then \
+	  echo "✔ sales-tax backend already up (agent registration will resolve)"; \
+	else \
+	  echo "→ sales-tax backend not running — starting it (the room's agents register against it)…"; \
+	  [ -f mcp-servers/sales-tax/server.py ] || $(MAKE) --no-print-directory stage1-scaffold; \
+	  $(MAKE) --no-print-directory salestax-up || echo "!! sales-tax didn't start (often a Docker Hub pull limit). Registration 422s until it's up — retry: make salestax-up"; \
+	fi
+
+companion: salestax-ensure ## Run the browser companion dashboard on :7070 (auto-ensures the sales-tax backend so registration works)
 	@ADMIN=$$($(MINT) -u admin@finbyte.demo --admin -e 10080 -s $(SECRET) 2>/dev/null | tail -1); \
 	UUID=$$(curl -s -H "Authorization: Bearer $$ADMIN" localhost:4444/servers | python3 -c "import sys,json;[print(s['id']) for s in json.load(sys.stdin) if isinstance(s,dict) and s.get('name')=='FinOps']" 2>/dev/null | head -1); \
-	echo "Companion → http://localhost:7070  (FinOps $$UUID)"; \
-	GATEWAY_TOKEN=$$ADMIN FINOPS_UUID=$$UUID uv run --with flask --with httpx python companion/app.py
+	echo "Companion → http://localhost:7070  (FinOps $$UUID)  ·  join QR at :7070/qr"; \
+	GATEWAY_TOKEN=$$ADMIN FINOPS_UUID=$$UUID uv run --with flask --with httpx --with "qrcode[pil]" python companion/app.py
+
+present: ## THE presenter command for a ROOM: opens public cloudflared tunnels (phones reach it on any network — works around Codespaces ports that 404 anonymous clients), runs the Companion pointed at them, opens your browser to the join QR. Ctrl-C tears it all down.
+	@bash scripts/present.sh
+
+companion-connect: ## Local/same-network presenter command: makes Codespaces ports public + ensures sales-tax + serves the dashboard, /connect and the join QR on :7070. For a public room (anonymous phones) use 'make present' instead.
+	@$(MAKE) --no-print-directory ports-public
+	@EXPOSE_CONNECT=1 $(MAKE) companion
+
+check-prompts: ## Verify the static docs still match the canonical drive prompts in docs/assets/prompts.json (the companion + connect.sh read it at runtime; this guards the embedded copies).
+	@python3 scripts/check-prompts.py
+
+ports-public: ## Make the gateway (4444) + Companion (7070) ports Public in THIS Codespace (needs gh + codespace scope). Use instead of clicking the PORTS tab.
+	@if [ -z "$$CODESPACE_NAME" ]; then \
+	  echo "Not in a Codespace — set port visibility in the PORTS tab (right-click 4444 & 7070 → Public)."; exit 0; fi; \
+	if gh codespace ports visibility 4444:public 7070:public -c "$$CODESPACE_NAME"; then \
+	  echo "✔ ports 4444 + 7070 are now Public"; \
+	else \
+	  echo "!! couldn't set visibility. Try: gh auth refresh -h github.com -s codespace   (then re-run), or use the PORTS tab."; fi
 
 quickstart: .env ## ONE command: preflight → stack → seed → Bob → verify → walkthrough card
 	@bash scripts/quickstart.sh
@@ -407,11 +439,15 @@ cockpit-down: ## Tear down the cockpit (kill session/panes + remove a2a-inspecto
 verify-controls: ## Run the money-shot proof suite (assert block/allow)
 	@bash scripts/money-shots/run-all.sh
 
-demo-reset: ## Clean-reset the gateway to a known-good state (recreate + reseed)
+demo-reset: ## Clean-reset the gateway to a known-good state (recreate + reseed + clear room agents)
 	$(COMPOSE) up -d --force-recreate gateway
 	@for i in $$(seq 1 30); do curl -sf localhost:4444/health >/dev/null 2>&1 && break || sleep 2; done
 	@$(MAKE) seed
+	@bash scripts/agents-reset.sh || true
 	@echo "reset done — run 'make verify-controls' to confirm 16/16"
+
+agents-reset: ## Remove all room-built salestax-* agents from the catalog (reset the live "agents built by the room" count to 0)
+	@bash scripts/agents-reset.sh
 
 logs: ## Tail gateway logs (raw; blocked calls show as ERROR 'invocation failed')
 	$(COMPOSE) logs -f gateway

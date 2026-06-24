@@ -29,6 +29,14 @@ else
   echo "!! up/seed hit a snag — run 'make up && make seed' yourself once the Codespace finishes opening"
 fi
 
+# The room-registration beat (phones + Tier-2 Bob) registers agents against the
+# sales-tax backend at http://sales-tax:8000/mcp. The lite `make up` stack does NOT
+# include it, so without this every registration 422s with SSRF_DNS_FAIL_CLOSED.
+# salestax-ensure is idempotent and only scaffolds server.py if it's missing (so it
+# won't clobber a real or Bob-built one).
+say "Bringing up the sales-tax backend (needed so attendees can register agents)"
+make salestax-ensure || echo "   — until sales-tax is up, agent registration returns 422; retry: make salestax-up"
+
 cat <<'EOF'
 
 ══════════════════════════════════════════════════════════════════════════════

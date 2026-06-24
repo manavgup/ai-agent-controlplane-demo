@@ -315,6 +315,35 @@
     </div>
   </details>
 
+  <details class="twisty" style="margin-top:14px"><summary>Where it runs — how the whole room connects (the single control plane)</summary>
+    <div class="twisty-body">
+      <p class="lede" style="margin-top:0">The control plane is <b>one Docker Compose stack on one host</b> — gateway + OPA + 6 MCP servers + 2 A2A agents, plus the Companion dashboard. A <b>GitHub Codespace</b> is the recommended single instance (the devcontainer runs <code class="inline">make up &amp;&amp; make seed</code>; you add <code class="inline">make companion</code>). Only <b>two ports</b> are exposed to attendees — and all three follow-along tiers connect through them.</p>
+<pre>   ┌──────────────── ONE HOST (a GitHub Codespace) ─────────────┐
+   │   :7070  Companion ──┐                                     │
+   │   (holds token,      ├──► :4444 Gateway ──► OPA            │
+   │    calls gateway)    │    (ContextForge)    6 MCP servers  │
+   │                      │                      2 A2A agents   │
+   └──────────┼───────────┴────────────────────────────────────┘
+        PUBLIC :7070                 PUBLIC :4444
+              │                            │
+   ┌──────────┴───┐          ┌─────────────┴┐          ┌─────────────────┐
+   │ TIER 1       │          │ TIER 2       │          │ TIER 3          │
+   │ browser      │          │ laptop + Bob │          │ their OWN stack │
+   │ phone/laptop │          │ (no Docker)  │          │ make quickstart │
+   └──────────────┘          └──────────────┘          └─────────────────┘
+   ── all hit the SAME instance ──►              ◄── separate, per person</pre>
+      <table style="margin-top:10px">
+        <thead><tr><th>Tier</th><th>Connects to</th><th>How</th></tr></thead>
+        <tbody>
+          <tr><td><b>1 · Follow + run</b></td><td>public <code class="inline">:7070</code> Companion</td><td><code class="inline">make follow-link</code> → the <code class="inline">follow.html?dash=…</code> link; phones need nothing (the Companion calls <code class="inline">:4444</code> server-side)</td></tr>
+          <tr><td><b>2 · Drive Bob</b></td><td>public <code class="inline">:4444</code> gateway</td><td><code class="inline">make connect</code> → <code class="inline">bob mcp add … -t http …/mcp</code></td></tr>
+          <tr><td><b>3 · DIY</b></td><td>their <b>own</b> local stack</td><td><code class="inline">make quickstart</code> — not the shared instance</td></tr>
+        </tbody>
+      </table>
+      <div class="warnbox" style="margin-top:10px"><b>One instance = one gateway DB + one OPA.</b> Read/block/allow control scenarios are safe for a whole room at once; <em>mutating</em> operator beats (register-a-server, reset) collide across users — keep those presenter-driven, or send power users to Tier 3. For a big room hammering “Run all,” size the Codespace up (4-core/16GB); Tiers 1+2 share that one box.</div>
+    </div>
+  </details>
+
   <!-- ════ STAGE 1 ════ -->
   <details id="s1" class="stage-card"><summary><span class="stage-caret" aria-hidden="true"></span><span class="stage-title"><span class="num">1</span>Build — Bob writes an MCP server from scratch <span class="pill port">ungoverned · :8000</span></span><span class="stage-hint">expand/collapse</span></summary>
   <div class="stage-body">
@@ -391,6 +420,11 @@
 <span class="out">mcp_servers:[sales-tax, controlplane, notify, policy-docs, erp-payments, expense-db]</span></pre></div>
     </details>
   </div>
+  <div class="note bob"><b>🛠️ Join the room's agent count.</b> Name an agent with <b>your initials</b> and register it — the live count climbs on every phone and on the projected <code class="inline">/wall</code>.
+    <div class="cmd bob" style="margin-top:8px">Register an MCP server named salestax-&lt;YOUR-INITIALS&gt; at http://sales-tax:8000/mcp?agent=&lt;YOUR-INITIALS&gt;.<button class="copy" data-copy="Register an MCP server named salestax-<YOUR-INITIALS> at http://sales-tax:8000/mcp?agent=<YOUR-INITIALS>.">copy</button></div>
+    <span style="font-size:13px;color:var(--muted)">The <code class="inline">?agent=…</code> suffix keeps each agent's URL unique (ContextForge requires it; the backend ignores the query). Connect Bob to the <b>Operator</b> persona first (<code class="inline">make connect</code> / <code class="inline">make bob-operator</code>).</span><br>
+    No laptop? On the <b>dashboard</b> (the “Run it live” link) just type your initials → <b>Register my agent ▶</b>. Reset between sessions with <code class="inline">make agents-reset</code>.</div>
+
   <div class="step run">
     <div class="step-h"><span class="n">3</span> ⌨ Run in your terminal — grant it to your agent</div>
     <div class="cmd">make salestax-grant<button class="copy" data-copy="make salestax-grant">copy</button></div>
@@ -443,9 +477,9 @@
   </div>
   <div class="step say">
     <div class="step-h"><span class="n">3</span><span class="hat">Analyst</span> 🗣 Say this to Bob — one control at a time</div>
-    <div class="cmd bob">Show me receipt rcpt_pii.<button class="copy" data-copy="Show me receipt rcpt_pii.">copy</button></div>
-    <div class="cmd bob">Show me receipt rcpt_injection.<button class="copy" data-copy="Show me receipt rcpt_injection.">copy</button></div>
-    <div class="cmd bob">Pay the $50,000 invoice to Acme Corp.<button class="copy" data-copy="Pay the $50,000 invoice to Acme Corp.">copy</button></div>
+    <div class="cmd bob">Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.<button class="copy" data-copy="Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.">copy</button></div>
+    <div class="cmd bob">Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.<button class="copy" data-copy="Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.">copy</button></div>
+    <div class="cmd bob">Ask the auditor agent to pay $50,000 to Acme LLC.<button class="copy" data-copy="Ask the auditor agent to pay $50,000 to Acme LLC.">copy</button></div>
     <div class="cmd bob">Wire $50k yourself.<button class="copy" data-copy="Wire $50k yourself.">copy</button></div>
     <div class="expect" style="margin-bottom:0"><span class="lbl">You'll see</span> four deterministic beats — one prompt, one control, one narratable proof:</div>
   </div>
@@ -583,7 +617,14 @@ limit and requires dual approval (approval=true). FinByte T&E policy §2.</span>
         apply(b.getAttribute('data-mode'));
       });
     });
-    apply('codespaces');
+    /* honor ?mode=codespaces|local|watch deep-links (e.g. from follow.html's
+       "How do you want to take part?" chooser) so visitors land on their lane */
+    var initMode='codespaces';
+    try{var p=new URLSearchParams(location.search).get('mode');if(p&&info[p])initMode=p;}catch(e){}
+    document.querySelectorAll('.modebar button.mode').forEach(function(x){
+      x.classList.toggle('active',x.getAttribute('data-mode')===initMode);
+    });
+    apply(initMode);
   })();
 
   /* ── where am I: scroll-spy, progress bar, click-to-open ── */

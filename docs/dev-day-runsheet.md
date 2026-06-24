@@ -8,6 +8,110 @@ changes. The audience never sees a JWT or a UUID — those are backstage.
 
 ---
 
+## 🚀 Fire up ContextForge from Codespaces (the thing I keep forgetting)
+
+The whole governed mesh runs in the cloud; the devcontainer does the work for you.
+
+1. GitHub → this repo → green **Code** button → **Codespaces** tab → **Create codespace on main**.
+   (Or the **Open in Codespaces** badge in the README.)
+2. Wait a few minutes. `.devcontainer/post-create.sh` auto-runs **`make up && make seed`** —
+   that *is* ContextForge: the gateway on port **4444** + the full mesh, seeded. You'll see a
+   **"READY"** banner in the terminal when it's done.
+3. **If you reopened an existing Codespace** (post-create only runs the first time) or the banner
+   didn't appear, just run it yourself in the Codespace terminal:
+   ```bash
+   make up && make seed
+   ```
+4. **`make present`** — the **one** presenter command for a room. It opens public **cloudflared
+   tunnels** for the Companion + gateway, runs the Companion pointed at them, and **opens your browser
+   to the join QR**. It prints a banner with three URLs (QR / dashboard / gateway). **Ctrl-C tears it
+   all down.** Leave it running for the whole session.
+   > **Why not just the Codespaces public ports?** GitHub's forwarded ports **404 anonymous clients** —
+   > a phone with no GitHub login can't reach `…-7070.app.github.dev` (your logged-in laptop browser
+   > can, which hides it). `make present` tunnels through Cloudflare so **any phone on any network**
+   > reaches it. (`make companion-connect` is the older same-network/Codespaces-ports variant — fine if
+   > everyone's a logged-in teammate, but use `make present` for a public room.)
+   > Quick-tunnel URLs are **random and change each run** — that's fine, the QR is generated live; never hardcode it on a slide.
+5. **Show the QR:** `make present` already opened it in your browser — **full-screen that tab and project it.**
+   (Also on the dashboard: the blue **📲 Join QR** button → `/qr`.) Attendees scan → the follow-along page wired to your live dashboard.
+6. `make connect` (optional) → the presenter-terminal `bob mcp add … -t http …/mcp` line. Attendees normally
+   self-serve from the Connect Bob page instead, so this is mainly your own backup.
+7. Sanity check: open **`:4444/admin`** (`admin@finbyte.demo` / `FinByteAdmin!2026`) — the
+   ContextForge admin UI listing every server/tool/agent. (Forwarded ports are private by default;
+   the admin UI works in-Codespace without flipping visibility.)
+
+> **If agent registration 422s** (`DNS resolution failed … SSRF_DNS_FAIL_CLOSED`): the `sales-tax`
+> backend isn't up. `make companion-connect` starts it for you; if it failed (usually a Docker Hub
+> pull limit), run `make salestax-up` and retry. Both phone (Register my agent ▶) and Tier-2 Bob
+> point at `http://sales-tax:8000/mcp`.
+
+> ⚠️ Use the `-t http` + `/mcp` form `make connect` prints — **never SSE** (Codespaces proxies
+> buffer SSE and Bob hangs). Paste it **from an empty folder** (a repo clone's `.bob/mcp.json`
+> shadows it). Tear the Codespace/port down after — `make connect` embeds an admin token.
+
+## 👀 Audience follow-along (non-coders, no GitHub)
+
+Put the QR (`docs/assets/follow-qr.png`) on a slide → it opens **`follow.html`**: a plain-English,
+tap-along "YOU ARE HERE" stage tracker, plus a **"How do you want to take part?"** chooser with three
+tiers. `build.html` stays the deeper, coder version for the technical crowd.
+
+- **Tier 1 — Follow along + run it** (browser only, phone or laptop, no install): watch the stages
+  **and run the scenarios** on the shared Companion dashboard. With `make companion-connect` running and
+  **7070 Public** (steps 4–5 above), `make follow-link` prints the `follow.html?dash=<:7070 url>` link to
+  share (QR it). That lights up the page's **▶ Run it live** button.
+- **Tier 2 — Drive Bob yourself** (laptop + IBM Bob, no Docker): attendees **don't type the token**.
+  Run the companion with `EXPOSE_CONNECT=1 make companion` (a.k.a. `make companion-connect`), share the
+  dashboard link, and they click **🔌 Connect Bob (laptop)** → **Copy command** or **Download settings.json**
+  (or the one fixed `curl … /bob/settings.json` line). `make connect` still works as the presenter-terminal path.
+- **Tier 3 — Do it all yourself** (Docker + Bob): `make quickstart` on their own machine.
+
+### 🛠️ Audience participation — build the room's agents
+
+During the Build/Govern beat, invite everyone to **name an agent with their initials and register it**:
+- **Phones (Tier 1):** on the Companion dashboard, type initials → **Register my agent ▶** (no install) —
+  it really registers `salestax-<INITIALS>` with ContextForge.
+- **Bob drivers (Tier 2/3):** connect to the **Operator** persona (`make connect` / `make bob-operator`), then:
+  *"Register an MCP server named `salestax-<YOUR-INITIALS>` at http://sales-tax:8000/mcp?agent=<YOUR-INITIALS>."*
+  (The `?agent=` suffix keeps each URL unique — ContextForge requires it; the backend ignores the query.)
+  Tier 2 registers against the **shared** cloud gateway → lands on the same wall; Tier 3 registers on their **own** gateway.
+- **Watch it climb:** project the Companion's `/wall` (giant count + initials landing live). Each registration
+  is a real catalog entry; names dedup + retry so repeats still bump the count.
+- **Before each session:** `make agents-reset` (also folded into `make demo-reset`) clears `salestax-*` → back to 0.
+- Requires the `sales-tax` backend up (Stage ②); the Companion's `AGENT_BACKEND_URL` is configurable for testing.
+
+### Where the single control plane runs (how the whole room connects)
+
+One Docker Compose stack on **one host** (a GitHub Codespace is the recommended single instance — the
+devcontainer runs `make up && make seed`; you add `make companion-connect`). Only **two ports** are exposed:
+
+```
+   ┌──────────────── ONE HOST (a GitHub Codespace) ─────────────┐
+   │   :7070  Companion ──┐                                     │
+   │   (holds token,      ├──► :4444 Gateway ──► OPA            │
+   │    calls gateway)    │    (ContextForge)    6 MCP servers  │
+   │                      │                      2 A2A agents   │
+   └──────────┼───────────┴────────────────────────────────────┘
+        PUBLIC :7070                 PUBLIC :4444
+              │                            │
+   ┌──────────┴───┐          ┌─────────────┴┐          ┌─────────────────┐
+   │ TIER 1       │          │ TIER 2       │          │ TIER 3          │
+   │ browser      │          │ laptop + Bob │          │ their OWN stack │
+   │ phone/laptop │          │ (no Docker)  │          │ make quickstart │
+   └──────────────┘          └──────────────┘          └─────────────────┘
+   ── all hit the SAME instance ──►              ◄── separate, per person
+```
+
+- **Tier 1** → the public **:7070** Companion (it calls :4444 server-side, so phones need nothing).
+- **Tier 2** → the public **:4444** gateway directly, via `bob mcp add`.
+- **Tier 3** is the exception — their own local stack, not the shared instance.
+
+**Caveats:** one instance = one gateway DB + one OPA. Read/block/allow control scenarios are safe for a
+whole room at once; *mutating* operator beats (register-a-server, reset) collide — keep those
+presenter-driven or send power users to Tier 3. For a big room hammering "Run all," size the Codespace
+up (4-core/16GB); Tiers 1+2 share that one box.
+
+---
+
 ## PRE-STAGE — do this OFF-stage, before the room (≈10 min)
 
 This pre-bakes everything fragile so the only *live* thing on stage is Bob talking.
@@ -94,10 +198,12 @@ to **USE the tool**, not describe it.
 
 | Prompt to Bob | What the room sees |
 |---|---|
-| `Pay the $50,000 invoice to Acme Corp.` | **BLOCKED** by policy (OPA). The same block fires on the Rust `a2a-payments` agent — cross-language. |
-| `Show me receipt rcpt_pii.` | SSN / card / api-key **redacted before the model sees it**. |
-| `Show me receipt rcpt_injection.` | malicious memo → **`[INJECTION_BLOCKED]`**. |
+| `Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.` | SSN / card / api-key **redacted before the model sees it**. |
+| `Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.` | malicious memo → **`[INJECTION_BLOCKED]`**. |
+| `Ask the auditor agent to pay $50,000 to Acme LLC.` | **BLOCKED** by policy (OPA). The same block fires on the Rust `a2a-payments` agent — cross-language. |
 | `Wire $50k yourself.` | no `wire` tool — analyst can't reach it (**RBAC**). |
+
+> These match what `make connect` prints. The explicit "use the … tools" / "ask the auditor agent" wording forces the right tool/agent call — plain phrasings like "show me the receipt" sometimes make Bob answer from memory instead of calling the tool.
 
 **Say:** "Four controls, enforced at one seam, proven deterministically —
 `make verify-controls` → 16/16. The agent tried; the control plane decided."

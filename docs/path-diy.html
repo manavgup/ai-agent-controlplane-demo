@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Do it all yourself — your steps (Tier 3)</title>
+<link rel="stylesheet" href="assets/path.css">
+</head>
+<body class="t-diy">
+
+<header class="hero"><div class="wrap">
+  <a class="back" href="follow.html">← Back to “How do you want to take part?”</a>
+  <span class="eyebrow">Laptop · advanced · Docker + Bob</span>
+  <h1>Do it all yourself</h1>
+  <p class="tag">Run the entire governed mesh on your own machine. Build the tool with Bob, then govern it end to end.</p>
+</div></header>
+
+<main><div class="wrap">
+
+  <div class="intro">
+    Everything runs <b>on your laptop</b> — the gateway, the policy sidecar, six MCP servers, two cross-language
+    A2A agents, and Bob. The gateway is at <code class="inline">localhost:4444</code>. One command builds the
+    finished mesh; or walk the four stages and watch Bob <b>build</b> a tool and then <b>govern</b> it.
+    <br><span style="font-size:13.5px;color:var(--muted)">Heavy on conference WiFi (~10 Docker images). On a slow network, the Codespaces path is gentler.</span>
+  </div>
+
+  <!-- STEP 1 -->
+  <section class="step">
+    <h2><span class="num">1</span>Clone &amp; build the whole mesh</h2>
+    <p class="sub">One command brings up the finished, governed stack and proves it.</p>
+    <div class="cmd">git clone https://github.com/manavgup/ai-agent-controlplane-demo
+cd ai-agent-controlplane-demo
+make quickstart<button class="copy" data-copy="git clone https://github.com/manavgup/ai-agent-controlplane-demo && cd ai-agent-controlplane-demo && make quickstart">copy</button></div>
+    <div class="expect"><span class="lbl">You'll see</span> the full mesh come up and finish <b>16 passed, 0 failed</b>. Want to drive Bob too? Install it: <code>curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash</code>. The proof runs <b>without</b> Bob — Bob only drives the demo.</div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="step">
+    <h2><span class="num">2</span>Or walk the four stages yourself</h2>
+    <p class="sub">Each <code class="inline">make</code> command runs on your laptop; each 🗣 prompt runs in your Bob (it auto-connects — <code class="inline">make bob</code> / <code class="inline">bob-operator</code> / <code class="inline">bob-install-builder</code> write the connection for you, no <code class="inline">make connect</code> locally).</p>
+
+    <p style="font-weight:800;margin:14px 0 2px">① Build — Bob writes the server, ungoverned</p>
+    <div class="cmd bob">Create a new MCP server with fastmcp at mcp-servers/sales-tax/server.py: a tool add_tax(amount, rate_pct=8.5) returning {amount, rate_pct, tax, total}, plus a GET /health route, served over HTTP on 0.0.0.0:8000.<button class="copy" data-copy="Create a new MCP server with fastmcp at mcp-servers/sales-tax/server.py: a tool add_tax(amount, rate_pct=8.5) returning {amount, rate_pct, tax, total}, plus a GET /health route, served over HTTP on 0.0.0.0:8000.">copy</button></div>
+    <div class="cmd">make stage1-build<button class="copy" data-copy="make stage1-build">copy</button></div>
+    <div class="expect"><span class="lbl">You'll see</span> <b>add_tax(100, 8.5) → tax=8.50, total=108.50</b> on bare <code>:8000</code> — <b>no token, no policy, no audit</b>. That exposure is the problem the next stage fixes.</div>
+    <div class="warnbox"><b>If Bob's file won't run:</b> <code class="inline">make stage1-scaffold</code> drops in a known-good server, then re-run <code class="inline">make stage1-build</code>. Don't keep asking Bob to regenerate over a working file.</div>
+
+    <p style="font-weight:800;margin:18px 0 2px">② Govern — register → grant → call</p>
+    <div class="cmd">make stage2-govern<button class="copy" data-copy="make stage2-govern">copy</button></div>
+    <div class="cmd bob"><span class="hat">Operator</span> &nbsp;Register the sales-tax service with finbyte-gateway at http://sales-tax:8000/mcp.<button class="copy" data-copy="Register the sales-tax service with finbyte-gateway at http://sales-tax:8000/mcp.">copy</button></div>
+    <div class="cmd">make salestax-grant<button class="copy" data-copy="make salestax-grant">copy</button></div>
+    <div class="cmd bob"><span class="hat">Builder</span> &nbsp;Add sales tax to $100.<button class="copy" data-copy="Add sales tax to $100.">copy</button></div>
+    <div class="expect"><span class="lbl">The throughline</span> registering only <b>catalogs</b> the tool — <b>granting</b> is what makes it callable. The tool you ran wide-open on <code>:8000</code> now returns <b>108.50 governed</b>, token-gated through one seam.</div>
+
+    <p style="font-weight:800;margin:18px 0 2px">③ Controls — the guardrails fire</p>
+    <div class="cmd">make stage3-controls<button class="copy" data-copy="make stage3-controls">copy</button></div>
+    <div class="cmd">make logs-opa          <span style="color:var(--muted)"># second pane: live ALLOW / DENY stream</span><button class="copy" data-copy="make logs-opa">copy</button></div>
+    <div class="cmd bob"><span class="hat">Analyst</span> &nbsp;Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.<button class="copy" data-copy="Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.">copy</button></div>
+    <div class="cmd bob"><span class="hat">Analyst</span> &nbsp;Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.<button class="copy" data-copy="Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.">copy</button></div>
+    <div class="cmd bob"><span class="hat">Analyst</span> &nbsp;Ask the auditor agent to pay $50,000 to Acme LLC.<button class="copy" data-copy="Ask the auditor agent to pay $50,000 to Acme LLC.">copy</button></div>
+    <table class="fires">
+      <thead><tr><th>When Bob touches…</th><th>The control that fires</th></tr></thead>
+      <tbody>
+        <tr><td><code>rcpt_pii</code></td><td><span class="verdict v-mask">REDACTED</span> → <code>***-**-6789</code>, <code>[SECRET_REDACTED]</code></td></tr>
+        <tr><td><code>rcpt_injection</code></td><td><span class="verdict v-block">NEUTRALIZED</span> → <code>[INJECTION_BLOCKED]</code></td></tr>
+        <tr><td>$50k wire</td><td><span class="verdict v-block">BLOCKED</span> by OPA — cross-language Python→Rust, over the cap</td></tr>
+        <tr><td>Bob itself</td><td><b>no wire tool</b> — least-privilege / RBAC</td></tr>
+      </tbody>
+    </table>
+
+    <p style="font-weight:800;margin:18px 0 2px">④ Verify — the proof</p>
+    <div class="cmd">make verify-controls<button class="copy" data-copy="make verify-controls">copy</button></div>
+    <div class="expect"><span class="lbl">You'll see</span> <b>16 passed, 0 failed</b> — the full governed mesh proven. Same end-state as <code>make quickstart</code>, but you watched it get built.</div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="step">
+    <h2><span class="num">3</span>Inspect it</h2>
+    <p class="sub">Both commands auto-open your browser at <code class="inline">localhost</code> — no port-forwarding.</p>
+    <div class="cmd">make monitor          <span style="color:var(--muted)"># Admin UI → localhost:4444/admin</span><button class="copy" data-copy="make monitor">copy</button></div>
+    <div class="cmd">make inspect-mcp      <span style="color:var(--muted)"># MCP Inspector → localhost:6274</span><button class="copy" data-copy="make inspect-mcp">copy</button></div>
+    <div class="cmd">make inspect-a2a      <span style="color:var(--muted)"># A2A Inspector → localhost:8090</span><button class="copy" data-copy="make inspect-a2a">copy</button></div>
+    <div class="note">Reset between runs: <code class="inline">make stage-reset</code> (stops the bare server + container, deletes the generated <code class="inline">server.py</code>) or <code class="inline">make demo-reset</code> for a clean slate.</div>
+  </section>
+
+  <p style="text-align:center;margin:18px 0 0;font-size:13.5px;color:var(--muted)">Full reference with screenshots and real transcripts: <a href="build.html?mode=local">the hands-on build cards →</a> · Presenting? <a href="cockpit.html">Cockpit guide →</a></p>
+
+</div></main>
+
+<footer><div class="wrap">IBM Bob × ContextForge · <a href="follow.html">All the ways to take part →</a></div></footer>
+<div id="toast"></div>
+<script src="assets/path.js"></script>
+</body>
+</html>

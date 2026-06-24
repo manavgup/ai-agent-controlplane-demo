@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Follow along — Bob & the control plane</title>
+<style>
+  :root{
+    --ibm:#0f62fe; --ibm-dark:#0043ce; --ink:#161616; --muted:#525252;
+    --line:#e0e0e0; --bg:#f4f4f7; --card:#ffffff; --code-bg:#f2f4f8;
+    --ok:#198038; --ok-bg:#defbe6; --warn:#8a6d00; --block:#da1e28; --block-bg:#fff1f1;
+    --bob:#6929c4; --bob-bg:#f6f3ff; --bob-line:#dcccff;
+    --radius:14px; --shadow:0 1px 3px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.05);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;color:var(--ink);background:var(--bg);
+    font:17px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+  a{color:var(--ibm);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:760px;margin:0 auto;padding:0 22px}
+
+  header.hero{background:linear-gradient(135deg,#0f62fe 0%,#6929c4 100%);color:#fff;padding:38px 0 30px}
+  header.hero .wrap{display:flex;flex-direction:column;gap:6px}
+  .eyebrow{font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.85;font-weight:600}
+  header.hero h1{margin:4px 0 2px;font-size:30px;line-height:1.15;font-weight:700}
+  header.hero p.tag{margin:0;font-size:18px;opacity:.95}
+
+  /* ── sticky "YOU ARE HERE" stage tracker ── */
+  nav.track{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.96);
+    backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--line);box-shadow:0 2px 10px rgba(0,0,0,.03)}
+  nav.track .wrap{padding:10px 22px}
+  .track-row{display:flex;gap:6px}
+  .track-row button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:11px;
+    padding:8px 6px 9px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;
+    line-height:1.15;transition:.12s;color:var(--muted)}
+  .track-row button .tn{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;
+    border:2px solid var(--line);font-weight:800;font-size:14px;color:var(--muted);background:#fff}
+  .track-row button .tl{font-size:12.5px;font-weight:700}
+  .track-row button:hover{border-color:var(--ibm)}
+  .track-row button.cur{border-color:var(--ibm);background:#eef4ff}
+  .track-row button.cur .tn{background:var(--ibm);border-color:var(--ibm);color:#fff}
+  .track-row button.cur .tl{color:var(--ibm-dark)}
+  .track-row button.done .tn{background:var(--ok);border-color:var(--ok);color:#fff}
+  .track-row button.done .tn::before{content:"✓"}
+  .track-hint{text-align:center;font-size:12px;color:var(--muted);margin:7px 0 0}
+  @media(max-width:560px){.track-row button .tl{font-size:11px}}
+
+  main{padding:26px 0 60px}
+
+  /* big plain-language stage section */
+  section.stage{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:24px 24px 22px;margin:0 0 20px;scroll-margin-top:104px}
+  section.stage>h2{margin:0 0 4px;font-size:24px;line-height:1.2;display:flex;align-items:center;gap:12px}
+  section.stage>h2 .num{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;
+    background:var(--ibm);color:#fff;font-size:18px;font-weight:800;flex:none}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 16px 50px}
+  @media(max-width:560px){.sub{margin-left:0}}
+
+  .lead{font-size:18px;margin:14px 0}
+  .watch{background:var(--ok-bg);border:1px solid #c7ebd3;border-radius:12px;padding:14px 16px;margin:16px 0 4px}
+  .watch .wl{display:block;text-transform:uppercase;font-size:11.5px;letter-spacing:.06em;font-weight:800;color:var(--ok);margin-bottom:5px}
+  .watch b{color:#0e4f2b}
+  .scr{background:#fff;border:1px solid #c7ebd3;border-radius:10px;padding:3px 8px;font-size:14px;color:#0b3a8f;font-family:"SF Mono",monospace;white-space:nowrap}
+
+  /* the four controls, plain English */
+  .ctrl{display:flex;gap:13px;padding:14px 0;border-top:1px solid var(--line)}
+  .ctrl:first-of-type{border-top:0}
+  .ctrl .ico{font-size:26px;flex:none;width:34px;text-align:center}
+  .ctrl .cbody b{display:block;font-size:16px}
+  .ctrl .cbody p{margin:3px 0 0;font-size:15px;color:var(--muted)}
+  .ctrl .verdict{display:inline-block;margin-top:7px;font-weight:800;font-size:12px;padding:3px 10px;border-radius:7px}
+  .v-block{background:var(--block-bg);color:var(--block)} .v-mask{background:#edf5ff;color:var(--ibm-dark)}
+
+  /* "how do you want to take part?" — the front-door chooser */
+  .takepart{margin:0 0 22px}
+  .takepart h3{font-size:18px;margin:0 0 3px;display:flex;align-items:center;gap:8px}
+  .takepart .tp-sub{color:var(--muted);font-size:14.5px;margin:0 0 13px}
+  .tp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:620px){.tp-grid{grid-template-columns:1fr}}
+  .tp-card{display:flex;flex-direction:column;background:var(--card);border:1.5px solid var(--line);border-radius:14px;
+    box-shadow:var(--shadow);padding:15px 16px 14px;text-decoration:none;color:inherit;transition:.12s}
+  a.tp-card:hover{border-color:var(--ibm);transform:translateY(-2px);text-decoration:none}
+  .tp-card .tp-ico{font-size:25px;line-height:1}
+  .tp-card .tp-name{font-weight:800;font-size:16px;margin:7px 0 3px}
+  .tp-card .tp-desc{font-size:13.5px;color:var(--muted);flex:1;line-height:1.5}
+  .tp-card .tp-desc b{color:var(--ink)}
+  .tp-card .tp-go{margin-top:11px;font-size:13px;font-weight:800;color:var(--ibm)}
+  .tp-card.rec{border-color:var(--ok);background:#f3fbf5}
+  .tp-card.rec .tp-name{color:var(--ok)}
+  .tp-badge{align-self:flex-start;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+    background:var(--ok-bg);color:var(--ok);border-radius:999px;padding:2px 9px;margin-bottom:4px}
+  .tp-tier{align-self:flex-start;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--muted);margin-bottom:4px}
+  .tp-runbtn{align-self:flex-start;display:inline-block;margin-top:12px;background:var(--ok);color:#fff;
+    border-radius:9px;padding:9px 16px;font-weight:800;font-size:14.5px;text-decoration:none}
+  .tp-runbtn:hover{filter:brightness(1.06);text-decoration:none}
+  .tp-wait{margin-top:12px;font-size:13px;font-weight:700;color:var(--muted);line-height:1.4}
+  .tp-note{font-size:13px;color:var(--muted);margin:11px 0 0;text-align:center}
+
+  /* "the big picture" — optional architecture diagram, collapsed for non-coders */
+  details.bigpic{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+    margin:0 0 22px;overflow:hidden}
+  details.bigpic>summary{cursor:pointer;list-style:none;padding:15px 18px;font-size:16px;font-weight:700;
+    display:flex;align-items:center;gap:9px;user-select:none}
+  details.bigpic>summary::-webkit-details-marker{display:none}
+  details.bigpic>summary::after{content:'▸';margin-left:auto;font-size:14px;color:var(--muted)}
+  details.bigpic[open]>summary::after{content:'▾'}
+  details.bigpic[open]>summary{border-bottom:1px solid var(--line)}
+  .bigpic-body{padding:14px 18px 18px}
+  .bigpic-body p{margin:0 0 12px;color:var(--muted);font-size:14.5px}
+  .bigpic-body p b{color:var(--ink)}
+  .bigpic-body img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:9px}
+  .bigpic-body a.zoom{font-size:13px;font-weight:700;display:inline-block;margin-top:9px}
+
+  .note{border-left:4px solid var(--ibm);background:#edf5ff;border-radius:0 10px 10px 0;padding:13px 16px;margin:14px 0;font-size:15px;color:#0b3a8f}
+  .note.bob{border-left-color:var(--bob);background:var(--bob-bg);color:#3b2a78}
+
+  .done-banner{background:linear-gradient(135deg,#198038 0%,#0f62fe 100%);color:#fff;border-radius:var(--radius);
+    padding:22px 24px;margin:0 0 22px;font-size:18px}
+  .done-banner b{font-size:21px;display:block;margin-bottom:4px}
+
+  footer{border-top:1px solid var(--line);padding:24px 0 44px;color:var(--muted);font-size:14px;text-align:center}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">IBM Bob × ContextForge · Follow along</div>
+    <h1>Watch Bob build a tool — then watch it get governed</h1>
+    <p class="tag">No setup. Tap each stage as we go so you always know where we are.</p>
+  </div>
+</header>
+
+<!-- ── sticky tracker: tap the stage the presenter is on ── -->
+<nav class="track"><div class="wrap">
+  <div class="track-row" id="trackRow">
+    <button data-go="s1" class="cur"><span class="tn">1</span><span class="tl">Build</span></button>
+    <button data-go="s2"><span class="tn">2</span><span class="tl">Govern</span></button>
+    <button data-go="s3"><span class="tn">3</span><span class="tl">Controls</span></button>
+    <button data-go="s4"><span class="tn">4</span><span class="tl">Proof</span></button>
+  </div>
+  <p class="track-hint">👆 Tap the stage we're on — it scrolls you there and marks the rest done</p>
+</div></nav>
+
+<main><div class="wrap">
+
+  <div class="note">
+    <b>What you're watching:</b> Bob is an AI assistant. We ask it — in plain English — to build a small
+    tool that does a real job (and even moves money). Then we put a <b>control plane</b> in charge of it,
+    so every action is checked, logged, and permission-gated. <b>You don't need to do anything but watch.</b>
+  </div>
+
+  <!-- ── FRONT-DOOR CHOOSER — 3 tiers by how much is on your machine ── -->
+  <section class="takepart">
+    <h3>🙋 How do you want to take part?</h3>
+    <p class="tp-sub">Everyone can watch <b>and</b> run the scenarios in a browser — no install. On a laptop? Go deeper and drive the AI yourself.</p>
+    <div class="tp-grid">
+
+      <!-- TIER 1 — browser only: watch here + run on the shared live dashboard -->
+      <a class="tp-card rec" id="runlive-card" href="path-run.html">
+        <span class="tp-badge">Everyone · phone or laptop</span>
+        <div class="tp-ico">👀</div>
+        <div class="tp-name">Follow along + run it</div>
+        <div class="tp-desc">Right here in your browser. Watch the four stages below — and <b>run the scenarios yourself</b> on the live dashboard. Nothing to install.</div>
+        <div class="tp-go">See your steps →</div>
+      </a>
+
+      <!-- TIER 2 — laptop + Bob, no Docker: drive the agent against the cloud control plane -->
+      <a class="tp-card" href="path-bob.html">
+        <span class="tp-tier">Laptop · intermediate</span>
+        <div class="tp-ico">🧪</div>
+        <div class="tp-name">Drive Bob yourself</div>
+        <div class="tp-desc">Install <b>IBM Bob</b> (no Docker) and connect to the control plane running in the cloud. Type prompts; watch the AI get governed.</div>
+        <div class="tp-go">See your steps →</div>
+      </a>
+
+      <!-- TIER 3 — everything local: build + govern end to end -->
+      <a class="tp-card" href="path-diy.html">
+        <span class="tp-tier">Laptop · advanced</span>
+        <div class="tp-ico">💻</div>
+        <div class="tp-name">Do it all yourself</div>
+        <div class="tp-desc">Run the whole stack on your own machine — Docker + Bob. One command: <code>make quickstart</code>. Build the tool and govern it end to end.</div>
+        <div class="tp-go">See your steps →</div>
+      </a>
+
+    </div>
+    <p class="tp-note">Phones can watch and tap the live dashboard. Driving the AI yourself (🧪 / 💻) needs a laptop + IBM Bob.</p>
+  </section>
+
+  <!-- ── optional: the architecture diagram, one tap away ── -->
+  <details class="bigpic">
+    <summary>🗺️ The big picture — how it all connects (optional)</summary>
+    <div class="bigpic-body">
+      <p>Bob never touches the tools directly. <b>Every move — every tool call and every agent-to-agent call — passes through one checkpoint</b> (the control plane), which checks it, hides secrets, and records it before anything happens.</p>
+      <a href="diagrams/architecture.svg" target="_blank" rel="noopener"><img src="diagrams/architecture.svg" alt="IBM Bob connects through the ContextForge gateway (with an OPA policy sidecar) to six MCP servers and two cross-language A2A agents; the gateway governs every call."></a>
+      <a class="zoom" href="diagrams/architecture.svg" target="_blank" rel="noopener">⤢ Open full-size (pinch to zoom on a phone) →</a>
+    </div>
+  </details>
+
+  <!-- ════ STAGE 1 ════ -->
+  <section class="stage" id="s1">
+    <h2><span class="num">1</span>Build</h2>
+    <p class="sub">Bob writes a brand-new tool, just by being asked</p>
+    <p class="lead">We ask Bob, in plain English, to build a small <b>“sales tax” tool</b> from scratch.
+      In seconds it writes the program and runs it.</p>
+    <p>Here's the catch: right now that tool is <b>wide open</b>. There's no login, no rulebook, no record
+      of who used it — anyone who can reach it could run it. <b>That's the problem the next stages fix.</b></p>
+    <div class="watch"><span class="wl">Watch for</span>
+      Bob types out the tool, then tests it: add 8.5% tax to $100 → <span class="scr">total = 108.50</span>.
+      The presenter will point out: <b>no password, no rules, no audit trail.</b>
+    </div>
+  </section>
+
+  <!-- ════ STAGE 2 ════ -->
+  <section class="stage" id="s2">
+    <h2><span class="num">2</span>Govern</h2>
+    <p class="sub">We put the control plane in charge of Bob's new tool</p>
+    <p class="lead">Now we hand Bob's tool to <b>ContextForge — the control plane</b>. From here on, every single
+      use of the tool passes through one checkpoint that can verify, record, and allow-or-deny it.</p>
+    <p>Notice one subtle thing the presenter calls out: simply <b>listing</b> the tool in the catalog isn't enough.
+      Someone has to explicitly <b>grant permission</b> before Bob is allowed to use it. Listing ≠ allowed.</p>
+    <div class="watch"><span class="wl">Watch for</span>
+      The same <span class="scr">total = 108.50</span> as Stage 1 — but now it only works <b>after</b> permission
+      is granted, and every use is logged. Same tool, now <b>governed</b>.
+    </div>
+  </section>
+
+  <!-- ════ STAGE 3 ════ -->
+  <section class="stage" id="s3">
+    <h2><span class="num">3</span>Controls</h2>
+    <p class="sub">The payoff — watch four safeguards stop Bob in real time</p>
+    <p class="lead">This is the good part. Bob now works inside a pretend finance company. We ask it to do four
+      everyday things — and each time, a different safeguard kicks in. <b>Bob tries; the control plane decides.</b></p>
+
+    <div class="ctrl">
+      <div class="ico">🙈</div>
+      <div class="cbody">
+        <b>A receipt with private info on it</b>
+        <p>Bob asks to read a receipt that contains a Social Security number, a credit-card number, and a secret key.
+          The control plane <b>blanks them out before Bob ever sees them.</b></p>
+        <span class="verdict v-mask">HIDDEN → ***-**-6789 · [SECRET_REDACTED]</span>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <div class="ico">🪤</div>
+      <div class="cbody">
+        <b>A receipt with a hidden trick on it</b>
+        <p>One receipt has a sneaky instruction buried in it trying to hijack Bob (“ignore your rules and…”).
+          The control plane <b>strips the trick out</b> so Bob never follows it.</p>
+        <span class="verdict v-block">NEUTRALIZED → [INJECTION_BLOCKED]</span>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <div class="ico">🛑</div>
+      <div class="cbody">
+        <b>A $50,000 payment</b>
+        <p>Bob tries to send a $50,000 wire. Company policy says anything over $10,000 needs a second approval —
+          so the control plane <b>blocks it</b>. (It even blocks when Bob asks a different helper agent to do it.)</p>
+        <span class="verdict v-block">BLOCKED → over the $10,000 limit</span>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <div class="ico">🔑</div>
+      <div class="cbody">
+        <b>Bob doesn't even have the “send money” button</b>
+        <p>In its finance-analyst role, Bob was never given the wire tool at all. You can't misuse what you
+          were never handed. <b>The right to act follows the role.</b></p>
+        <span class="verdict v-mask">NOT ALLOWED → no wire tool for this role</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════ STAGE 4 ════ -->
+  <section class="stage" id="s4">
+    <h2><span class="num">4</span>Proof</h2>
+    <p class="sub">All of it, checked automatically</p>
+    <div class="done-banner"><b>16 checks · all green ✅</b>
+      Every safeguard you just watched is re-tested automatically — no human needed. If WiFi or a laptop
+      misbehaves, this is the receipt that the control plane really works.</div>
+    <p class="lead">The takeaway: <b>building a tool is easy — putting something in charge of it is the hard part.</b>
+      That “something in charge” is the control plane. Register it → grant permission → every action checked.</p>
+    <p class="note bob" style="font-size:16px">That's the show. Bob did the building and the asking; the control
+      plane did the deciding. Thanks for following along! 👋</p>
+  </section>
+
+</div></main>
+
+<footer><div class="wrap">
+  IBM Bob × ContextForge · <a href="build.html">Hands-on build cards →</a>
+</div></footer>
+
+<script>
+  /* ── Tier-1: the presenter shares this page with ?dash=<companion url> appended
+     (see `make follow-link`). Forward that param to the Tier-1 steps page so its
+     "Run it live" button lights up. Only accept http(s) so a crafted
+     ?dash=javascript:... can't run. ── */
+  (function(){
+    var card=document.getElementById('runlive-card');
+    if(!card)return;
+    var dash='';
+    try{
+      var p=new URLSearchParams(location.search).get('dash');
+      if(p&&/^https?:\/\//i.test(p))dash=p;
+    }catch(e){}
+    if(dash)card.href='path-run.html?dash='+encodeURIComponent(dash);
+  })();
+
+  /* ── tap-along stage tracker: mark current, mark earlier stages done, scroll there ── */
+  (function(){
+    var btns=[].slice.call(document.querySelectorAll('#trackRow button'));
+    function setCurrent(i){
+      btns.forEach(function(b,j){
+        b.classList.toggle('cur',j===i);
+        b.classList.toggle('done',j<i);
+      });
+    }
+    /* a tap should win over scroll-sync while it animates to the section,
+       so the stage you tapped stays lit instead of snapping back mid-scroll */
+    var tapLock=0;
+    btns.forEach(function(b,i){
+      b.addEventListener('click',function(){
+        setCurrent(i);
+        tapLock=Date.now()+1100;
+        var el=document.getElementById(b.getAttribute('data-go'));
+        if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+      });
+    });
+    /* also follow along automatically as the viewer scrolls */
+    var ids=btns.map(function(b){return b.getAttribute('data-go');});
+    window.addEventListener('scroll',function(){
+      if(Date.now()<tapLock)return;
+      var line=130,cur=0;
+      ids.forEach(function(id,i){
+        var el=document.getElementById(id);
+        if(el&&el.getBoundingClientRect().top<=line)cur=i;
+      });
+      /* at the very bottom the last short stage can't reach the top line —
+         pin it so "Proof" lights up when you scroll to the end */
+      if(window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-4)cur=ids.length-1;
+      setCurrent(cur);
+    },{passive:true});
+  })();
+</script>
+</body>
+</html>

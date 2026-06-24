@@ -71,6 +71,19 @@ esac
 # a long-lived stream that the Codespaces/tunnel proxy buffers, so Bob hangs on
 # connect; /mcp is plain request/response and goes through cleanly (verified). It
 # works identically for a local gateway too, so http is the universal default.
+# Drive prompts: single source of truth is docs/assets/prompts.json (the companion
+# reads the same file). Fall back to literals if python3/the file is unavailable.
+_PROMPTS_JSON="$(dirname "$0")/../docs/assets/prompts.json"
+PROMPTS=$(python3 - "$_PROMPTS_JSON" <<'PY' 2>/dev/null
+import json, sys
+for p in json.load(open(sys.argv[1]))["drive"]:
+    print('    "%s"   -> %s' % (p["say"], p.get("gets", "")))
+PY
+)
+[ -n "$PROMPTS" ] || PROMPTS='    "Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim."   -> PII/secret redacted
+    "Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim."   -> injection neutralized
+    "Ask the auditor agent to pay $50,000 to Acme LLC."   -> blocked by policy'
+
 cat <<EOF
 
 ${B}Attendees: install IBM Bob, then — FROM AN EMPTY FOLDER — run ONE command${R}
@@ -81,8 +94,7 @@ ${B}Act 1 — FinOps analyst${R} (8 governed tools, no wire):
 
 Then drive it (from the same folder):
   ${CYN}bob${R}
-    "Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim."   ${D}→ PII/secret redacted${R}
-    "Ask the auditor agent to pay \$50,000 to Acme LLC."                    ${D}→ blocked by policy${R}
+${PROMPTS}
 
 ${D}Act 2 — platform operator (advanced): re-add pointed at the Operator server${R}
   ${CYN}bob mcp add finbyte-gateway "$BASE/servers/$OPERATOR/mcp" -t http -H "Authorization: Bearer $ADMIN" --trust${R}

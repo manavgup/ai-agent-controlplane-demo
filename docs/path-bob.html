@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drive Bob yourself — your steps (Tier 2)</title>
+<link rel="stylesheet" href="assets/path.css">
+</head>
+<body class="t-bob">
+
+<header class="hero"><div class="wrap">
+  <a class="back" href="follow.html">← Back to “How do you want to take part?”</a>
+  <span class="eyebrow">Laptop · intermediate · IBM Bob, no Docker</span>
+  <h1>Drive Bob yourself</h1>
+  <p class="tag">Install only IBM Bob. Point it at the control plane running in the cloud and watch the AI get governed.</p>
+</div></header>
+
+<main><div class="wrap">
+
+  <div class="intro">
+    The whole governed mesh runs in <b>the cloud</b> — a GitHub Codespace the presenter started. You install
+    <b>only IBM Bob</b> on your laptop (no Docker), connect it to that gateway over the wire, and drive the
+    <b>controls</b> live. Every prompt you type is checked by the same control plane everyone else is using.
+  </div>
+
+  <!-- STEP 1 -->
+  <section class="step">
+    <h2><span class="num">1</span>Install IBM Bob</h2>
+    <p class="sub">One command on macOS/Linux. Needs Node ≥ 22.15 (it checks for you).</p>
+    <div class="cmd">curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash<button class="copy" data-copy="curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash">copy</button></div>
+    <p style="font-size:13.5px;color:var(--muted);margin:4px 0 0">Prefer a guide? <a href="https://bob.ibm.com/docs/ide/getting-started/install" target="_blank" rel="noopener">Install guide ↗</a> · <a href="https://bob.ibm.com/download" target="_blank" rel="noopener">Download ↗</a>. Then sign in with <code class="inline">bob</code>.</p>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="step">
+    <h2><span class="num">2</span>Get your connect line — <b>copy or download, don't type it</b></h2>
+    <p class="sub">The connection carries a ~470-char token. Typing it is hopeless, so the dashboard hands it to you. Open the same dashboard link the presenter shared and click <b>🔌 Connect Bob (laptop)</b> — then pick one:</p>
+    <ul class="tight" style="margin-bottom:10px">
+      <li><b>Copy the command</b> — one click copies the full <code class="inline">bob mcp add …</code> line (token and all). Paste it into your terminal.</li>
+      <li><b>Or one fixed line</b> — same for everyone, no token to copy. Run it in an empty folder; it drops the config in and launches Bob:</li>
+    </ul>
+    <div class="cmd">mkdir -p .bob && curl -fsSL &lt;dashboard-url&gt;/bob/settings.json -o .bob/settings.json && bob<button class="copy" data-copy="mkdir -p .bob && curl -fsSL <dashboard-url>/bob/settings.json -o .bob/settings.json && bob">copy</button></div>
+    <div class="warnbox"><b>Gotchas:</b> use <code class="inline">-t http</code> (<b>never</b> <code class="inline">-t sse</code>) and run Bob from an <b>empty folder</b> (not a clone of the repo — its <code class="inline">.bob/mcp.json</code> would shadow this). The Connect Bob page guarantees the full token, so no more silent truncation.</div>
+    <p style="font-size:13.5px;color:var(--muted);margin:4px 0 0">Presenter setup: start the companion with <code class="inline">EXPOSE_CONNECT=1 make companion</code> (it's off by default), then share the dashboard link. Running your own Codespace? <a href="https://codespaces.new/manavgup/ai-agent-controlplane-demo?quickstart=1" target="_blank" rel="noopener">Open in Codespaces ↗</a>, set port <b>4444 → Public</b>. <b>Bob is not installed in the Codespace</b> — it's the mesh host; you drive from your laptop.</p>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="step">
+    <h2><span class="num">3</span>Connect Bob</h2>
+    <p class="sub">Paste the line into your terminal (or add it in Bob's MCP manager UI).</p>
+    <div class="cmd">bob mcp list<button class="copy" data-copy="bob mcp list">copy</button></div>
+    <div class="expect"><span class="lbl">You'll see</span> <code>finbyte-gateway</code> connected. A <b>persona</b> is just which gateway URL you point Bob at — same gateway, same token, swap the URL → swap the toolset. That's RBAC, made of one URL.</div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section class="step">
+    <h2><span class="num">4</span>Drive the controls <span class="hat">Analyst</span></h2>
+    <p class="sub">Say each of these to Bob, one at a time. Watch the control plane bite each call.</p>
+    <div class="cmd bob">Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.<button class="copy" data-copy="Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.">copy</button></div>
+    <div class="cmd bob">Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.<button class="copy" data-copy="Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.">copy</button></div>
+    <div class="cmd bob">Ask the auditor agent to pay $50,000 to Acme LLC.<button class="copy" data-copy="Ask the auditor agent to pay $50,000 to Acme LLC.">copy</button></div>
+    <table class="fires">
+      <thead><tr><th>When Bob touches…</th><th>The control that fires</th></tr></thead>
+      <tbody>
+        <tr><td><code>rcpt_pii</code></td><td><span class="verdict v-mask">REDACTED</span> → <code>***-**-6789</code>, <code>[SECRET_REDACTED]</code></td></tr>
+        <tr><td><code>rcpt_injection</code></td><td><span class="verdict v-block">NEUTRALIZED</span> → <code>[INJECTION_BLOCKED]</code></td></tr>
+        <tr><td>$50k wire</td><td><span class="verdict v-block">BLOCKED</span> by policy — over the $10k cap (fires cross-language, Python→Rust)</td></tr>
+      </tbody>
+    </table>
+    <div class="expect"><span class="lbl">Least-privilege</span> your Analyst persona has <b>no wire tool at all</b> — it literally can't move money, no matter the prompt.</div>
+  </section>
+
+  <!-- STEP 5 -->
+  <section class="step">
+    <h2><span class="num">5</span>Register your own agent <span class="hat">Operator</span> <span style="font-size:12px;font-weight:600;color:var(--muted)">— optional</span></h2>
+    <p class="sub">Join the room's live count. Switch Bob to the Operator persona first — on the <b>🔌 Connect Bob</b> page, copy the <b>Operator</b> command (or download its settings.json) and re-add. Then:</p>
+    <div class="cmd bob">Register an MCP server named salestax-&lt;YOUR-INITIALS&gt; at http://sales-tax:8000/mcp?agent=&lt;YOUR-INITIALS&gt;.<button class="copy" data-copy="Register an MCP server named salestax-<YOUR-INITIALS> at http://sales-tax:8000/mcp?agent=<YOUR-INITIALS>.">copy</button></div>
+    <div class="expect"><span class="lbl">You'll see</span> <b>“Agents built by the room”</b> climb on every phone and the projected wall. The <code>?agent=…</code> suffix keeps each agent's URL unique (ContextForge requires it; the backend ignores the query).</div>
+    <details class="note bob" style="border-radius:9px">
+      <summary style="cursor:pointer;font-weight:700">🚀 Going further — register a tool you built on your <em>own</em> laptop</summary>
+      <div style="margin-top:8px;font-size:14px">
+        Have Bob write a real MCP server locally, expose it with a one-line tunnel, then register that public URL with the central gateway:
+        <div class="cmd" style="background:#fff">cloudflared tunnel --url http://localhost:8000<button class="copy" data-copy="cloudflared tunnel --url http://localhost:8000">copy</button></div>
+        Register the printed <code class="inline">https://&lt;random&gt;.trycloudflare.com/mcp</code> as your agent's URL. The gateway dials your laptop back through the tunnel and governs every call — proven end to end (a call routed to a laptop returned <code class="inline">total 108.50</code> through the cloud gateway). Throwaway demo data only; the tunnel is public.
+      </div>
+    </details>
+  </section>
+
+  <a class="nextcard" href="path-diy.html">
+    <span class="ico">💻</span>
+    <span><span class="nx">Want the whole stack on your own machine?</span><br><span class="nd">Docker + Bob, end to end: build the tool and govern it yourself.</span></span>
+    <span class="go">→</span>
+  </a>
+
+  <p style="text-align:center;margin:18px 0 0;font-size:13.5px;color:var(--muted)">Full reference with screenshots and real transcripts: <a href="build.html?mode=codespaces">the hands-on build cards →</a></p>
+
+</div></main>
+
+<footer><div class="wrap">IBM Bob × ContextForge · <a href="follow.html">All the ways to take part →</a></div></footer>
+<div id="toast"></div>
+<script src="assets/path.js"></script>
+</body>
+</html>
