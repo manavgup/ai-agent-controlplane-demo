@@ -1456,7 +1456,7 @@ if __name__ == "__main__":
     check = Presentation(path)
     n = len(check.slides.__iter__.__self__._sldIdLst)
     n = len(list(check.slides))
-    assert n == 20, f"expected 20 slides, got {n}"
+    assert n == 21, f"expected 21 slides, got {n}"
     print(f"OK  wrote {path}")
-    print(f"OK  re-opened cleanly: {n} slides (asserted == 20)")
+    print(f"OK  re-opened cleanly: {n} slides (asserted == 21)")
     print(f"OK  architecture PNG embedded: {png}  ({ARCH_PNG})")
