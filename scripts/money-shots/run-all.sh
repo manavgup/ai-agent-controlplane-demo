@@ -61,6 +61,9 @@ echo "== Cross-language A2A: Rust Payments agent executes via gateway =="
 r=$(call a2a-payments '{"message":{"role":"ROLE_USER","parts":[{"text":"Execute payment of $5000 to Corner Cafe"}],"messageId":"m-verify"}}')
 assert_contains "Rust agent executed the payment" "$r" "Payment executed"
 
+echo "== A2A quorum (policy beats consensus) =="
+if bash "$(dirname "$0")/quorum.sh"; then PASS=$((PASS+3)); else FAIL=$((FAIL+1)); fi
+
 echo
 echo "──────────────────────────────────────────"
 echo "  RESULT: $PASS passed, $FAIL failed"

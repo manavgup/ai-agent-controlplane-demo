@@ -31,7 +31,7 @@ DOCKER_BUILDKIT ?= 0
 export DOCKER_HOST DOCKER_BUILDKIT
 endif
 
-.PHONY: help check clean up down seed token token-bob bob bob-operator bob-config bob-install bob-config-operator bob-install-operator bob-config-builder bob-install-builder connect companion logs logs-opa verify-controls demo-reset ps demo quickstart monitor inspect-mcp inspect-a2a cockpit cockpit-down fxrates-convert fxrates-reset fxrates-register dev-start stage1-build stage1-scaffold stage2-govern stage3-controls stage4-mesh stage-reset salestax-up salestax-down salestax-register salestax-grant fxrates-extend
+.PHONY: help check clean up down seed token token-bob bob bob-operator bob-config bob-install bob-config-operator bob-install-operator bob-config-builder bob-install-builder connect companion logs logs-opa verify-controls verify-quorum demo-reset ps demo quickstart monitor inspect-mcp inspect-a2a cockpit cockpit-down fxrates-convert fxrates-reset fxrates-register dev-start stage1-build stage1-scaffold stage2-govern stage3-controls stage4-mesh stage-reset salestax-up salestax-down salestax-register salestax-grant fxrates-extend
 
 # `make` (no target) prints this curated, categorized help. Keep it in sync when you
 # add/rename a target — the inline `## ...` comments still document each target too.
@@ -438,6 +438,9 @@ cockpit-down: ## Tear down the cockpit (kill session/panes + remove a2a-inspecto
 
 verify-controls: ## Run the money-shot proof suite (assert block/allow)
 	@bash scripts/money-shots/run-all.sh
+
+verify-quorum: ## Prove just the A2A quorum (uses the seeded room-* voters)
+	@bash scripts/money-shots/quorum.sh
 
 demo-reset: ## Clean-reset the gateway to a known-good state (recreate + reseed + clear room agents)
 	$(COMPOSE) up -d --force-recreate gateway
