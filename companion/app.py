@@ -7,7 +7,7 @@ control firing live (block / allow / mask / neutralize).
 Beyond the verdict, every scenario card now exposes hard EVIDENCE on demand:
 the exact JSON-RPC request, the raw response, the live OPA decision log (the
 policy decision point, with the real arguments + deny reason), and the matching
-gateway log lines. A link to the static screenshot gallery is in the header.
+gateway log lines. The header links straight into the ContextForge admin UI.
 
 Run:  make companion   (mints token + FinOps UUID, then serves on :7070)
 """
@@ -458,6 +458,9 @@ GATEWAY_PUBLIC_URL = os.environ.get("GATEWAY_PUBLIC_URL", "").rstrip("/")
 COMPANION_PUBLIC_URL = (
     os.environ.get("COMPANION_PUBLIC_URL") or os.environ.get("COMPANION_URL") or ""
 ).rstrip("/")
+# ContextForge admin login (for the dashboard's "Agentic AI Control Plane" link)
+ADMIN_EMAIL = os.environ.get("PLATFORM_ADMIN_EMAIL", "admin@finbyte.demo")
+ADMIN_PASSWORD = os.environ.get("PLATFORM_ADMIN_PASSWORD", "FinByteAdmin!2026")
 
 
 def _load_drive_prompts():
@@ -605,16 +608,6 @@ def evidence(scenario):
     )
 
 
-@app.route("/proof")
-def proof_page():
-    return send_from_directory(DOCS, "proof.html")
-
-
-@app.route("/screenshots/<path:fn>")
-def screenshot(fn):
-    return send_from_directory(os.path.join(DOCS, "screenshots"), fn)
-
-
 @app.route("/")
 def index():
     link = (
@@ -622,7 +615,21 @@ def index():
         if EXPOSE_CONNECT
         else ""
     )
-    return Response(PAGE.replace("<!--CONNECT_LINK-->", link), mimetype="text/html")
+    # Header link straight into the ContextForge admin UI, email pre-filled
+    # (the gateway's login form reads ?email=; it doesn't prefill the password,
+    # so we show it to paste — throwaway demo creds).
+    admin = (
+        '<a class="cplink" href="{base}/admin/login?email={email}" target="_blank">'
+        '🛡️ Agentic AI Control Plane →</a>'
+        '<span class="cphint">{e} · {p}</span>'
+    ).format(
+        base=_public_gw_base(),
+        email=ADMIN_EMAIL.replace("@", "%40"),
+        e=ADMIN_EMAIL,
+        p=ADMIN_PASSWORD,
+    )
+    html = PAGE.replace("<!--CONNECT_LINK-->", link).replace("<!--CPLINK-->", admin)
+    return Response(html, mimetype="text/html")
 
 
 @app.route("/wall")
@@ -675,8 +682,9 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
  header{padding:20px 28px;border-bottom:1px solid #393939;background:#000}
  header h1{margin:0;font-size:20px} header .sub{color:var(--mut);font-size:13px;margin-top:4px}
  .pill{display:inline-block;background:var(--ibm);color:#fff;border-radius:12px;padding:2px 10px;font-size:11px;margin-right:6px}
- .gallery{float:right;color:#78a9ff;font-size:13px;text-decoration:none;border:1px solid #393939;padding:6px 12px;border-radius:6px}
- .gallery:hover{border-color:#78a9ff}
+ .cplink{float:right;color:#78a9ff;font-size:13px;text-decoration:none;border:1px solid #393939;padding:6px 12px;border-radius:6px;font-weight:700}
+ .cplink:hover{border-color:#78a9ff;background:#16213d}
+ .cphint{float:right;clear:right;color:#6f6f6f;font-size:11px;margin-top:5px;font-family:'IBM Plex Mono',monospace}
  .wrap{display:grid;grid-template-columns:300px 1fr;gap:0;min-height:calc(100vh - 70px)}
  .side{padding:20px 24px;border-right:1px solid #393939;background:#1c1c1c}
  .side h3{font-size:12px;text-transform:uppercase;color:var(--mut);letter-spacing:.08em;margin:18px 0 8px}
@@ -722,7 +730,8 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
    .wrap{grid-template-columns:1fr}
    .side{border-right:0;border-bottom:1px solid #393939}
    .grid{grid-template-columns:1fr}
-   .gallery{float:none;display:inline-block;margin:0 0 8px}
+   .cplink{float:none;display:inline-block;margin:0 0 4px}
+   .cphint{float:none;display:block;margin:0 0 8px}
    main{padding:18px 16px}
    header{padding:16px 18px}
    .roombar{flex-direction:column;align-items:flex-start}
@@ -730,7 +739,7 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
  }
 </style></head><body>
 <header>
- <a class="gallery" href="/proof" target="_blank">📸 Static evidence gallery →</a>
+ <!--CPLINK-->
  <h1>FinByte Control-Plane Companion <span class="small">— ContextForge governing the agent mesh, live</span></h1>
  <div class="sub"><span class="pill">IBM Bob</span><span class="pill">ContextForge</span><span class="pill">MCP + A2A</span>
    Keep this open beside Bob: every tool/agent call Bob makes flows through the gateway shown here.
