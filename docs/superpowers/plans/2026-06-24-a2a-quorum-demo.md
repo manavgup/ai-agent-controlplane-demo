@@ -66,6 +66,14 @@ What survives intact: real A2A agents, real agent cards, real governed gateway c
 
 ## Task 0: ContextForge `/a2a` spike — GATES all implementation
 
+> **RESULT — RAN 2026-06-24, PASSED. This gate is cleared; proceed to Task 1.**
+> Against the live seeded mesh (Podman), two throwaway agents `spike-a`/`spike-b` were registered sharing the auditor backend via `?agent=`:
+> - **Uniqueness:** both registered HTTP 201 with only the `?agent=` query differing → the shared-backend trick is accepted by `/a2a`.
+> - **Materialization:** `a2a-spike-a` / `a2a-spike-b` tools were callable in **< 2s** (no demo-time race).
+> - **Text bridge to a Python a2a-sdk agent:** calling `a2a-spike-a` via `/rpc` with `{"message":{"parts":[{"text":...}]}}` reached the Python auditor (same SDK 1.1.0 the room voter uses); it ran to `TASK_STATE_COMPLETED` and returned an artifact. Confirmed.
+> - **Delete:** `DELETE /a2a/<id>` returned 200 and removed the tool.
+> - **Response shape note:** the agent's artifact text comes back nested/escaped inside `result.content[0].text`; `_vote_one`'s `json.dumps(resp)` + substring grep for `VOTE=approve` handles this (do NOT rely on `text_of` returning a clean token). No fallback needed — proceed with the bridged-call design.
+
 This is a ~15-minute manual spike. **Do not write Tasks 1-9 until it passes**, because Tasks 4/6/8 all assume a seeded `room-*` agent yields a callable `a2a-room-*` tool that bridges a text message to a Python `a2a-sdk` agent. Codex correctly flagged these as unverified and load-bearing.
 
 Run it against the *existing* mesh (no new code needed except a throwaway one-file agent, or reuse the auditor image), to prove the mechanics:
