@@ -1232,67 +1232,47 @@ from `make present`; the QR is on screen.
 """)
     footer(s, 16, TOTAL)
 
-    # ---- 16. DRIVE BOB : STAGE ① + ② ------------------------------------- #
+    # ---- 17. PART B · TIER 2 · LAPTOP BOB ------------------------------- #
     s = add_slide(prs)
     bg(s, WHITE)
     accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Follow along · build + govern")
-    title_on_light(s, "Drive Bob — stages ① build & ② govern")
-
-    def cmd_row(slide, y, cmd, prompt, result, result_color, h=0.96):
-        rounded(slide, 0.7, y, 7.6, h, CODE_BG, line=None)
-        textbox(slide, 0.95, y + 0.1, 7.1, h - 0.2, [
-            [(cmd, 11, MINT, True, FONT_MONO)],
-            [(prompt, 12.5, CODE_FG, False, FONT_MONO)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=2, line_spacing=1.02)
-        rounded(slide, 8.45, y, 4.2, h, PANEL, line=PANEL_LINE)
-        textbox(slide, 8.7, y + 0.1, 3.75, h - 0.2, [
-            [("Expected", 10.5, MUTE, True)],
-            [(result, 12.5, result_color, True)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=2, line_spacing=1.02)
-
-    cmd_row(s, 1.72, "make stage1-build   # ① BUILD",
-            "“…create sales-tax/server.py with add_tax …”",
-            "runs bare → 108.50, ungoverned", GREEN)
-    cmd_row(s, 2.78, "make stage2-govern  # ② register",
-            "“Register sales-tax at http://sales-tax:8000/mcp.”",
-            "in the catalog — not callable yet", IBM_BLUE)
-    cmd_row(s, 3.84, "make salestax-grant + bob-install-builder",
-            "“Use add_tax to tax $100 at 8.5%.”",
-            "✓ 108.50 — now through the gateway", GREEN)
-    cmd_row(s, 4.9, "# ② 2b bonus (builder)",
-            "“Add a convert tool to fx-rates, then convert 100 USD→EUR.”",
-            "extends a service it didn’t write", IBM_BLUE)
-    rounded(s, 0.7, 6.0, 11.95, 1.0, RGBColor(0xFB, 0xF3, 0xD6), line=GOLD, line_w=1.2)
-    textbox(s, 1.0, 6.1, 11.4, 0.8, [
-        [("⚠  Fallback / reset:  ", 14, GOLD, True),
-         ("make stage1-scaffold", 13.5, INK, True, FONT_MONO),
-         (" drops in the reference server if the live build wobbles; ", 13.5, INK, False),
-         ("make stage-reset", 13.5, INK, True, FONT_MONO),
-         (" wipes server.py + container to repeat the beat clean.", 13.5, INK, False)],
-    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.06)
+    kicker(s, "Tier 2 · laptop + IBM Bob · no Docker")
+    title_on_light(s, "🧪  Drive Bob against the cloud control plane")
+    textbox(s, 0.7, 1.66, 12.0, 0.45,
+            [[("Install Bob, then on the dashboard click ", 14, INK, False),
+              ("🔌 Connect Bob", 14, INK, True),
+              (" — copy / download / one-liner. ", 14, INK, False),
+              ("No token typing.", 14, IBM_BLUE, True)]])
+    code_panel(s, 0.7, 2.3, 6.0, 2.0, [
+        ("# install (once)", MUTE),
+        ("curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash", CODE_FG),
+        ("", None),
+        ("# from an EMPTY folder — one fixed line:", MUTE),
+        ("mkdir -p .bob && curl -fsSL \\", CODE_FG),
+        ("  <dashboard>/bob/settings.json \\", CODE_FG),
+        ("  -o .bob/settings.json && bob", CODE_FG),
+    ], size=12.5, title="$ connect", title_color=SKY)
+    rounded(s, 6.95, 2.3, 5.7, 2.0, PANEL, line=PANEL_LINE)
+    textbox(s, 7.2, 2.5, 5.2, 1.8, [
+        [("Then drive it (analyst):", 13, INK, True)],
+        [("“Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.”", 12, IBM_BLUE, False, FONT_MONO)],
+        [("“Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.”", 12, IBM_BLUE, False, FONT_MONO)],
+        [("“Ask the auditor agent to pay $50,000 to Acme LLC.”", 12, IBM_BLUE, False, FONT_MONO)],
+    ], line_spacing=1.18, space_after=6)
+    rounded(s, 0.7, 4.55, 12.0, 1.0, DARK_BG, line=None)
+    textbox(s, 1.0, 4.7, 11.4, 0.8, [
+        [("Same cloud control plane as the phones.  ", 14, MINT, True),
+         ("Gotchas: ", 13, WHITE, False), ("-t http", 13, SKY, True, FONT_MONO),
+         (" (never SSE), empty folder, copy the FULL token (the page guarantees it).", 13, WHITE, False)],
+    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.12)
     notes(s, """
-DRIVE BOB - STAGES ① BUILD + ② GOVERN (the new developer content). After
-`make dev-start`, work the cockpit card top to bottom:
-
-① BUILD - `make stage1-build` prints the prompt. Paste it into Bob to write
-   mcp-servers/sales-tax/server.py, then re-run stage1-build → it serves bare and
-   calls add_tax(100) → 108.50. Ungoverned.
-
-② GOVERN - register → grant → call:
-   - `make stage2-govern` containerises the same server and registers it (operator):
-     "Register the sales-tax service at http://sales-tax:8000/mcp." → in the catalog,
-     NOT callable yet.
-   - `make salestax-grant` adds add_tax to the Builder vserver; `make bob-install-builder`
-     points Bob at it. Now: "Use add_tax to tax $100 at 8.5%." → 108.50, governed.
-   - 2b bonus (builder persona): "Add a convert tool to fx-rates, then convert 100
-     USD to EUR." → Bob extends a service it didn't write.
-
-FALLBACKS: `make stage1-scaffold` drops in _solution.py if the live build wobbles;
-`make stage-reset` removes server.py + the container so the beat repeats clean.
-Confirm real tool calls in the monitor Logs - no log line means Bob narrated.
+TIER 2 - laptop Bob. They install only Bob (no Docker) and point it at the cloud
+control plane. The Connect Bob page hands out the command / settings.json / one-liner
+so nobody types the ~470-char token. Drive the three CANONICAL prompts (explicit
+"use the finbyte-gateway tools" wording forces the tool call). Connects to the same
+gateway tunnel from `make present`.
 """)
-    footer(s, 16, TOTAL)
+    footer(s, 17, TOTAL)
 
     # ---- 17. STAGE ③ IN BOB (analyst) ------------------------------------ #
     s = add_slide(prs)
