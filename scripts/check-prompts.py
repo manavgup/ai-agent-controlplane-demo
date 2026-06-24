@@ -8,6 +8,7 @@ missing from a surface that's supposed to carry all three.
 
 Run: make check-prompts   (also a good pre-commit / CI gate)
 """
+
 import json
 import os
 import sys
@@ -48,7 +49,9 @@ def main():
             "or edit docs/assets/prompts.json if the canonical set changed."
         )
         return 1
-    print(f"✓ all {len(SURFACES)} surfaces carry the {len(says)} canonical drive prompts")
+    print(
+        f"✓ all {len(SURFACES)} surfaces carry the {len(says)} canonical drive prompts"
+    )
     return 0
 
 

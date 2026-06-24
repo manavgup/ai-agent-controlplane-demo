@@ -423,7 +423,12 @@ def register_agent():
         except Exception as e:
             last_err = str(e)
             break  # a network error to the local gateway won't fix itself by retrying
-    return jsonify({"ok": False, "error": last_err or "register failed", "initials": initials}), 502
+    return (
+        jsonify(
+            {"ok": False, "error": last_err or "register failed", "initials": initials}
+        ),
+        502,
+    )
 
 
 @app.route("/api/agents")
@@ -468,9 +473,18 @@ def _load_drive_prompts():
     (the explicit wording names the tool/agent so Bob makes the right call). Falls
     back to a hardcoded copy if the file is missing/unreadable."""
     fallback = [
-        ("Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.", "PII + secret redacted before the model sees it"),
-        ("Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.", "injected instructions neutralized → [INJECTION_BLOCKED]"),
-        ("Ask the auditor agent to pay $50,000 to Acme LLC.", "blocked by control-plane policy (over the $10k cap)"),
+        (
+            "Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.",
+            "PII + secret redacted before the model sees it",
+        ),
+        (
+            "Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.",
+            "injected instructions neutralized → [INJECTION_BLOCKED]",
+        ),
+        (
+            "Ask the auditor agent to pay $50,000 to Acme LLC.",
+            "blocked by control-plane policy (over the $10k cap)",
+        ),
     ]
     try:
         with open(os.path.join(DOCS, "assets", "prompts.json")) as f:
@@ -620,7 +634,7 @@ def index():
     # so we show it to paste — throwaway demo creds).
     admin = (
         '<a class="cplink" href="{base}/admin/login?email={email}" target="_blank">'
-        '🛡️ Agentic AI Control Plane →</a>'
+        "🛡️ Agentic AI Control Plane →</a>"
         '<span class="cphint">{e} · {p}</span>'
     ).format(
         base=_public_gw_base(),
@@ -649,7 +663,10 @@ def _follow_link():
 @app.route("/qr.png")
 def qr_png():
     if not _HAVE_QR:
-        return ("qrcode not installed — run via `make companion` (adds qrcode[pil])", 501)
+        return (
+            "qrcode not installed — run via `make companion` (adds qrcode[pil])",
+            501,
+        )
     img = qrcode.make(_follow_link())
     buf = io.BytesIO()
     img.save(buf, format="PNG")
