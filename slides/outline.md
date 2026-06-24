@@ -55,6 +55,11 @@ the sales-tax stage-1→2 flow, and a real IBM Bob v1.0.4 session).
    through the gateway → `108.50`. Mechanism folded in: enforced at
    `tool_pre_invoke` / `tool_post_invoke`. 2b bonus: Bob extends a service it
    didn't write (`fx-rates` gains `convert`).
+6b. **Now the room builds agents (live)** — Bob just registered the sales-tax
+    server; now the room does too. Attendees scan the on-screen QR, name an agent
+    with their initials, and register it — the projected `/wall` count climbs
+    0 → N, live. The abstract `register` step becomes a shared moment. (QR is
+    projected live from the companion's `/qr`; nothing baked into the slide.)
 7. **Three personas** — builder (`make bob-install-builder`, calls your granted
    tools) / analyst (`make bob`, 8 tools no wire) / operator (`make bob-operator`,
    4 control-plane tools). Same binary, three actors — RBAC by which virtual
@@ -76,31 +81,29 @@ the sales-tax stage-1→2 flow, and a real IBM Bob v1.0.4 session).
 
 ## Part B — Follow-Along Appendix (~7 slides), run LIVE
 
-14. **Before you arrive** — IBM Bob trial + `bob` CLI; Docker (running), `uv`,
-    Node.js ≥ 22.15; clone the repo.
-15. **Bring it up — two front doors** — `make quickstart` (top-down: finished
-    governed mesh, 16/16, no Bob needed) and `make dev-start` (bottom-up: opens
-    `docs/cockpit.html` → 🎓 Progressive Build card with the copy-paste prompts).
-16. **Drive Bob — ① build & ② govern** — `make stage1-build` (write server.py →
-    108.50, ungoverned); `make stage2-govern` (register, not callable) →
-    `make salestax-grant` + `make bob-install-builder` (call → 108.50 governed);
-    2b `fx-rates` `convert`. Fallback `make stage1-scaffold`; reset `make stage-reset`.
-17. **Stage ③ in Bob (analyst)** — `make bob`; exact prompts: `rcpt_pii`
-    (redacted), `rcpt_injection` (neutralised), "ask the auditor agent to pay
-    $50,000" (blocked, cross-language), "wire $50k yourself" (no wire tool). Tell
-    Bob to USE the tool; verify in the monitor Logs.
-18. **Operator + BYOB** — `make bob-operator`; list / evaluate policy / register
-    fx-rates / recent blocks. Plus `make connect` — drive the whole governed mesh
-    from a teammate's box, a VM, or a GitHub Codespace with only Bob installed
-    (verified end-to-end).
-19. **Watch the control plane — the 3 tools** — `make monitor` (Admin UI),
-    `make inspect-mcp` (MCP Inspector → 8 governed tools, wire absent; get_receipt
-    → redacted), `make inspect-a2a` (Python + Rust agent cards). One-command:
-    `make cockpit` (tmux tiles Bob + 4 watch panes + HOW-TO + Companion :7070).
+14. **3 ways to take part (chooser)** — 👀 phone (no install) · 🧪 laptop Bob ·
+    💻 full local. Mirrors `docs/follow.html`. Presenter setup (`make present` →
+    cloudflared public tunnel; GitHub Codespaces public ports 404 anonymous
+    clients) lives in the speaker notes.
+15. **T1 📱 Phone** — scan the QR → follow-along page → run the three governed
+    scenarios (PII redacted / injection neutralised / $50k blocked). No install.
+16. **T2 🧪 Laptop Bob** — install Bob → dashboard's 🔌 Connect Bob → copy the
+    command / download settings.json / one-liner (no token typing) → drive the
+    three canonical prompts → governed. Same cloud control plane.
+17. **T3 💻 Full local — build & govern** — `make quickstart` (finished, 16/16) or
+    walk ① `make stage1-build` (→108.50 ungoverned) → ② register→grant→call
+    (→108.50 governed).
+18. **T3 💻 Full local — controls + proof** — `make stage3-controls` + the three
+    analyst prompts + `make verify-controls` → 16 passed, 0 failed.
+19. **Watch the control plane** — `make monitor` / `make inspect-mcp` /
+    `make inspect-a2a` (or `make cockpit`); plus the dashboard's 🛡️ Agentic AI
+    Control Plane link → MCP Servers → your `salestax-<INI>` in the catalog.
 20. **Troubleshooting** — stage-1 wobble → `make stage1-scaffold` / `make stage-reset`;
-    "registered but not callable" → `make salestax-grant` + `bob-install-builder`;
+    registered-but-not-callable → `make salestax-grant` + `bob-install-builder`;
     UUID-changes-on-reseed → re-run the matching install; "Bob narrates" → tell it
-    to use the tool, check Logs; wrapper/401 gotchas; `make demo-reset`.
+    to USE the tool, check Logs; 422 `SSRF_DNS_FAIL_CLOSED` → `make salestax-up`;
+    phone can't reach a Codespaces public port → expected, presenter uses
+    `make present` (cloudflared). `make demo-reset` / `make agents-reset`.
 
 ---
 
