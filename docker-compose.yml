@@ -93,3 +93,9 @@ services:
     ports:
       - "3000:3000"   # exposed for the A2A inspector
     restart: unless-stopped
+
+  room-agent:
+    build: ./a2a-agents/room
+    ports:
+      - "9100:8000"   # exposed for the A2A inspector + a host health probe
+    restart: unless-stopped
