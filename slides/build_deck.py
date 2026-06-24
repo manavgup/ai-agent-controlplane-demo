@@ -416,7 +416,7 @@ def build():
     prs = Presentation()
     prs.slide_width = SW
     prs.slide_height = SH
-    TOTAL = 20
+    TOTAL = 21
 
     # ===================== PART A : THE DEV JOURNEY =================== #
     # ---- 1. TITLE --------------------------------------------------------- #
