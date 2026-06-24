@@ -41,6 +41,10 @@ AGENT_PREFIX = "room"
 CROWD = {}  # initials -> "approve" | "reject"  (one vote per initials, last wins)
 CROWD_FROZEN = False
 CROWD_CAP = 500  # hard cap on distinct voters held in memory
+# Presenter-only guard for /api/freeze. Unset (default) = open, fine for local runs.
+# For a PUBLIC room (`make present`), set PRESENTER_KEY so an attendee with the
+# shared dashboard URL can't freeze/unfreeze the room; the presenter opens /?k=<key>.
+PRESENTER_KEY = os.environ.get("PRESENTER_KEY", "").strip()
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS = os.path.join(ROOT, "docs")
@@ -515,8 +519,10 @@ def crowd():
 @app.route("/api/freeze", methods=["POST"])
 def freeze():
     """Presenter toggle: stop accepting crowd votes (so the room can't be gamed
-    after the quorum runs). Idempotent; returns the new state."""
+    after the quorum runs). Guarded by PRESENTER_KEY when set; open when unset."""
     global CROWD_FROZEN
+    if PRESENTER_KEY and request.values.get("k", "") != PRESENTER_KEY:
+        return jsonify({"ok": False, "error": "presenter only"}), 403
     CROWD_FROZEN = request.values.get("on", "1").strip().lower() not in (
         "0",
         "false",
@@ -955,9 +961,10 @@ async function castVote(choice){
 }
 async function toggleFreeze(){
  frozen=!frozen;
+ const k=new URLSearchParams(location.search).get('k')||'';
  try{
-   const r=await (await fetch('/api/freeze?on='+(frozen?1:0),{method:'POST'})).json();
-   document.getElementById('freezeBtn').textContent = r.frozen ? '🔓 Unfreeze' : '🔒 Freeze';
+   const r=await (await fetch('/api/freeze?on='+(frozen?1:0)+'&k='+encodeURIComponent(k),{method:'POST'})).json();
+   if(r.ok) document.getElementById('freezeBtn').textContent = r.frozen ? '🔓 Unfreeze' : '🔒 Freeze';
  }catch(e){}
 }
 let lastN=null;
@@ -978,7 +985,7 @@ setInterval(pollCrowd, 2000);
 
 
 WALL = r"""<!doctype html><html><head><meta charset="utf-8">
-<title>Agents built by the room</title>
+<title>Votes cast by the room</title>
 <style>
  *{box-sizing:border-box} html,body{height:100%}
  body{margin:0;background:radial-gradient(circle at 50% 35%,#0b1738,#000);color:#fff;
@@ -999,7 +1006,7 @@ WALL = r"""<!doctype html><html><head><meta charset="utf-8">
  <div class="num" id="n">0</div>
  <div class="label">votes cast by the room on the $50,000 wire — live</div>
  <div class="chips" id="chips"></div>
- <div class="ctx">name yours on the dashboard → watch it land here</div>
+ <div class="ctx">vote on the dashboard → watch the tally climb here</div>
 <script>
  let last=null;
  async function tick(){
@@ -1105,7 +1112,6 @@ CONNECT_PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
     <h2><span class="n">3</span>Drive it — type these to Bob</h2>
     <p class="sub">Launch <code>bob</code> from the same folder, then ask (one at a time):</p>
     <div id="prompts"></div>
-    <p class="muted">Operator extra: <span class="prompt say" style="display:inline">Register an MCP server named salestax-&lt;YOUR-INITIALS&gt; at http://sales-tax:8000/mcp?agent=&lt;YOUR-INITIALS&gt;.</span> → your agent lands on the wall.</p>
   </div>
 
 </div>
