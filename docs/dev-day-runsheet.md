@@ -22,15 +22,18 @@ The whole governed mesh runs in the cloud; the devcontainer does the work for yo
    ```bash
    make up && make seed
    ```
-4. **`make companion-connect`** — the **one** presenter command. It:
-   makes ports **4444 + 7070 Public** (via `gh`), **ensures the `sales-tax` backend** is up (so
-   registration resolves), then serves **everything on `:7070`** — the follow-along pages, the Tier-1
-   dashboard, the Tier-2 **🔌 Connect Bob** page, and the join **QR**.
-   > If `gh` can't set visibility (no codespace scope), it tells you — then flip **4444 + 7070 → Public**
-   > in the **PORTS** tab by hand. Both are needed: phones hit `:7070`, Tier-2 laptops pull config from `:7070/bob/settings.json`.
-5. **Show the QR:** on the dashboard click **📲 Join QR** (top-right) — or open **`<:7070 url>/qr`** — and
-   full-screen it. Attendees scan → they land on the follow-along page wired to your live dashboard.
-   (No GitHub Pages needed — it's all served from `:7070`. `make follow-link` also prints these URLs.)
+4. **`make present`** — the **one** presenter command for a room. It opens public **cloudflared
+   tunnels** for the Companion + gateway, runs the Companion pointed at them, and **opens your browser
+   to the join QR**. It prints a banner with three URLs (QR / dashboard / gateway). **Ctrl-C tears it
+   all down.** Leave it running for the whole session.
+   > **Why not just the Codespaces public ports?** GitHub's forwarded ports **404 anonymous clients** —
+   > a phone with no GitHub login can't reach `…-7070.app.github.dev` (your logged-in laptop browser
+   > can, which hides it). `make present` tunnels through Cloudflare so **any phone on any network**
+   > reaches it. (`make companion-connect` is the older same-network/Codespaces-ports variant — fine if
+   > everyone's a logged-in teammate, but use `make present` for a public room.)
+   > Quick-tunnel URLs are **random and change each run** — that's fine, the QR is generated live; never hardcode it on a slide.
+5. **Show the QR:** `make present` already opened it in your browser — **full-screen that tab and project it.**
+   (Also on the dashboard: the blue **📲 Join QR** button → `/qr`.) Attendees scan → the follow-along page wired to your live dashboard.
 6. `make connect` (optional) → the presenter-terminal `bob mcp add … -t http …/mcp` line. Attendees normally
    self-serve from the Connect Bob page instead, so this is mainly your own backup.
 7. Sanity check: open **`:4444/admin`** (`admin@finbyte.demo` / `FinByteAdmin!2026`) — the

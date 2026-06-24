@@ -213,7 +213,10 @@ companion: salestax-ensure ## Run the browser companion dashboard on :7070 (auto
 	echo "Companion → http://localhost:7070  (FinOps $$UUID)  ·  join QR at :7070/qr"; \
 	GATEWAY_TOKEN=$$ADMIN FINOPS_UUID=$$UUID uv run --with flask --with httpx --with "qrcode[pil]" python companion/app.py
 
-companion-connect: ## THE presenter command: makes ports public + ensures sales-tax + serves the dashboard, /connect (Bob copy/download — no token typing) and the join QR on :7070. Reveals the token to the browser; throwaway demo only.
+present: ## THE presenter command for a ROOM: opens public cloudflared tunnels (phones reach it on any network — works around Codespaces ports that 404 anonymous clients), runs the Companion pointed at them, opens your browser to the join QR. Ctrl-C tears it all down.
+	@bash scripts/present.sh
+
+companion-connect: ## Local/same-network presenter command: makes Codespaces ports public + ensures sales-tax + serves the dashboard, /connect and the join QR on :7070. For a public room (anonymous phones) use 'make present' instead.
 	@$(MAKE) --no-print-directory ports-public
 	@EXPOSE_CONNECT=1 $(MAKE) companion
 
