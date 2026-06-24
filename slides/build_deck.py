@@ -744,6 +744,44 @@ is a separate, privileged step. That boundary is least-privilege."
 """)
     footer(s, 6, TOTAL)
 
+    # ---- 7. PART A · NOW THE ROOM BUILDS AGENTS (live participation) ----- #
+    s = add_slide(prs)
+    bg(s, DARK_BG)
+    accent_bar(s, 0, 0, 13.333, 0.16, MINT)
+    textbox(s, 0.7, 0.5, 12.0, 0.4, [[("YOUR TURN — LIVE", 13, MINT, True)]])
+    title_on_light(s, "Now the room builds agents", y=0.92, size=32, x=0.7, color=WHITE)
+    textbox(s, 0.7, 1.78, 12.0, 0.5, [
+        [("Bob just registered the sales-tax server. ", 15, WHITE, False),
+         ("Now you:", 15, MINT, True),
+         (" scan → name an agent with your initials → it's in the catalog.", 15, WHITE, False)],
+    ], line_spacing=1.1)
+    # QR placeholder (the real QR is projected live from the companion's /qr)
+    rounded(s, 0.7, 2.6, 3.4, 3.4, WHITE, line=None)
+    textbox(s, 0.7, 3.9, 3.4, 0.8, [[("QR", 40, RGBColor(0xC8, 0xD0, 0xE0), True, FONT_HEAD)]], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    textbox(s, 0.7, 6.05, 3.4, 0.4, [[("↑ scan the QR on screen", 12, MINT, True)]], align=PP_ALIGN.CENTER)
+    # the wall count
+    rounded(s, 4.45, 2.6, 8.2, 3.4, RGBColor(0x16, 0x20, 0x3C), line=None)
+    textbox(s, 4.45, 2.9, 8.2, 0.5, [[("AGENTS BUILT BY THE ROOM", 15, SKY, True)]], align=PP_ALIGN.CENTER)
+    textbox(s, 4.45, 3.3, 8.2, 1.6, [[("47", 96, MINT, True, FONT_HEAD)]], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    textbox(s, 4.45, 5.05, 8.2, 0.5, [[("0 → live on the projected wall", 14, RGBColor(0xCF, 0xD8, 0xEE), False, FONT_BODY, True)]], align=PP_ALIGN.CENTER)
+    textbox(s, 4.7, 5.5, 7.7, 0.4, [[("MG", 13, MINT, True, FONT_MONO), ("   TT   AB   PK   JS   KL   …", 13, RGBColor(0x9F, 0xB3, 0xD9), False, FONT_MONO)]], align=PP_ALIGN.CENTER)
+    textbox(s, 0.7, 6.65, 12.0, 0.5, [
+        [("Every one is a ", 14, WHITE, False), ("real", 14, MINT, True),
+         (" MCP server registered with the control plane — the count is real catalog entries.", 14, WHITE, False)],
+    ], align=PP_ALIGN.CENTER)
+    notes(s, """
+NOW THE ROOM BUILDS AGENTS (live participation - the engagement beat). It lands right
+after Stage ② Govern, where Bob just registered a server: now the audience does the
+same. They scan the on-screen QR (the companion's /qr from `make present`), type their
+initials, tap Register - and the projected /wall count climbs 0 → N with their
+initials. Each registration is a REAL POST /gateways: a genuine, enabled, reachable
+salestax-<INI> entry in the ContextForge catalog (show it in the Admin UI later).
+Reset to 0 before the talk with `make agents-reset`. The "47" on the slide is just a
+mock - the real number is on the wall. KEY LINE: "You didn't tap a counter - you each
+registered a real MCP server with the control plane, live."
+""")
+    footer(s, 7, TOTAL)
+
     # ---- 7. THREE PERSONAS ----------------------------------------------- #
     s = add_slide(prs)
     bg(s, WHITE)
