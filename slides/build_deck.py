@@ -1156,46 +1156,52 @@ here and point to the appendix.
     footer(s, 13, TOTAL, dark=True)
 
     # ===================== PART B : FOLLOW-ALONG ====================== #
-    # ---- 14. BEFORE YOU ARRIVE ------------------------------------------- #
+    # ---- 15. PART B · CHOOSER: 3 WAYS TO TAKE PART ----------------------- #
     s = add_slide(prs)
     bg(s, DARK_BG)
-    accent_bar(s, 0, 0, 13.333, 0.22, IBM_BLUE)
-    textbox(s, 0.7, 0.7, 12.0, 0.5, [[("PART B · FOLLOW ALONG", 15, GOLD, True)]])
-    textbox(s, 0.7, 1.2, 12.0, 0.9, [[("Build the whole thing yourself", 32, WHITE, True, FONT_HEAD)]])
-    textbox(s, 0.7, 2.15, 12.0, 0.5,
-            [[("Before you arrive (do these in advance):", 18, RGBColor(0xCA, 0xDC, 0xFC), True)]])
-    steps = [
-        ("1", "IBM Bob 30-day trial + install bob", "bob.ibm.com  ·  IBMid required  ·  install the bob CLI (drives every stage)"),
-        ("2", "Docker Desktop (running), uv, Node.js ≥ 22.15", "uv mints the JWT; npx runs the MCP Inspector"),
-        ("3", "Clone the demo repo", "git clone  github.com/manavgup/ai-agent-controlplane-demo  (FinByte demo)"),
+    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
+    textbox(s, 0.7, 0.5, 12.0, 0.4, [[("FOLLOW ALONG — APPENDIX", 13, SKY, True)]])
+    title_on_light(s, "3 ways to take part", y=0.92, size=32, x=0.7, color=WHITE)
+    tiers = [
+        ("👀  Phone", "no install", MINT,
+         "Scan the QR. Watch the four stages and run the scenarios in your browser.",
+         "everyone"),
+        ("🧪  Laptop Bob", "Bob, no Docker", SKY,
+         "Install Bob, connect to the cloud control plane, drive the controls yourself.",
+         "intermediate"),
+        ("💻  Full local", "Docker + Bob", GOLD,
+         "Run the whole governed mesh on your own machine — build it and govern it.",
+         "advanced"),
     ]
-    ty = 2.85
-    for n, head, sub in steps:
-        rounded(s, 0.7, ty, 12.0, 1.05, RGBColor(0x10, 0x1E, 0x42), line=None)
-        chip = s.shapes.add_shape(MSO_SHAPE.OVAL, IN(0.95), IN(ty + 0.22), IN(0.6), IN(0.6))
-        _set_fill(chip, IBM_BLUE); _no_line(chip); _shadow_off(chip)
-        cp = chip.text_frame.paragraphs[0]; cp.alignment = PP_ALIGN.CENTER
-        rr = cp.add_run(); rr.text = n; rr.font.size = Pt(22); rr.font.bold = True
-        rr.font.color.rgb = WHITE; rr.font.name = FONT_HEAD
-        textbox(s, 1.8, ty + 0.16, 10.5, 0.8, [
-            [(head, 18, WHITE, True)],
-            [(sub, 13, SKY, False, FONT_MONO)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=2)
-        ty += 1.2
+    cw = (12.0 - 2 * 0.4) / 3
+    cx = 0.7
+    for head, tag, col, body, who in tiers:
+        rounded(s, cx, 2.1, cw, 3.0, RGBColor(0x16, 0x20, 0x3C), line=None)
+        accent_bar(s, cx, 2.1, cw, 0.12, col)
+        textbox(s, cx + 0.26, 2.36, cw - 0.52, 0.5, [[(head, 19, WHITE, True, FONT_HEAD)]])
+        textbox(s, cx + 0.26, 2.92, cw - 0.52, 0.34, [[(tag, 11.5, col, True, FONT_MONO)]])
+        textbox(s, cx + 0.26, 3.36, cw - 0.52, 1.4, [[(body, 13, RGBColor(0xCF, 0xD8, 0xEE), False)]], line_spacing=1.16)
+        textbox(s, cx + 0.26, 4.7, cw - 0.52, 0.34, [[(who, 11, col, True, FONT_BODY)]])
+        cx += cw + 0.4
+    textbox(s, 0.7, 5.55, 12.0, 0.9, [
+        [("Everyone can watch ", 14, WHITE, False), ("and", 14, MINT, True),
+         (" run the scenarios — no install. On a laptop, go deeper and drive the AI yourself.", 14, WHITE, False)],
+    ], line_spacing=1.15)
     notes(s, """
-PART B - BEFORE YOU ARRIVE (appendix; reference + for attendees following along).
+PART B - the follow-along appendix. Three tiers, your comfort level. Most people
+do Tier 1 (phone) - they already registered an agent live in Part A. Keen folks do
+Tier 2 (laptop Bob); builders do Tier 3 (full local).
 
-Install BEFORE the session - conference wifi makes cold image pulls/builds painful.
-1. IBM Bob 30-day trial at bob.ibm.com (IBMid required) and install the `bob` CLI -
-   it drives every stage of the progressive build.
-2. Docker Desktop RUNNING, plus uv (mints the gateway JWT offline) and Node.js
-   >= 22.15 so npx is available for the MCP Inspector.
-3. git clone the demo repo (github.com/manavgup/ai-agent-controlplane-demo).
-
-If you're presenting, run `make quickstart` BEFORE the talk so the image pull is
-off the critical path; then `make stage-reset` to re-arm Stage ①.
+PRESENTER SETUP (do this before the talk): run `make present` in the Codespace (or
+locally). It opens public cloudflared tunnels for the Companion (:7070) + gateway
+(:4444), runs the Companion pointed at them, and opens your browser to the join QR.
+Project that QR. WHY cloudflared and not the Codespaces forwarded ports: GitHub's
+"public" forwarded ports return 404 to ANONYMOUS clients (a phone with no GitHub
+login) - your logged-in laptop browser hides this. cloudflared gives a genuinely
+public URL any phone reaches. The trycloudflare URL is RANDOM each run, so the QR is
+generated live - never hardcode it. Reset the room count with `make agents-reset`.
 """)
-    footer(s, 14, TOTAL, dark=True)
+    footer(s, 15, TOTAL, dark=True)
 
     # ---- 15. BRING IT UP : quickstart + dev-start ------------------------ #
     s = add_slide(prs)
