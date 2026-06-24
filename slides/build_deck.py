@@ -6,7 +6,10 @@
 
 Source of truth: slides/outline.md. Run with:
 
-    uv run --with python-pptx==1.0.2 python slides/build_deck.py
+    uv run --with python-pptx==1.0.2 --with matplotlib --with pillow python slides/build_deck.py
+
+(matplotlib + pillow render/embed the architecture diagram; without them the build
+falls back to the committed slides/assets/architecture.png.)
 
 (The architecture PNG is rendered with matplotlib if available; the script
 degrades gracefully to native pptx shapes if matplotlib is missing.)
@@ -411,7 +414,10 @@ def money_shot_header(slide, num, title, danger):
 # Build
 # --------------------------------------------------------------------------- #
 def build():
-    have_png = render_architecture_png(ARCH_PNG)
+    # Render the diagram with matplotlib if available; otherwise fall back to the
+    # committed slides/assets/architecture.png so the Mesh slide keeps its diagram
+    # even when the build env has no matplotlib (CI, a bare `--with python-pptx`).
+    have_png = render_architecture_png(ARCH_PNG) or os.path.exists(ARCH_PNG)
 
     prs = Presentation()
     prs.slide_width = SW
