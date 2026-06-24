@@ -1309,74 +1309,39 @@ Stage ②. Fallback `make stage1-scaffold`; reset `make stage-reset`.
 """)
     footer(s, 18, TOTAL)
 
-    # ---- 18. OPERATOR + BYOB --------------------------------------------- #
+    # ---- 19. PART B · TIER 3 · CONTROLS + PROOF ------------------------- #
     s = add_slide(prs)
     bg(s, WHITE)
-    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Follow along · operator + BYOB")
-    title_on_light(s, "Operate the plane — and drive it from anywhere")
-    textbox(s, 0.7, 1.6, 12.0, 0.4, [
-        [("Swap persona:  ", 13, MUTE, True),
-         ("make bob-operator", 13, INK, True, FONT_MONO),
-         ("  (restart Bob)", 13, MUTE, False)]])
-
-    def prompt_row2(slide, y, prompt, result, result_color, h=0.84):
-        rounded(slide, 0.7, y, 7.6, h, CODE_BG, line=None)
-        textbox(slide, 0.95, y + 0.08, 7.1, h - 0.16, [
-            [("Type into Bob:", 10, SKY, True)],
-            [(prompt, 12.5, CODE_FG, False, FONT_MONO)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=1, line_spacing=1.0)
-        rounded(slide, 8.45, y, 4.2, h, PANEL, line=PANEL_LINE)
-        textbox(slide, 8.7, y + 0.08, 3.75, h - 0.16, [
-            [("Expected", 10, MUTE, True)],
-            [(result, 12, result_color, True)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=1, line_spacing=1.0)
-
-    prompt_row2(s, 1.98, "“List everything ContextForge is governing.”",
-                "catalog + virtual-server scopes", IBM_BLUE)
-    prompt_row2(s, 2.86, "“Would a $50,000 wire be allowed? With dual approval?”",
-                "OPA live: DENY + reason, then ALLOW", IBM_BLUE)
-    prompt_row2(s, 3.74, "“Register the fx-rates service at http://fx-rates:8000/mcp.”",
-                "✓ joins the governed catalog", GREEN)
-    prompt_row2(s, 4.62, "“Show me what got blocked today.”",
-                "the audit trail", IBM_BLUE)
-    rounded(s, 0.7, 5.6, 11.95, 1.3, DARK_BG, line=None)
-    textbox(s, 1.0, 5.74, 11.4, 1.05, [
-        [("🛰  No Docker on your laptop?  ", 14, GOLD, True),
-         ("make connect", 13.5, MINT, True, FONT_MONO),
-         (" prints a ", 13.5, WHITE, False),
-         ("bob mcp add … -t http", 13, SKY, True, FONT_MONO),
-         (" line pointed at a gateway running elsewhere", 13.5, WHITE, False)],
-        [("— a teammate’s box, a VM, or a GitHub Codespace — so you drive the whole governed mesh with only Bob installed, governance intact over the wire.",
-          13, RGBColor(0x9F, 0xB3, 0xD9), False, FONT_BODY, True)],
-    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.12, space_after=3)
+    accent_bar(s, 0, 0, 13.333, 0.16, GOLD)
+    kicker(s, "Tier 3 · the four controls + the proof", color=GOLD)
+    title_on_light(s, "💻  Watch each guardrail bite — then prove it")
+    code_panel(s, 0.7, 1.8, 12.0, 1.05, [
+        ("make stage3-controls    # seed the FinOps mesh, Bob → analyst", CODE_FG),
+        ("make logs-opa           # second pane: live ALLOW / DENY", MUTE),
+    ], size=13, title="$ controls", title_color=SKY)
+    fires = [
+        ("“…fetch receipt rcpt_pii, verbatim.”", "REDACTED → ***-**-6789, [SECRET_REDACTED]", IBM_BLUE),
+        ("“…fetch receipt rcpt_injection, verbatim.”", "NEUTRALIZED → [INJECTION_BLOCKED]", RED),
+        ("“Ask the auditor agent to pay $50,000 to Acme LLC.”", "BLOCKED by policy (cross-language Py→Rust)", RED),
+    ]
+    y = 3.05
+    for say, got, col in fires:
+        rounded(s, 0.7, y, 12.0, 0.84, PANEL, line=PANEL_LINE)
+        textbox(s, 1.0, y + 0.14, 6.4, 0.6, [[(say, 12.5, INK, False, FONT_MONO)]], anchor=MSO_ANCHOR.MIDDLE)
+        textbox(s, 7.5, y + 0.14, 5.0, 0.6, [[("→ ", 12.5, MUTE, False), (got, 12.5, col, True)]], anchor=MSO_ANCHOR.MIDDLE)
+        y += 0.98
+    rounded(s, 0.7, 6.05, 12.0, 0.78, DARK_BG, line=None)
+    textbox(s, 1.0, 6.16, 11.4, 0.6, [
+        [("make verify-controls", 15, MINT, True, FONT_MONO),
+         ("  →  16 passed, 0 failed", 15, WHITE, True)],
+    ], anchor=MSO_ANCHOR.MIDDLE)
     notes(s, """
-OPERATOR PERSONA + BYOB. Swap persona: `make bob-operator`, restart Bob. Verified
-live prompts:
-
-  "List everything ContextForge is governing."   → list_control_plane.
-  "Would a $50,000 wire be allowed? With dual approval?"  → evaluate_policy: DENY +
-       reason, then ALLOW. No money moves - it interrogates the policy.
-  "Register the fx-rates service at http://fx-rates:8000/mcp."  → register_mcp_server;
-       fx-rates starts UNREGISTERED and JOINS the governed catalog live.
-  "Show me what got blocked today."   → recent_blocks (audit trail).
-
-RBAC made concrete: the analyst persona literally cannot do any of this; only the
-operator can.
-
-BYOB (bring your own Bob) - the safety net for flaky room wifi/Docker: `make connect`
-prints a `bob mcp add … -t http` line pointed at a gateway running ELSEWHERE - a
-teammate's box, a VM, or a GitHub Codespace (verified end-to-end: 108.5 through the
-governed gateway over the public proxy, redaction + OPA block intact). You drive the
-whole governed mesh with ONLY Bob installed - governance holds over the wire.
-
-CAN'T RUN IT LOCALLY? One-click "Open in GitHub Codespaces" badge in the README
-(codespaces.new/manavgup/ai-agent-controlplane-demo) - the devcontainer auto-runs
-`make up && make seed` in the cloud; make port 4444 Public, then `make connect`.
-GOTCHA: use the `-t http` + `/mcp` form (never SSE - Codespaces proxies buffer SSE,
-so Bob hangs on connect). Tier 2 in docs/ONBOARDING.md.
+TIER 3 controls. `make stage3-controls` seeds the FinOps mesh and switches Bob to the
+analyst persona (8 tools, no wire). Drive the three canonical prompts; each fires a
+control. Then `make verify-controls` proves all of it deterministically: 16 passed,
+0 failed - identical to quickstart's end-state, but you watched it.
 """)
-    footer(s, 18, TOTAL)
+    footer(s, 19, TOTAL)
 
     # ---- 19. WATCH THE CONTROL PLANE ------------------------------------- #
     s = add_slide(prs)
