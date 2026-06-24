@@ -12,6 +12,7 @@ gateway log lines. The header links straight into the ContextForge admin UI.
 Run:  make companion   (mints token + FinOps UUID, then serves on :7070)
 """
 
+import concurrent.futures
 import io
 import json
 import os
@@ -32,12 +33,14 @@ TOKEN = os.environ.get("GATEWAY_TOKEN", "")
 FINOPS = os.environ.get("FINOPS_UUID", "")
 H = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 
-# ── room agent registration: each attendee names an agent with their initials and
-# really registers it with ContextForge; the catalog (and the live count) climbs.
-# All point at the one shared sales-tax backend (configurable so we can test against
-# any reachable backend on a live Codespace where sales-tax isn't up yet).
-AGENT_PREFIX = "salestax"
-AGENT_BACKEND_URL = os.environ.get("AGENT_BACKEND_URL", "http://sales-tax:8000/mcp")
+# ── crowd voting: attendees tap Approve/Reject on the $50k wire from their phones.
+# Votes are recorded LOCALLY here (in-memory) — no gateway writes, no public catalog
+# spam, cannot fail. The "real, governed agents" proof is the 5 fixed room-* voters
+# seeded into /a2a (see gateway/seed/seed.py), called in the quorum scenario.
+AGENT_PREFIX = "room"
+CROWD = {}  # initials -> "approve" | "reject"  (one vote per initials, last wins)
+CROWD_FROZEN = False
+CROWD_CAP = 500  # hard cap on distinct voters held in memory
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS = os.path.join(ROOT, "docs")
@@ -49,7 +52,7 @@ app = Flask(__name__)
 LAST = {}
 
 
-def rpc(name, arguments):
+def rpc(name, arguments, timeout=30):
     body = {
         "jsonrpc": "2.0",
         "id": 1,
@@ -57,7 +60,7 @@ def rpc(name, arguments):
         "params": {"name": name, "arguments": arguments},
     }
     try:
-        r = httpx.post(f"{GW}/rpc", headers=H, json=body, timeout=30)
+        r = httpx.post(f"{GW}/rpc", headers=H, json=body, timeout=timeout)
         return r.json()
     except Exception as e:
         return {"error": {"message": f"gateway unreachable: {e}"}}
@@ -270,6 +273,106 @@ def s_a2a():
     )
 
 
+QUORUM_PAYEE = "Acme LLC"
+QUORUM_AMOUNT = 50000  # OPA $10k cap -> BLOCKED without approval
+
+
+def _vote_one(name):
+    """Fan a vote prompt to one fixed room voter through the gateway; return its
+    vote. Any gateway/transport error -> 'abstain' (never raises)."""
+    stance = _stance_of(name)
+    prompt = (
+        f"Vote on expense. payee={QUORUM_PAYEE} amount={QUORUM_AMOUNT} "
+        f"approval=false stance={stance} agent={name}."
+    )
+    resp = rpc(
+        f"a2a-{name}",
+        {
+            "message": {
+                "role": "ROLE_USER",
+                "parts": [{"text": prompt}],
+                "messageId": f"q-{name}",
+            }
+        },
+        timeout=8,
+    )
+    blob = json.dumps(resp)
+    vote = (
+        "approve"
+        if "VOTE=approve" in blob
+        else ("reject" if "VOTE=reject" in blob else "abstain")
+    )
+    return {"agent": name, "stance": stance, "vote": vote}
+
+
+def s_quorum():
+    # 1) crowd (local, instant, cannot fail)
+    crowd_approve = sum(1 for v in CROWD.values() if v == "approve")
+    crowd_reject = len(CROWD) - crowd_approve
+
+    # 2) agent quorum (real, governed) — the 5 fixed seeded voters
+    names = _room_agent_names()
+    votes = []
+    if names:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(8, len(names))
+        ) as pool:
+            futs = {pool.submit(_vote_one, n): n for n in names}
+            done, not_done = concurrent.futures.wait(futs, timeout=15)
+            for f in done:
+                try:
+                    votes.append(f.result())
+                except Exception:
+                    n = futs[f]
+                    votes.append(
+                        {"agent": n, "stance": _stance_of(n), "vote": "abstain"}
+                    )
+            for f in not_done:
+                f.cancel()
+                n = futs[f]
+                votes.append({"agent": n, "stance": _stance_of(n), "vote": "abstain"})
+    votes.sort(key=lambda v: v["agent"])
+    a_app = sum(1 for v in votes if v["vote"] == "approve")
+    a_rej = sum(1 for v in votes if v["vote"] == "reject")
+    a_abs = sum(1 for v in votes if v["vote"] == "abstain")
+
+    # 3) the payoff: attempt the wire. OPA blocks it at the $10k cap regardless.
+    wire_name = "erp-payments-wire"
+    wire_args = {"payee": QUORUM_PAYEE, "amount": QUORUM_AMOUNT, "approval": False}
+    wire = rpc(wire_name, wire_args)
+    wtext, werr = text_of(wire)
+    blocked = "Plugin Violation" in json.dumps(wire)
+
+    agent_lines = [f"  {v['agent']:<16} {v['stance']:<8} → {v['vote']}" for v in votes]
+    detail = (
+        f"ROOM (phones): approve={crowd_approve}  reject={crowd_reject}  "
+        f"(of {len(CROWD)} voters)\n\n"
+        f"GOVERNED A2A AGENTS (through the gateway):\n"
+        + (
+            "\n".join(agent_lines)
+            if agent_lines
+            else "  (no voter agents seeded — run `make seed`)"
+        )
+        + f"\n  agent tally: approve={a_app} reject={a_rej} abstain={a_abs}\n\n"
+        + (
+            f"  ${QUORUM_AMOUNT:,} wire attempted anyway → {werr or wtext}"
+            if blocked
+            else f"  wire result → {wtext or werr}"
+        )
+    )
+    return dict(
+        verdict="BLOCKED" if blocked else "SEE RAW",
+        blocked=blocked,
+        headline=(
+            f"Room {crowd_approve}-{crowd_reject}, agents {a_app}-{a_rej} — OPA blocked "
+            f"the ${QUORUM_AMOUNT:,} wire anyway (policy beats consensus)"
+        ),
+        detail=detail,
+        raw=wire,
+        request={"name": wire_name, "arguments": wire_args},
+    )
+
+
 SCENARIOS = {
     "baseline": ("Baseline — small reimbursement", s_baseline),
     "policy": ("#1 Policy — $50k wire (OPA amount cap)", s_policy),
@@ -277,6 +380,7 @@ SCENARIOS = {
     "pii": ("#2 Data protection — PII + secret", s_pii),
     "injection": ("#3 Prompt-injection — poisoned receipt", s_injection),
     "a2a": ("Cross-language A2A — Rust agent executes", s_a2a),
+    "quorum": ("Expense approval quorum — policy beats consensus", s_quorum),
 }
 
 
@@ -331,23 +435,31 @@ def run(scenario):
 
 
 # ── room agent registration ─────────────────────────────────────────────────
-def _gateways():
-    """Registered MCP backends (ContextForge calls them 'gateways')."""
+# ── fixed A2A voter agents (seeded once into /a2a) ───────────────────────────
+def _a2a_agents():
     try:
-        g = httpx.get(f"{GW}/gateways", headers=H, timeout=10).json()
-        return g if isinstance(g, list) else []
+        a = httpx.get(f"{GW}/a2a", headers=H, timeout=10).json()
+        return a if isinstance(a, list) else []
     except Exception:
         return []
 
 
-def _room_agent_names(gws=None):
-    """Names of agents the room built this session, newest last."""
-    gws = _gateways() if gws is None else gws
-    return [
-        g.get("name", "")
-        for g in gws
-        if isinstance(g, dict) and g.get("name", "").startswith(AGENT_PREFIX + "-")
-    ]
+def _room_agent_names(agents=None):
+    """Names of the fixed room voter agents in the catalog (room-strict-1, ...)."""
+    agents = _a2a_agents() if agents is None else agents
+    return sorted(
+        a.get("name", "")
+        for a in agents
+        if isinstance(a, dict) and a.get("name", "").startswith(AGENT_PREFIX + "-")
+    )
+
+
+def _stance_of(name):
+    """Stance is encoded in the fixed voter's name."""
+    for s in ("strict", "lenient", "random"):
+        if s in name:
+            return s
+    return "random"
 
 
 def _sanitize_initials(s):
@@ -373,69 +485,62 @@ def _unique_name(initials, existing):
     return f"{base}-{i}"
 
 
-@app.route("/api/register-agent", methods=["GET", "POST"])
-def register_agent():
-    """Really register a uniquely-named sales-tax agent with ContextForge, so the
-    live count climbs. Dedup the name; retry (advancing the suffix) on collision."""
+@app.route("/api/vote", methods=["GET", "POST"])
+def vote():
+    """Record one local crowd vote (approve/reject) on the $50k wire. No gateway
+    writes — this cannot fail and cannot spam the catalog."""
+    if CROWD_FROZEN:
+        return jsonify({"ok": False, "error": "voting is frozen", "frozen": True}), 423
     initials = _sanitize_initials(
         request.values.get("initials") or request.values.get("ini")
     )
-    last_err = None
-    for _ in range(10):
-        existing = {g.get("name", "") for g in _gateways()}
-        name = _unique_name(initials, existing)
-        # ContextForge enforces a UNIQUE url per gateway, so many agents can't share
-        # one backend url verbatim. Carry the (unique) name as a query suffix: the
-        # url string is unique, the backend ignores the query and serves /mcp normally.
-        sep = "&" if "?" in AGENT_BACKEND_URL else "?"
-        agent_url = f"{AGENT_BACKEND_URL}{sep}agent={name}"
-        try:
-            r = httpx.post(
-                f"{GW}/gateways",
-                headers=H,
-                timeout=30,
-                json={
-                    "name": name,
-                    "url": agent_url,
-                    "transport": "STREAMABLEHTTP",
-                    "description": f"sales-tax agent built by {initials}",
-                },
-            )
-            if r.status_code < 300:
-                return jsonify(
-                    {
-                        "ok": True,
-                        "name": name,
-                        "initials": initials,
-                        "count": len(_room_agent_names()),
-                    }
-                )
-            last_err = f"{r.status_code} {r.text[:160]}"
-            # Retry ONLY on a name/url collision: the next scan sees `name` taken and
-            # advances the suffix. Anything else is deterministic (e.g. 422
-            # SSRF_DNS_FAIL_CLOSED when the sales-tax backend is down) — fail fast
-            # instead of hammering the gateway 10× (each a 30s timeout = ~5min hang).
-            blob = r.text.lower()
-            if r.status_code != 409 and "already exists" not in blob:
-                if "dns" in blob or "ssrf" in blob:
-                    last_err = "sales-tax backend unreachable — run `make salestax-up`"
-                break
-        except Exception as e:
-            last_err = str(e)
-            break  # a network error to the local gateway won't fix itself by retrying
-    return (
-        jsonify(
-            {"ok": False, "error": last_err or "register failed", "initials": initials}
-        ),
-        502,
+    choice = (request.values.get("choice") or "").strip().lower()
+    if choice not in ("approve", "reject"):
+        return jsonify({"ok": False, "error": "choice must be approve or reject"}), 400
+    if initials not in CROWD and len(CROWD) >= CROWD_CAP:
+        return jsonify({"ok": False, "error": "room is full"}), 429
+    CROWD[initials] = choice
+    approve = sum(1 for v in CROWD.values() if v == "approve")
+    reject = len(CROWD) - approve
+    return jsonify(
+        {
+            "ok": True,
+            "initials": initials,
+            "choice": choice,
+            "approve": approve,
+            "reject": reject,
+            "count": len(CROWD),
+        }
     )
 
 
-@app.route("/api/agents")
-def agents():
-    names = _room_agent_names()
-    recent = [_initials_of(n) for n in names][-14:][::-1]
-    return jsonify({"count": len(names), "recent": recent})
+@app.route("/api/crowd")
+def crowd():
+    approve = sum(1 for v in CROWD.values() if v == "approve")
+    reject = len(CROWD) - approve
+    recent = list(CROWD.keys())[-14:][::-1]
+    return jsonify(
+        {
+            "approve": approve,
+            "reject": reject,
+            "count": len(CROWD),
+            "frozen": CROWD_FROZEN,
+            "recent": recent,
+        }
+    )
+
+
+@app.route("/api/freeze", methods=["POST"])
+def freeze():
+    """Presenter toggle: stop accepting crowd votes (so the room can't be gamed
+    after the quorum runs). Idempotent; returns the new state."""
+    global CROWD_FROZEN
+    CROWD_FROZEN = request.values.get("on", "1").strip().lower() not in (
+        "0",
+        "false",
+        "off",
+    )
+    return jsonify({"ok": True, "frozen": CROWD_FROZEN})
 
 
 @app.route("/api/prompts")
@@ -771,10 +876,12 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
  </div>
  <main>
    <div class="roombar">
-     <div class="roomcount">🛠️ Agents built by the room: <b id="roomN">—</b> <span id="roomUp"></span></div>
+     <div class="roomcount">🗳️ Room vote on the $50k wire — ✅ <b id="crowdA">0</b> approve · ⛔ <b id="crowdR">0</b> reject <span id="crowdUp"></span></div>
      <div class="roomreg">
-       <input id="ini" maxlength="5" placeholder="your initials" autocapitalize="characters" onkeydown="if(event.key==='Enter')registerAgent()">
-       <button onclick="registerAgent()">Register my agent ▶</button>
+       <input id="ini" maxlength="5" placeholder="your initials" autocapitalize="characters">
+       <button onclick="castVote('approve')">✅ Approve</button>
+       <button onclick="castVote('reject')" style="background:var(--block)">⛔ Reject</button>
+       <button class="ev" onclick="toggleFreeze()" id="freezeBtn">🔒 Freeze</button>
        <span id="regout" class="small"></span>
      </div>
      <a class="wall-link qr-link" href="/qr" target="_blank">📲 Join QR</a>
@@ -789,7 +896,8 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
 <script>
 const SCEN=[["baseline","Baseline — small reimbursement"],["policy","#1 Policy — $50,000 wire (OPA amount cap)"],
  ["policy_approved","#1 Policy — $50,000 WITH dual approval"],["pii","#2 Data protection — PII + secret"],
- ["injection","#3 Prompt-injection — poisoned receipt"],["a2a","Cross-language A2A — Rust agent executes"]];
+ ["injection","#3 Prompt-injection — poisoned receipt"],["a2a","Cross-language A2A — Rust agent executes"],
+ ["quorum","Expense approval quorum — policy beats consensus"]];
 const grid=document.getElementById('grid');
 SCEN.forEach(([k,label])=>{
  const c=document.createElement('div');c.className='card';
@@ -853,27 +961,37 @@ async function loadState(){
  const hidden=`<span class="chip ${s.wire_hidden_from_finops?'ok':'no'}">${s.wire_hidden_from_finops?'✓ wire NOT exposed to Bob':'⚠ wire exposed'}</span>`;
  document.getElementById('finops').innerHTML=fin+hidden;
 }
-let lastN=null;
-async function pollAgents(){
- try{
-   const a=await (await fetch('/api/agents')).json();
-   const el=document.getElementById('roomN'); if(el)el.textContent=a.count;
-   if(lastN!==null && a.count>lastN){const u=document.getElementById('roomUp'); if(u){u.textContent='↑'; setTimeout(()=>u.textContent='',1200);}}
-   lastN=a.count;
- }catch(e){}
-}
-async function registerAgent(){
+let frozen=false;
+async function castVote(choice){
  const ini=document.getElementById('ini').value;
- const out=document.getElementById('regout'); out.textContent='registering…';
+ const out=document.getElementById('regout'); out.textContent='voting…';
  try{
-   const r=await (await fetch('/api/register-agent?initials='+encodeURIComponent(ini),{method:'POST'})).json();
-   if(r.ok){out.textContent='✓ '+r.name+' — agents: '+r.count; document.getElementById('ini').value=''; pollAgents();}
+   const r=await (await fetch('/api/vote?initials='+encodeURIComponent(ini)+'&choice='+choice,{method:'POST'})).json();
+   if(r.ok){out.textContent='✓ '+r.initials+' voted '+r.choice; document.getElementById('ini').value=''; pollCrowd();}
    else out.textContent='⚠ '+(r.error||'failed');
  }catch(e){out.textContent='⚠ '+e;}
 }
+async function toggleFreeze(){
+ frozen=!frozen;
+ try{
+   const r=await (await fetch('/api/freeze?on='+(frozen?1:0),{method:'POST'})).json();
+   document.getElementById('freezeBtn').textContent = r.frozen ? '🔓 Unfreeze' : '🔒 Freeze';
+ }catch(e){}
+}
+let lastN=null;
+async function pollCrowd(){
+ try{
+   const a=await (await fetch('/api/crowd')).json();
+   document.getElementById('crowdA').textContent=a.approve;
+   document.getElementById('crowdR').textContent=a.reject;
+   if(lastN!==null && a.count>lastN){const u=document.getElementById('crowdUp'); if(u){u.textContent='↑'; setTimeout(()=>u.textContent='',1000);}}
+   lastN=a.count;
+   document.getElementById('freezeBtn').textContent = a.frozen ? '🔓 Unfreeze' : '🔒 Freeze';
+ }catch(e){}
+}
 loadState();
-pollAgents();
-setInterval(pollAgents, 3000);
+pollCrowd();
+setInterval(pollCrowd, 2000);
 </script></body></html>"""
 
 
@@ -897,14 +1015,14 @@ WALL = r"""<!doctype html><html><head><meta charset="utf-8">
 </style></head><body>
  <div class="eyebrow">IBM Bob × ContextForge</div>
  <div class="num" id="n">0</div>
- <div class="label">agents built by the room — registered with the control plane, live</div>
+ <div class="label">votes cast by the room on the $50,000 wire — live</div>
  <div class="chips" id="chips"></div>
  <div class="ctx">name yours on the dashboard → watch it land here</div>
 <script>
  let last=null;
  async function tick(){
   try{
-   const a=await (await fetch('/api/agents')).json();
+   const a=await (await fetch('/api/crowd')).json();
    const n=document.getElementById('n');
    if(last!==null && a.count>last){n.classList.add('bump'); setTimeout(()=>n.classList.remove('bump'),260);}
    n.textContent=a.count; last=a.count;
