@@ -53,6 +53,19 @@ PRESENTER_KEY = os.environ.get("PRESENTER_KEY", "").strip()
 MCP_PREFIX = "salestax"
 MCP_BACKEND_URL = os.environ.get("AGENT_BACKEND_URL", "http://sales-tax:8000/mcp")
 
+# ── one-tap "Join the mesh": each attendee registers BOTH an A2A voter (room-*,
+# joins the quorum) and an MCP server (salestax-*, joins the catalog) in one action.
+STANCES = ("strict", "lenient", "random")
+FIXED_VOTERS = {
+    "room-strict-1",
+    "room-strict-2",
+    "room-lenient-1",
+    "room-lenient-2",
+    "room-random-1",
+}
+ATTENDEE_CAP = 60  # max attendee voter agents held in the catalog
+JOIN_FROZEN = False  # presenter freeze for joining (PRESENTER_KEY-guarded)
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS = os.path.join(ROOT, "docs")
 
@@ -317,11 +330,7 @@ def _vote_one(name):
 
 
 def s_quorum():
-    # 1) crowd (local, instant, cannot fail)
-    crowd_approve = sum(1 for v in CROWD.values() if v == "approve")
-    crowd_reject = len(CROWD) - crowd_approve
-
-    # 2) agent quorum (real, governed) — the 5 fixed seeded voters
+    # 1) agent quorum (real, governed) — the seeded voters + any attendee-joined voters
     names = _room_agent_names()
     votes = []
     if names:
@@ -356,8 +365,6 @@ def s_quorum():
 
     agent_lines = [f"  {v['agent']:<16} {v['stance']:<8} → {v['vote']}" for v in votes]
     detail = (
-        f"ROOM (phones): approve={crowd_approve}  reject={crowd_reject}  "
-        f"(of {len(CROWD)} voters)\n\n"
         f"GOVERNED A2A AGENTS (through the gateway):\n"
         + (
             "\n".join(agent_lines)
@@ -375,7 +382,7 @@ def s_quorum():
         verdict="BLOCKED" if blocked else "SEE RAW",
         blocked=blocked,
         headline=(
-            f"Room {crowd_approve}-{crowd_reject}, agents {a_app}-{a_rej} — OPA blocked "
+            f"Agents {a_app}-{a_rej} — OPA blocked "
             f"the ${QUORUM_AMOUNT:,} wire anyway (policy beats consensus)"
         ),
         detail=detail,
@@ -388,9 +395,6 @@ def s_quorum_a2a():
     """Agent-orchestrated quorum: the Companion sends ONE A2A message to the chair
     agent, which discovers the voters and delegates to each through the gateway,
     then attempts the wire. Shows genuine agent->agent A2A, all governed."""
-    crowd_approve = sum(1 for v in CROWD.values() if v == "approve")
-    crowd_reject = len(CROWD) - crowd_approve
-
     name = "a2a-chair"
     args = {
         "message": {
@@ -440,9 +444,7 @@ def s_quorum_a2a():
     ]
     detail = (
         "CHAIN: Companion → [A2A] → Chair agent → discovered "
-        f"{voters} voters → [A2A through the gateway] → 5 voters → tally → wire\n\n"
-        f"ROOM (phones): approve={crowd_approve}  reject={crowd_reject}  "
-        f"(of {len(CROWD)} voters)\n\n"
+        f"{voters} voters → [A2A through the gateway] → {voters} voters → tally → wire\n\n"
         "GOVERNED A2A AGENTS (the chair delegated to each, through the gateway):\n"
         + ("\n".join(agent_lines) if agent_lines else "  (chair reported no voters)")
         + f"\n  agent tally: approve={a_app} reject={a_rej} abstain={a_abs}\n\n"
@@ -599,6 +601,21 @@ def _mcp_unique_name(initials, existing):
     return f"{base}-{i}"
 
 
+def _voter_attendee_names():
+    """Attendee-registered A2A voters (room-* in /a2a, excluding the fixed seeds)."""
+    return [n for n in _room_agent_names() if n not in FIXED_VOTERS]
+
+
+def _voter_unique_name(stance, initials, existing):
+    base = f"room-{stance}-{initials}"
+    if base not in existing:
+        return base
+    i = 2
+    while f"{base}-{i}" in existing:
+        i += 1
+    return f"{base}-{i}"
+
+
 @app.route("/api/vote", methods=["GET", "POST"])
 def vote():
     """Record one local crowd vote (approve/reject) on the $50k wire. No gateway
@@ -717,6 +734,112 @@ def mcp_agents():
     names = _mcp_names()
     recent = [_mcp_initials_of(n) for n in names][-14:][::-1]
     return jsonify({"count": len(names), "recent": recent})
+
+
+@app.route("/api/join", methods=["GET", "POST"])
+def join():
+    """One tap: register an A2A voter (room-<stance>-<initials>, joins the quorum)
+    AND a sales-tax MCP server (salestax-<initials>, joins the catalog). Voter is the
+    priority (always-up backend); MCP may fail if sales-tax is down — reported, not fatal.
+    """
+    if JOIN_FROZEN:
+        return jsonify({"ok": False, "error": "joining is frozen", "frozen": True}), 423
+    initials = _sanitize_initials(
+        request.values.get("initials") or request.values.get("ini")
+    )
+    stance = (request.values.get("stance") or "random").strip().lower()
+    if stance not in STANCES:
+        stance = "random"
+    if len(_voter_attendee_names()) >= ATTENDEE_CAP:
+        return jsonify({"ok": False, "error": "the room is full"}), 429
+
+    out = {"initials": initials, "stance": stance}
+
+    # 1) A2A voter (room-agent backend is always up) — the quorum participation
+    existing_a = {a.get("name", "") for a in _a2a_agents()}
+    vname = _voter_unique_name(stance, initials, existing_a)
+    try:
+        rv = httpx.post(
+            f"{GW}/a2a",
+            headers=H,
+            timeout=30,
+            json={
+                "agent": {
+                    "name": vname,
+                    "endpoint_url": f"http://room-agent:8000/?agent={vname}",
+                    "agent_type": "jsonrpc",
+                    "description": f"room voter joined by {initials} (stance {stance})",
+                    "tags": ["finbyte", "room", "attendee"],
+                }
+            },
+        )
+        out["voter_name"] = vname if rv.status_code < 300 else None
+        if rv.status_code >= 300:
+            out["voter_error"] = f"{rv.status_code} {rv.text[:120]}"
+    except Exception as e:
+        out["voter_name"] = None
+        out["voter_error"] = str(e)
+
+    # 2) MCP server (sales-tax backend) — the catalog beat
+    existing_g = {g.get("name", "") for g in _mcp_gateways()}
+    mname = _mcp_unique_name(initials, existing_g)
+    sep = "&" if "?" in MCP_BACKEND_URL else "?"
+    try:
+        rm = httpx.post(
+            f"{GW}/gateways",
+            headers=H,
+            timeout=30,
+            json={
+                "name": mname,
+                "url": f"{MCP_BACKEND_URL}{sep}agent={mname}",
+                "transport": "STREAMABLEHTTP",
+                "description": f"sales-tax MCP server registered by {initials}",
+            },
+        )
+        out["mcp_name"] = mname if rm.status_code < 300 else None
+        if rm.status_code >= 300:
+            blob = rm.text.lower()
+            out["mcp_error"] = (
+                "sales-tax backend down (make salestax-up)"
+                if ("dns" in blob or "ssrf" in blob)
+                else f"{rm.status_code}"
+            )
+    except Exception as e:
+        out["mcp_name"] = None
+        out["mcp_error"] = str(e)
+
+    out["voter_count"] = len(_voter_attendee_names())
+    out["mcp_count"] = len(_mcp_names())
+    out["ok"] = bool(out.get("voter_name"))  # success = at least joined the quorum
+    return jsonify(out), (200 if out["ok"] else 502)
+
+
+@app.route("/api/mesh")
+def mesh():
+    voters = _voter_attendee_names()
+    recent = [n.split("-", 2)[-1] for n in voters][-14:][::-1]
+    return jsonify(
+        {
+            "voter_count": len(voters),
+            "mcp_count": len(_mcp_names()),
+            "frozen": JOIN_FROZEN,
+            "recent": recent,
+        }
+    )
+
+
+@app.route("/api/joinfreeze", methods=["POST"])
+def joinfreeze():
+    """Presenter toggle: stop accepting new joins. PRESENTER_KEY-guarded when set."""
+    if PRESENTER_KEY and request.values.get("k", "") != PRESENTER_KEY:
+        return jsonify({"ok": False, "error": "presenter only"}), 403
+    global JOIN_FROZEN
+    JOIN_FROZEN = request.values.get("on", "1").strip().lower() not in (
+        "0",
+        "false",
+        "off",
+    )
+    return jsonify({"ok": True, "frozen": JOIN_FROZEN})
 
 
 @app.route("/api/prompts")
@@ -1017,6 +1140,7 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
  .roomreg input{background:#000;border:1px solid #393939;border-radius:6px;color:#fff;padding:8px 10px;
    font-size:14px;width:130px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace}
  .roomreg input::placeholder{color:#6f6f6f;text-transform:none}
+ .roomreg select{background:#000;border:1px solid #393939;border-radius:6px;color:#fff;padding:8px 10px;font-size:13px;font-family:'IBM Plex Mono',monospace}
  .roomreg .small{color:#8d8d8d}
  .wall-link{margin-left:auto;color:#78a9ff;font-size:13px;text-decoration:none;border:1px solid #393939;
    padding:7px 12px;border-radius:6px;white-space:nowrap}
@@ -1053,19 +1177,17 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
  </div>
  <main>
    <div class="roombar">
-     <div class="roomcount">🗳️ Room vote on the $50k wire — ✅ <b id="crowdA">0</b> approve · ⛔ <b id="crowdR">0</b> reject <span id="crowdUp"></span></div>
+     <div class="roomcount">🌐 Joined the governed mesh: <b id="meshN">—</b> voting agents <span id="meshUp"></span> <span class="small" id="meshMcp"></span></div>
      <div class="roomreg">
-       <input id="ini" maxlength="5" placeholder="your initials" autocapitalize="characters">
-       <button onclick="castVote('approve')">✅ Approve</button>
-       <button onclick="castVote('reject')" style="background:var(--block)">⛔ Reject</button>
-       <button class="ev" onclick="toggleFreeze()" id="freezeBtn">🔒 Freeze</button>
+       <input id="ini" maxlength="5" placeholder="your initials" autocapitalize="characters" onkeydown="if(event.key==='Enter')joinMesh()">
+       <select id="stance" title="how your voting agent leans">
+         <option value="random">stance: random</option>
+         <option value="strict">stance: strict</option>
+         <option value="lenient">stance: lenient</option>
+       </select>
+       <button onclick="joinMesh()">Join the mesh ▶</button>
+       <button class="ev" onclick="toggleJoinFreeze()" id="freezeBtn">🔒 Freeze</button>
        <span id="regout" class="small"></span>
-     </div>
-     <div class="roomreg" style="margin-top:8px">
-       <span class="roomcount">🛠️ MCP servers registered by the room: <b id="mcpN">—</b></span>
-       <input id="mcpini" maxlength="5" placeholder="your initials" autocapitalize="characters" onkeydown="if(event.key==='Enter')registerMcp()">
-       <button onclick="registerMcp()">Register my MCP server ▶</button>
-       <span id="mcpout" class="small"></span>
      </div>
      <a class="wall-link qr-link" href="/qr" target="_blank">📲 Join QR</a>
      <a class="wall-link" href="/wall" target="_blank">📺 Open wall</a>
@@ -1151,49 +1273,55 @@ async function castVote(choice){
  const out=document.getElementById('regout'); out.textContent='voting…';
  try{
    const r=await (await fetch('/api/vote?initials='+encodeURIComponent(ini)+'&choice='+choice,{method:'POST'})).json();
-   if(r.ok){out.textContent='✓ '+r.initials+' voted '+r.choice; document.getElementById('ini').value=''; pollCrowd();}
+   if(r.ok){out.textContent='✓ '+r.initials+' voted '+r.choice; document.getElementById('ini').value='';}
    else out.textContent='⚠ '+(r.error||'failed');
  }catch(e){out.textContent='⚠ '+e;}
 }
-async function toggleFreeze(){
- frozen=!frozen;
+async function registerMcp(){
+ const ini=(document.getElementById('mcpini')||{value:''}).value;
+ const out=document.getElementById('mcpout'); if(out)out.textContent='registering…';
+ try{
+   const r=await (await fetch('/api/register-mcp?initials='+encodeURIComponent(ini),{method:'POST'})).json();
+   if(r.ok&&out){out.textContent='✓ '+r.name+' — MCP servers: '+r.count;}
+   else if(out) out.textContent='⚠ '+(r.error||'failed');
+ }catch(e){if(out)out.textContent='⚠ '+e;}
+}
+let joinFrozen=false;
+async function joinMesh(){
+ const ini=document.getElementById('ini').value;
+ const stance=document.getElementById('stance').value;
+ const out=document.getElementById('regout'); out.textContent='joining…';
+ try{
+   const r=await (await fetch('/api/join?initials='+encodeURIComponent(ini)+'&stance='+encodeURIComponent(stance),{method:'POST'})).json();
+   if(r.ok){
+     let msg='✓ '+(r.voter_name||'')+' voted in the quorum';
+     msg += r.mcp_name ? (' · MCP '+r.mcp_name+' in the catalog') : (' · MCP: '+(r.mcp_error||'skipped'));
+     out.textContent=msg; document.getElementById('ini').value=''; pollMesh();
+   } else out.textContent='⚠ '+(r.error||r.voter_error||'failed');
+ }catch(e){out.textContent='⚠ '+e;}
+}
+async function toggleJoinFreeze(){
+ joinFrozen=!joinFrozen;
  const k=new URLSearchParams(location.search).get('k')||'';
  try{
-   const r=await (await fetch('/api/freeze?on='+(frozen?1:0)+'&k='+encodeURIComponent(k),{method:'POST'})).json();
+   const r=await (await fetch('/api/joinfreeze?on='+(joinFrozen?1:0)+'&k='+encodeURIComponent(k),{method:'POST'})).json();
    if(r.ok) document.getElementById('freezeBtn').textContent = r.frozen ? '🔓 Unfreeze' : '🔒 Freeze';
  }catch(e){}
 }
-let lastN=null;
-async function pollCrowd(){
+let lastMeshN=null;
+async function pollMesh(){
  try{
-   const a=await (await fetch('/api/crowd')).json();
-   document.getElementById('crowdA').textContent=a.approve;
-   document.getElementById('crowdR').textContent=a.reject;
-   if(lastN!==null && a.count>lastN){const u=document.getElementById('crowdUp'); if(u){u.textContent='↑'; setTimeout(()=>u.textContent='',1000);}}
-   lastN=a.count;
-   document.getElementById('freezeBtn').textContent = a.frozen ? '🔓 Unfreeze' : '🔒 Freeze';
- }catch(e){}
-}
-async function registerMcp(){
- const ini=document.getElementById('mcpini').value;
- const out=document.getElementById('mcpout'); out.textContent='registering…';
- try{
-   const r=await (await fetch('/api/register-mcp?initials='+encodeURIComponent(ini),{method:'POST'})).json();
-   if(r.ok){out.textContent='✓ '+r.name+' — MCP servers: '+r.count; document.getElementById('mcpini').value=''; pollMcp();}
-   else out.textContent='⚠ '+(r.error||'failed');
- }catch(e){out.textContent='⚠ '+e;}
-}
-async function pollMcp(){
- try{
-   const a=await (await fetch('/api/mcp-agents')).json();
-   const el=document.getElementById('mcpN'); if(el)el.textContent=a.count;
+   const a=await (await fetch('/api/mesh')).json();
+   const el=document.getElementById('meshN'); if(el)el.textContent=a.voter_count;
+   const mc=document.getElementById('meshMcp'); if(mc)mc.textContent='· '+a.mcp_count+' MCP servers in the catalog';
+   if(lastMeshN!==null && a.voter_count>lastMeshN){const u=document.getElementById('meshUp'); if(u){u.textContent='↑'; setTimeout(()=>u.textContent='',1000);}}
+   lastMeshN=a.voter_count;
+   const fb=document.getElementById('freezeBtn'); if(fb)fb.textContent = a.frozen ? '🔓 Unfreeze' : '🔒 Freeze';
  }catch(e){}
 }
 loadState();
-pollCrowd();
-setInterval(pollCrowd, 2000);
-pollMcp();
-setInterval(pollMcp, 3000);
+pollMesh();
+setInterval(pollMesh, 2000);
 </script></body></html>"""
 
 
@@ -1217,17 +1345,17 @@ WALL = r"""<!doctype html><html><head><meta charset="utf-8">
 </style></head><body>
  <div class="eyebrow">IBM Bob × ContextForge</div>
  <div class="num" id="n">0</div>
- <div class="label">votes cast by the room on the $50,000 wire — live</div>
+ <div class="label">voting agents the room joined to the governed mesh — live</div>
  <div class="chips" id="chips"></div>
  <div class="ctx">vote on the dashboard → watch the tally climb here</div>
 <script>
  let last=null;
  async function tick(){
   try{
-   const a=await (await fetch('/api/crowd')).json();
+   const a=await (await fetch('/api/mesh')).json();
    const n=document.getElementById('n');
-   if(last!==null && a.count>last){n.classList.add('bump'); setTimeout(()=>n.classList.remove('bump'),260);}
-   n.textContent=a.count; last=a.count;
+   if(last!==null && a.voter_count>last){n.classList.add('bump'); setTimeout(()=>n.classList.remove('bump'),260);}
+   n.textContent=a.voter_count; last=a.voter_count;
    const c=document.getElementById('chips');
    c.innerHTML=(a.recent||[]).map((x,i)=>`<span class="chip${i===0?' fresh':''}">${(x+'').replace(/[<>&]/g,'')}</span>`).join('');
   }catch(e){}
