@@ -6,7 +6,10 @@
 
 Source of truth: slides/outline.md. Run with:
 
-    uv run --with python-pptx==1.0.2 python slides/build_deck.py
+    uv run --with python-pptx==1.0.2 --with matplotlib --with pillow python slides/build_deck.py
+
+(matplotlib + pillow render/embed the architecture diagram; without them the build
+falls back to the committed slides/assets/architecture.png.)
 
 (The architecture PNG is rendered with matplotlib if available; the script
 degrades gracefully to native pptx shapes if matplotlib is missing.)
@@ -32,6 +35,7 @@ from pptx.util import Emu, Pt
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, "assets")
 ARCH_PNG = os.path.join(ASSETS, "architecture.png")
+AGENT_PNG = os.path.join(ASSETS, "agent-101.png")  # rendered from agent-101.svg
 OUT_PPTX = os.path.join(HERE, "bob-controlplane-talk.pptx")
 os.makedirs(ASSETS, exist_ok=True)
 
@@ -411,12 +415,24 @@ def money_shot_header(slide, num, title, danger):
 # Build
 # --------------------------------------------------------------------------- #
 def build():
-    have_png = render_architecture_png(ARCH_PNG)
+    # Render the diagram with matplotlib if available; otherwise fall back to the
+    # committed slides/assets/architecture.png so the Mesh slide keeps its diagram
+    # even when the build env has no matplotlib (CI, a bare `--with python-pptx`).
+    have_png = render_architecture_png(ARCH_PNG) or os.path.exists(ARCH_PNG)
+    have_agent = os.path.exists(AGENT_PNG)  # agent-101 diagram (committed PNG)
 
     prs = Presentation()
     prs.slide_width = SW
     prs.slide_height = SH
-    TOTAL = 20
+    TOTAL = 24
+
+    # Footers auto-number in slide order — reorder/insert/delete blocks freely.
+    _slide_n = 0
+
+    def fnum():
+        nonlocal _slide_n
+        _slide_n += 1
+        return _slide_n
 
     # ===================== PART A : THE DEV JOURNEY =================== #
     # ---- 1. TITLE --------------------------------------------------------- #
@@ -452,108 +468,227 @@ Product names: IBM Bob is an agentic IDE that acts as an MCP client. ContextForg
 is IBM's open-source MCP/A2A gateway (repo IBM/mcp-context-forge) - the AI agent
 control plane. Format: ~28 min talk, ~12 min live demo, ~3 min Q&A.
 """)
-    footer(s, 1, TOTAL, dark=True)
+    footer(s, fnum(), TOTAL, dark=True)
 
-    # ---- 2. THE PROBLEM (developer hook) ---------------------------------- #
+    # ---- 2. AGENT 101 ---------------------------------------------------- #
     s = add_slide(prs)
     bg(s, WHITE)
     accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "The problem")
-    title_on_light(s, "You just built an agent tool. Who’s in charge of it?")
-    textbox(s, 0.7, 1.78, 12.0, 0.6,
-            [[("In 30 seconds Bob can stand up an MCP server that moves money. Then what?",
-               19, IBM_BLUE, True, FONT_BODY)]])
-    cards = [
-        ("You built it", "A FastMCP server, a couple of tools, running on a port. It works on the first try.", MUTE),
-        ("It’s wide open", "No token, no policy, no audit. Anyone who can reach the port runs anything. (MCP)", INK),
-        ("Now it calls peers", "Your agent delegates to another agent — an auditor triggers a payment. No human in the loop. (A2A)", IBM_BLUE),
+    kicker(s, "AI Agent 101")
+    title_on_light(s, "What is an agent?")
+    textbox(s, 0.7, 1.62, 12.0, 0.42,
+            [[("Not a chatbot. An agent ", 14, INK, False),
+              ("remembers, plans, and acts", 14, IBM_BLUE, True),
+              (" — it pursues a goal with tools, not just a reply.", 14, INK, False)]])
+    if have_agent:
+        from PIL import Image
+        try:
+            iw, ih = Image.open(AGENT_PNG).size
+            maxw, maxh = 7.4, 4.55
+            scale = min(maxw / (iw / 200.0), maxh / (ih / 200.0))
+            w_in = (iw / 200.0) * scale
+            h_in = (ih / 200.0) * scale
+            x_in = (13.333 - w_in) / 2
+            s.shapes.add_picture(AGENT_PNG, IN(x_in), IN(2.0), width=IN(w_in), height=IN(h_in))
+        except Exception:
+            s.shapes.add_picture(AGENT_PNG, IN(3.2), IN(2.0), width=IN(6.9))
+    textbox(s, 0.7, 6.75, 12.0, 0.45,
+            [[("That autonomy is the power — and the risk. ", 13.5, INK, True),
+              ("The moment it can act, someone has to be in charge of it.", 13.5, MUTE, False)]],
+            align=PP_ALIGN.CENTER)
+    notes(s, """
+AI AGENT 101 (set the ground). Before governance, agree on what an agent IS - many
+in the room think "chatbot". An agent is an LLM "brain" wired to five things:
+  - Reasoning/planning: it decides the next step, loops toward a goal.
+  - Memory: short-term context now + longer-term recall.
+  - Tools/actions: it EXECUTES real tasks - calls tools, APIs, moves things.
+  - Knowledge: grounding and retrieval.
+  - Autonomy: it pursues an objective without step-by-step instructions.
+The leap from "answers" to "acts" is the whole point - and the whole risk. The
+second it can do things, the question becomes WHO is in charge of it. That sets up
+the protocols (how it connects) and the thesis (governing is the hard part).
+""")
+    footer(s, fnum(), TOTAL)
+
+    # ---- 3. PROTOCOL · MCP ----------------------------------------------- #
+    s = add_slide(prs)
+    bg(s, WHITE)
+    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
+    kicker(s, "Protocol ① · MCP — model ↔ tools")
+    title_on_light(s, "Giving the agent hands")
+    textbox(s, 0.7, 1.66, 12.0, 0.5,
+            [[("An agent is only as useful as what it can ", 14, INK, False), ("do", 14, INK, True),
+              (". But every model-to-tool integration was bespoke glue — N models × M tools.", 14, INK, False)]])
+    rounded(s, 0.7, 2.5, 5.85, 3.45, PANEL, line=PANEL_LINE)
+    accent_bar(s, 0.7, 2.5, 5.85, 0.12, RED)
+    textbox(s, 1.0, 2.75, 5.3, 0.5, [[("The problem", 16, RED, True)]])
+    textbox(s, 1.0, 3.3, 5.3, 2.4, [
+        [("Every tool needs a custom adapter for every model.", 13.5, INK, False)],
+        [("Add a tool → rewire each agent. ", 13.5, INK, False), ("It doesn’t scale.", 13.5, RED, True)],
+    ], line_spacing=1.3, space_after=8)
+    rounded(s, 6.8, 2.5, 5.85, 3.45, RGBColor(0xEA, 0xF1, 0xFF), line=IBM_BLUE, line_w=1.3)
+    accent_bar(s, 6.8, 2.5, 5.85, 0.12, IBM_BLUE)
+    textbox(s, 7.1, 2.75, 5.3, 0.5, [[("What MCP does", 16, IBM_BLUE, True)]])
+    textbox(s, 7.1, 3.3, 5.3, 2.4, [
+        [("One open protocol for the ", 13.5, INK, False), ("model → tools", 13.5, IBM_BLUE, True), (" seam.", 13.5, INK, False)],
+        [("Speak MCP once, reach any tool. ", 13.5, INK, False), ("Bob uses it to call every server in this demo.", 13.5, INK, False)],
+    ], line_spacing=1.3, space_after=8)
+    textbox(s, 0.7, 6.25, 12.0, 0.5,
+            [[("MCP is the ", 14, INK, False), ("vertical", 14, IBM_BLUE, True), (" seam — one agent, many tools.", 14, INK, False)]])
+    notes(s, """
+PROTOCOL ① MCP. The problem MCP solves: before it, wiring a model to tools was
+bespoke - N models times M tools, custom glue each time; add a tool and you rewire
+every agent. MCP standardizes the VERTICAL seam (model → tools): speak it once,
+reach any tool. Bob uses MCP to reach every server in this demo. Reach is great -
+but every tool you connect is more surface area to govern. (Leads into A2A, then
+the thesis.)
+""")
+    footer(s, fnum(), TOTAL)
+
+    # ---- 4. PROTOCOL · A2A ----------------------------------------------- #
+    s = add_slide(prs)
+    bg(s, WHITE)
+    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
+    kicker(s, "Protocol ② · A2A — agent ↔ agent")
+    title_on_light(s, "Agents that call other agents")
+    textbox(s, 0.7, 1.66, 12.0, 0.5,
+            [[("One agent rarely does it all. It delegates — to agents built by other teams, in other languages.", 14, INK, False)]])
+    rounded(s, 0.7, 2.5, 5.85, 3.45, PANEL, line=PANEL_LINE)
+    accent_bar(s, 0.7, 2.5, 5.85, 0.12, RED)
+    textbox(s, 1.0, 2.75, 5.3, 0.5, [[("The problem", 16, RED, True)]])
+    textbox(s, 1.0, 3.3, 5.3, 2.4, [
+        [("No standard way for agent A to discover and call agent B across vendors and runtimes.", 13.5, INK, False)],
+        [("Everyone reinvents the handshake.", 13.5, RED, True)],
+    ], line_spacing=1.3, space_after=8)
+    rounded(s, 6.8, 2.5, 5.85, 3.45, RGBColor(0xEA, 0xF1, 0xFF), line=IBM_BLUE, line_w=1.3)
+    accent_bar(s, 6.8, 2.5, 5.85, 0.12, IBM_BLUE)
+    textbox(s, 7.1, 2.75, 5.3, 0.5, [[("What A2A does — and the result", 16, IBM_BLUE, True)]])
+    textbox(s, 7.1, 3.3, 5.3, 2.4, [
+        [("One protocol for the ", 13.5, INK, False), ("agent → agent", 13.5, IBM_BLUE, True), (" seam (agent cards + messages).", 13.5, INK, False)],
+        [("Here: a Python ", 13.5, INK, False), ("auditor", 13.5, IBM_BLUE, True),
+         (" delegates to a Rust ", 13.5, INK, False), ("payments", 13.5, IBM_BLUE, True), (" agent — cross-language.", 13.5, INK, False)],
+    ], line_spacing=1.3, space_after=8)
+    textbox(s, 0.7, 6.25, 12.0, 0.5,
+            [[("A2A is the ", 14, INK, False), ("horizontal", 14, IBM_BLUE, True), (" seam — agent to agent. The same enforcement must sit on both.", 14, INK, False)]])
+    notes(s, """
+PROTOCOL ② A2A. The problem that led to it: agents need to call OTHER agents -
+across vendors, teams, languages - and there was no standard handshake, so everyone
+reinvented it. A2A standardizes the HORIZONTAL seam (agent → agent): agent cards +
+messages. The RESULT in this demo: a Python Auditor delegates to a Rust Payments
+agent, cross-language, and (later) the same control fires on that hop. MCP +
+A2A solve CONNECTION on both axes - they don't solve who's allowed to do what.
+""")
+    footer(s, fnum(), TOTAL)
+
+    # ---- 5. THESIS ------------------------------------------------------- #
+    s = add_slide(prs)
+    bg(s, DARK_BG)
+    accent_bar(s, 0, 0, 13.333, 0.16, GOLD)
+    kicker(s, "The whole talk in one line", color=GOLD)
+    title_on_light(s, "Building agents is easy.", y=1.45, size=40, x=0.7, color=WHITE)
+    title_on_light(s, "Governing them is the hard part.", y=2.4, size=40, x=0.7, color=GOLD)
+    textbox(s, 0.7, 3.75, 12.0, 1.3, [
+        [("In 30 seconds, Bob stands up an MCP server that moves money — no token, no policy, no audit.", 15, WHITE, False)],
+        [("MCP and A2A say ", 15, RGBColor(0x9F, 0xB3, 0xD9), False), ("how", 15, WHITE, True),
+         (" agents connect. Neither says ", 15, RGBColor(0x9F, 0xB3, 0xD9), False),
+         ("who’s allowed to do what", 15, GOLD, True),
+         (" — or proves it.", 15, RGBColor(0x9F, 0xB3, 0xD9), False)],
+    ], line_spacing=1.3, space_after=10)
+    rounded(s, 0.7, 5.55, 12.0, 1.1, RGBColor(0x16, 0x20, 0x3C), line=None)
+    textbox(s, 1.0, 5.66, 11.4, 0.9, [
+        [("That missing layer is the ", 15, WHITE, False), ("AI agent control plane", 15, MINT, True),
+         (". The rest of this talk earns one — one layer at a time.", 15, WHITE, False)],
+    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.15)
+    notes(s, """
+THESIS (the spine of the talk in one line). Building an agent that can move money
+is trivial - Bob does it live in Stage ①, wide open, in 30 seconds. The HARD,
+unsolved part is governing it: auth, policy, redaction, audit, RBAC - decided AND
+proven. MCP/A2A are connection protocols; neither says who's allowed to do what or
+proves what happened. That missing layer is the AI agent control plane. Everything
+after this slide earns that layer, one stage at a time.
+""")
+    footer(s, fnum(), TOTAL, dark=True)
+
+    # ---- 6. ARCHITECTURE OVERVIEW (the harness) -------------------------- #
+    s = add_slide(prs)
+    bg(s, WHITE)
+    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
+    kicker(s, "The control plane — where we’re headed")
+    title_on_light(s, "One checkpoint every call passes through")
+    textbox(s, 0.7, 1.62, 12.0, 0.42,
+            [[("Bob never touches a tool directly. Every tool call ", 14, INK, False),
+              ("and", 14, IBM_BLUE, True),
+              (" every agent-to-agent call goes through one governed seam. We build this by hand.", 14, INK, False)]])
+    if have_png:
+        from PIL import Image
+        try:
+            iw, ih = Image.open(ARCH_PNG).size
+            maxw, maxh = 11.6, 4.3
+            scale = min(maxw / (iw / 200.0), maxh / (ih / 200.0))
+            w_in = (iw / 200.0) * scale
+            h_in = (ih / 200.0) * scale
+            x_in = (13.333 - w_in) / 2
+            s.shapes.add_picture(ARCH_PNG, IN(x_in), IN(2.15), width=IN(w_in), height=IN(h_in))
+        except Exception:
+            s.shapes.add_picture(ARCH_PNG, IN(0.7), IN(2.15), width=IN(11.6))
+    textbox(s, 0.7, 6.75, 12.0, 0.45,
+            [[("Gateway (policy · redaction · audit · RBAC) · OPA sidecar · 6 MCP servers · 2 cross-language A2A agents.", 12.5, MUTE, False)]],
+            align=PP_ALIGN.CENTER)
+    notes(s, """
+ARCHITECTURE OVERVIEW (the goal, shown up front). This is the harness we'll
+assemble - don't explain every box yet, just plant it: Bob (the MCP client) talks
+ONLY to ContextForge, the gateway, which is the one governed seam every call passes
+through. tool_pre_invoke asks OPA (allow/block); tool_post_invoke redacts +
+neutralises; plus RBAC, rate limits, audit. The same hooks govern the A2A hop.
+We'll build this layer by layer and see it again at the end ('you just built this').
+""")
+    footer(s, fnum(), TOTAL)
+
+    # ---- 7. ACT 0 · THREE WAYS TO FOLLOW ALONG --------------------------- #
+    s = add_slide(prs)
+    bg(s, DARK_BG)
+    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
+    textbox(s, 0.7, 0.5, 12.0, 0.4, [[("FOLLOW ALONG — PICK YOUR LEVEL", 13, SKY, True)]])
+    title_on_light(s, "Three ways to take part", y=0.92, size=32, x=0.7, color=WHITE)
+    tiers = [
+        ("👀  Phone", "no install", MINT,
+         "Scan the QR. Watch the stages and run the scenarios in your browser.",
+         "everyone"),
+        ("🧪  Laptop Bob", "Bob, no Docker", SKY,
+         "Install Bob, connect to the cloud control plane, drive the controls yourself.",
+         "intermediate"),
+        ("💻  Full local", "Docker + Bob", GOLD,
+         "Run the whole governed mesh on your own machine — build it and govern it.",
+         "advanced"),
     ]
     cw = (12.0 - 2 * 0.4) / 3
     cx = 0.7
-    for head, body, col in cards:
-        rounded(s, cx, 2.65, cw, 2.5, PANEL, line=PANEL_LINE, line_w=1.0)
-        accent_bar(s, cx, 2.65, cw, 0.12, col)
-        textbox(s, cx + 0.28, 2.95, cw - 0.56, 0.5, [[(head, 17, col, True, FONT_BODY)]])
-        textbox(s, cx + 0.28, 3.5, cw - 0.56, 1.5, [[(body, 13.5, INK, False)]], line_spacing=1.12)
+    for head, tag, col, body, who in tiers:
+        rounded(s, cx, 2.1, cw, 3.0, RGBColor(0x16, 0x20, 0x3C), line=None)
+        accent_bar(s, cx, 2.1, cw, 0.12, col)
+        textbox(s, cx + 0.26, 2.36, cw - 0.52, 0.5, [[(head, 19, WHITE, True, FONT_HEAD)]])
+        textbox(s, cx + 0.26, 2.92, cw - 0.52, 0.34, [[(tag, 11.5, col, True, FONT_MONO)]])
+        textbox(s, cx + 0.26, 3.36, cw - 0.52, 1.4, [[(body, 13, RGBColor(0xCF, 0xD8, 0xEE), False)]], line_spacing=1.16)
+        textbox(s, cx + 0.26, 4.7, cw - 0.52, 0.34, [[(who, 11, col, True, FONT_BODY)]])
         cx += cw + 0.4
-    rounded(s, 0.7, 5.5, 12.0, 1.1, RGBColor(0xFB, 0xF3, 0xD6), line=GOLD, line_w=1.2)
-    textbox(s, 1.0, 5.66, 11.4, 0.9, [
-        [("The gap: ", 16, INK, True), ("MCP and A2A say how agents connect. ", 16, INK, False),
-         ("Neither says who is allowed to do what, or proves it after the fact.", 16, RED, True)],
-    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.05)
+    textbox(s, 0.7, 5.55, 12.0, 0.9, [
+        [("Scan now and follow along from your seat — ", 14, WHITE, False), ("the steps are in the appendix.", 14, MINT, True)],
+    ], line_spacing=1.15)
     notes(s, """
-THE PROBLEM (1:30-4:00). Tell it from the developer's chair - because this is the
-exact thing they'll do live in a minute.
+THREE WAYS TO FOLLOW ALONG (up front, so people can join from the start). Tier 1
+(phone) = everyone, no install: scan the QR, run scenarios, and in a minute register
+your own agent live. Tier 2 (laptop Bob) = install Bob, connect to the cloud control
+plane. Tier 3 (full local) = the whole mesh on your machine. Detailed how-to is the
+appendix at the end.
 
-- You built it: with Bob you just wrote a FastMCP server with a couple of tools.
-  It runs on a port. It works. Small, satisfying.
-- It's wide open: there's no token, no policy, no audit in front of it. Anyone who
-  can reach that port can call any tool - including the one that moves money. That
-  is the default state of every MCP server you stand up.
-- Now it calls peers: with A2A (Agent2Agent), your agent delegates to ANOTHER
-  agent. In our demo an Auditor agent tells a Payments agent to move money - and
-  there's no human in that loop.
-
-Land the gap: MCP and A2A are connection protocols. They standardize HOW agents
-talk to tools and to each other. Neither answers WHO is allowed to do WHAT, and
-neither proves what happened afterwards. That missing layer is the control plane -
-and today you'll build a server that starts wide open and earn that layer for it.
+PRESENTER SETUP (before the talk): run `make present` - it opens public cloudflared
+tunnels for the Companion (:7070) + gateway (:4444), runs the Companion pointed at
+them, and opens your browser to the join QR. Project that QR here. WHY cloudflared
+and not the Codespaces forwarded ports: GitHub's "public" forwarded ports 404
+ANONYMOUS clients (a phone with no GitHub login). The trycloudflare URL is RANDOM
+each run, so the QR is generated live - never hardcode it. Reset with `make agents-reset`.
 """)
-    footer(s, 2, TOTAL)
-
-    # ---- 3. MCP vs A2A ---------------------------------------------------- #
-    s = add_slide(prs)
-    bg(s, WHITE)
-    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Two protocols, one missing layer")
-    title_on_light(s, "MCP is vertical. A2A is horizontal.")
-    # left card MCP
-    rounded(s, 0.7, 1.95, 5.8, 4.5, PANEL, line=PANEL_LINE)
-    textbox(s, 1.0, 2.2, 5.2, 0.5, [[("MCP", 24, IBM_BLUE, True, FONT_HEAD)]])
-    textbox(s, 1.0, 2.78, 5.2, 0.45, [[("Model → Tools  (vertical)", 15, MUTE, True)]])
-    code_panel(s, 1.0, 3.35, 5.2, 1.5, [
-        ("model / agent", CODE_FG),
-        ("     │ calls", SKY),
-        ("     ▼", SKY),
-        ("[ tool ]  [ tool ]  [ tool ]", CODE_FG),
-    ], size=13)
-    textbox(s, 1.0, 5.0, 5.2, 1.3,
-            [[("One agent reaching down into many servers/tools. Great reach — and a lot of surface area to govern.",
-               13.5, INK, False)]], line_spacing=1.12)
-    # right card A2A
-    rounded(s, 6.83, 1.95, 5.8, 4.5, PANEL, line=PANEL_LINE)
-    textbox(s, 7.13, 2.2, 5.2, 0.5, [[("A2A", 24, IBM_BLUE, True, FONT_HEAD)]])
-    textbox(s, 7.13, 2.78, 5.2, 0.45, [[("Agent → Agent  (horizontal)", 15, MUTE, True)]])
-    code_panel(s, 7.13, 3.35, 5.2, 1.5, [
-        ("auditor agent", CODE_FG),
-        ("     │ delegates", SKY),
-        ("     ▶  payments agent", SKY),
-        ("(may be a different team / language)", MUTE),
-    ], size=13)
-    textbox(s, 7.13, 5.0, 5.2, 1.3,
-            [[("Peers delegating to peers. The caller may never be a human, and the callee may be someone else’s agent.",
-               13.5, INK, False)]], line_spacing=1.12)
-    rounded(s, 0.7, 6.55, 11.93, 0.62, DARK_BG, line=None)
-    textbox(s, 1.0, 6.6, 11.4, 0.55,
-            [[("Same blind spot in both: there is no shared place to decide and prove ", 14, WHITE, False),
-              ("allowed vs. denied", 14, MINT, True), (".", 14, WHITE, False)]],
-            anchor=MSO_ANCHOR.MIDDLE)
-    notes(s, """
-MCP vs A2A (4:00-5:30). The conceptual frame, kept crisp.
-
-MCP is VERTICAL: a model/agent reaching DOWN into tools and servers - how agents
-get hands. Fantastic reach, but every server you connect adds surface area.
-
-A2A is HORIZONTAL: an agent talking SIDEWAYS to another agent as a peer. The
-caller might be a bot, the callee might belong to another team - or be written in
-another language. In our demo a Python Auditor delegates to a Rust Payments agent.
-
-Punchline: connection is solved, governance is not. There's no shared place to
-make - and prove - an allowed/denied decision. That place is the control plane,
-and it has to sit on BOTH the vertical tool call AND the horizontal agent call.
-The very same enforcement hook fires on both - we'll see it.
-""")
-    footer(s, 3, TOTAL)
+    footer(s, fnum(), TOTAL, dark=True)
 
     # ---- 4. THE PROGRESSIVE BUILD (spine) -------------------------------- #
     s = add_slide(prs)
@@ -618,7 +753,7 @@ THE THROUGHLINE - say it slowly: register → grant → call. Registering a back
 only catalogs its tools; it is NOT callable yet. Granting it to an agent is a
 SEPARATE, privileged step. That boundary IS least-privilege. We'll hit it in ②.
 """)
-    footer(s, 4, TOTAL, dark=True)
+    footer(s, fnum(), TOTAL, dark=True)
 
     # ---- 5. STAGE ① : BUILD ---------------------------------------------- #
     s = add_slide(prs)
@@ -674,7 +809,7 @@ FALLBACK if Bob's live build wobbles: `make stage1-scaffold` drops in the
 reference _solution.py so you keep moving. `make stage-reset` wipes server.py to
 repeat the beat clean.
 """)
-    footer(s, 5, TOTAL)
+    footer(s, fnum(), TOTAL)
 
     # ---- 6. STAGE ② : GOVERN (register → grant → call) ------------------- #
     s = add_slide(prs)
@@ -742,7 +877,45 @@ tool - to show this isn't only about your own code.
 KEY LINE: "Registering a backend doesn't make it callable. Granting it to an agent
 is a separate, privileged step. That boundary is least-privilege."
 """)
-    footer(s, 6, TOTAL)
+    footer(s, fnum(), TOTAL)
+
+    # ---- 7. PART A · NOW THE ROOM BUILDS AGENTS (live participation) ----- #
+    s = add_slide(prs)
+    bg(s, DARK_BG)
+    accent_bar(s, 0, 0, 13.333, 0.16, MINT)
+    textbox(s, 0.7, 0.5, 12.0, 0.4, [[("YOUR TURN — LIVE", 13, MINT, True)]])
+    title_on_light(s, "Now the room builds agents", y=0.92, size=32, x=0.7, color=WHITE)
+    textbox(s, 0.7, 1.78, 12.0, 0.5, [
+        [("Bob just registered the sales-tax server. ", 15, WHITE, False),
+         ("Now you:", 15, MINT, True),
+         (" scan → name an agent with your initials → it's in the catalog.", 15, WHITE, False)],
+    ], line_spacing=1.1)
+    # QR placeholder (the real QR is projected live from the companion's /qr)
+    rounded(s, 0.7, 2.6, 3.4, 3.4, WHITE, line=None)
+    textbox(s, 0.7, 3.9, 3.4, 0.8, [[("QR", 40, RGBColor(0xC8, 0xD0, 0xE0), True, FONT_HEAD)]], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    textbox(s, 0.7, 6.05, 3.4, 0.4, [[("↑ scan the QR on screen", 12, MINT, True)]], align=PP_ALIGN.CENTER)
+    # the wall count
+    rounded(s, 4.45, 2.6, 8.2, 3.4, RGBColor(0x16, 0x20, 0x3C), line=None)
+    textbox(s, 4.45, 2.9, 8.2, 0.5, [[("AGENTS BUILT BY THE ROOM", 15, SKY, True)]], align=PP_ALIGN.CENTER)
+    textbox(s, 4.45, 3.3, 8.2, 1.6, [[("47", 96, MINT, True, FONT_HEAD)]], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    textbox(s, 4.45, 5.05, 8.2, 0.5, [[("0 → live on the projected wall", 14, RGBColor(0xCF, 0xD8, 0xEE), False, FONT_BODY, True)]], align=PP_ALIGN.CENTER)
+    textbox(s, 4.7, 5.5, 7.7, 0.4, [[("MG", 13, MINT, True, FONT_MONO), ("   TT   AB   PK   JS   KL   …", 13, RGBColor(0x9F, 0xB3, 0xD9), False, FONT_MONO)]], align=PP_ALIGN.CENTER)
+    textbox(s, 0.7, 6.65, 12.0, 0.5, [
+        [("Every one is a ", 14, WHITE, False), ("real", 14, MINT, True),
+         (" MCP server registered with the control plane — the count is real catalog entries.", 14, WHITE, False)],
+    ], align=PP_ALIGN.CENTER)
+    notes(s, """
+NOW THE ROOM BUILDS AGENTS (live participation - the engagement beat). It lands right
+after Stage ② Govern, where Bob just registered a server: now the audience does the
+same. They scan the on-screen QR (the companion's /qr from `make present`), type their
+initials, tap Register - and the projected /wall count climbs 0 → N with their
+initials. Each registration is a REAL POST /gateways: a genuine, enabled, reachable
+salestax-<INI> entry in the ContextForge catalog (show it in the Admin UI later).
+Reset to 0 before the talk with `make agents-reset`. The "47" on the slide is just a
+mock - the real number is on the wall. KEY LINE: "You didn't tap a counter - you each
+registered a real MCP server with the control plane, live."
+""")
+    footer(s, fnum(), TOTAL)
 
     # ---- 7. THREE PERSONAS ----------------------------------------------- #
     s = add_slide(prs)
@@ -801,7 +974,7 @@ Same Bob binary, three actors, three scopes. The analyst literally cannot do wha
 the operator can; the builder calls only what it was granted. That is the AI agent
 control plane made literal - an agent operating the very plane that governs it.
 """)
-    footer(s, 7, TOTAL)
+    footer(s, fnum(), TOTAL)
 
     # ---- 8. STAGE ③ · CONTROL #1 : POLICY -------------------------------- #
     s = add_slide(prs)
@@ -857,7 +1030,7 @@ is allowed.
 CLI fallback if Bob is flaky: `make verify-controls` asserts this deterministically.
 Have the monitor Logs up to show the decision.
 """)
-    footer(s, 8, TOTAL)
+    footer(s, fnum(), TOTAL)
 
     # ---- 9. STAGE ③ · CONTROL #2 : DATA PROTECTION ----------------------- #
     s = add_slide(prs)
@@ -904,7 +1077,7 @@ Two plugins, both on tool_post_invoke:
 Why post-invoke matters: this is the LAST line of defense before untrusted backend
 text becomes model context. Exec framing: this is DLP for agent tool output.
 """)
-    footer(s, 9, TOTAL)
+    footer(s, fnum(), TOTAL)
 
     # ---- 10. STAGE ③ · CONTROL #3 : INJECTION ---------------------------- #
     s = add_slide(prs)
@@ -956,7 +1129,7 @@ Because the gateway sanitizes tool OUTPUT, the model never gets the chance to ob
 it. Combine with #1: even if an injection slipped through, the wire is still
 policy-gated. Defense in depth, one seam.
 """)
-    footer(s, 10, TOTAL)
+    footer(s, fnum(), TOTAL)
 
     # ---- 11. STAGE ③ · CONTROL #4 : RBAC + RATE LIMIT -------------------- #
     s = add_slide(prs)
@@ -1015,18 +1188,18 @@ then fire the same tool repeatedly. `make demo-reset` clears lockouts.
 
 Exec line: "RBAC says who; rate limits say how often. Both are gateway primitives."
 """)
-    footer(s, 11, TOTAL)
+    footer(s, fnum(), TOTAL)
 
     # ---- 12. STAGE ④ : MESH (architecture + proof) ----------------------- #
     s = add_slide(prs)
     bg(s, WHITE)
     accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
     kicker(s, "Stage ④ · Mesh")
-    title_on_light(s, "You just built the quickstart", size=30)
+    title_on_light(s, "You just built this diagram", size=30)
     textbox(s, 0.7, 1.6, 12.0, 0.42,
-            [[("The full governed picture — identical to ", 14, INK, False),
+            [[("Remember the harness from the start? You earned every layer by hand — identical to ", 14, INK, False),
               ("make quickstart", 14, INK, True, FONT_MONO),
-              ("’s end-state, but you watched every layer go in.", 14, INK, False)]])
+              ("’s end-state, but you watched it go in.", 14, INK, False)]])
     if have_png:
         from PIL import Image
         try:
@@ -1087,7 +1260,7 @@ CAPTURED PROOF: docs/evidence/index.html - the whole run (build → govern → 4
 with real gateway responses + Admin-UI screenshots + the 16/16 suite output. Open it
 if a control ever refuses to fire live. Stage runbook: docs/dev-day-runsheet.md.
 """)
-    footer(s, 12, TOTAL)
+    footer(s, fnum(), TOTAL)
 
     # ---- 13. ALSO IN THE BOX + TAKEAWAYS + CTA --------------------------- #
     s = add_slide(prs)
@@ -1153,386 +1326,213 @@ source: github.com/IBM/mcp-context-forge. Everything ran locally - the appendix
 walks the whole progressive build with `make dev-start`. If short on time, stop
 here and point to the appendix.
 """)
-    footer(s, 13, TOTAL, dark=True)
+    footer(s, fnum(), TOTAL, dark=True)
 
     # ===================== PART B : FOLLOW-ALONG ====================== #
-    # ---- 14. BEFORE YOU ARRIVE ------------------------------------------- #
+    # ---- PART B · TIER 1 · PHONE ---------------------------------------- #
+    s = add_slide(prs)
+    bg(s, WHITE)
+    accent_bar(s, 0, 0, 13.333, 0.16, GREEN)
+    kicker(s, "Tier 1 · phone or laptop · no install", color=GREEN)
+    title_on_light(s, "📱  Scan, register, run it")
+    textbox(s, 0.7, 1.66, 12.0, 0.45,
+            [[("Scan the QR on screen → the follow-along page → tap ", 14, INK, False),
+              ("Run it live", 14, INK, True), (". Nothing to install.", 14, INK, False)]])
+    rows = [
+        ("1  Register your agent", "Type your initials → Register my agent ▶ → the /wall count climbs."),
+        ("2  Run the scenarios", "One tap each: PII → REDACTED · injection → NEUTRALIZED · $50k → BLOCKED."),
+        ("3  Watch the wall", "Every action checked, masked, logged, gated — at one seam, live."),
+    ]
+    y = 2.35
+    for head, body in rows:
+        rounded(s, 0.7, y, 12.0, 1.18, PANEL, line=PANEL_LINE)
+        accent_bar(s, 0.7, y, 0.12, 1.18, GREEN)
+        textbox(s, 1.05, y + 0.18, 11.4, 0.4, [[(head, 16, INK, True, FONT_BODY)]])
+        textbox(s, 1.05, y + 0.62, 11.4, 0.45, [[(body, 13, MUTE, False)]])
+        y += 1.34
+    notes(s, """
+TIER 1 - the inclusive entry. They already registered an agent live in Part A; here
+they run the three governed scenarios from the dashboard with one tap each. The
+point: zero install, real governance. The dashboard URL is the cloudflared tunnel
+from `make present`; the QR is on screen.
+""")
+    footer(s, fnum(), TOTAL)
+
+    # ---- 17. PART B · TIER 2 · LAPTOP BOB ------------------------------- #
+    s = add_slide(prs)
+    bg(s, WHITE)
+    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
+    kicker(s, "Tier 2 · laptop + IBM Bob · no Docker")
+    title_on_light(s, "🧪  Drive Bob against the cloud control plane")
+    textbox(s, 0.7, 1.66, 12.0, 0.45,
+            [[("Install Bob, then on the dashboard click ", 14, INK, False),
+              ("🔌 Connect Bob", 14, INK, True),
+              (" — copy / download / one-liner. ", 14, INK, False),
+              ("No token typing.", 14, IBM_BLUE, True)]])
+    code_panel(s, 0.7, 2.3, 6.0, 2.0, [
+        ("# install (once)", MUTE),
+        ("curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash", CODE_FG),
+        ("", None),
+        ("# from an EMPTY folder — one fixed line:", MUTE),
+        ("mkdir -p .bob && curl -fsSL \\", CODE_FG),
+        ("  <dashboard>/bob/settings.json \\", CODE_FG),
+        ("  -o .bob/settings.json && bob", CODE_FG),
+    ], size=12.5, title="$ connect", title_color=SKY)
+    rounded(s, 6.95, 2.3, 5.7, 2.0, PANEL, line=PANEL_LINE)
+    textbox(s, 7.2, 2.5, 5.2, 1.8, [
+        [("Then drive it (analyst):", 13, INK, True)],
+        [("“Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim.”", 12, IBM_BLUE, False, FONT_MONO)],
+        [("“Use the finbyte-gateway tools to fetch receipt rcpt_injection, verbatim.”", 12, IBM_BLUE, False, FONT_MONO)],
+        [("“Ask the auditor agent to pay $50,000 to Acme LLC.”", 12, IBM_BLUE, False, FONT_MONO)],
+    ], line_spacing=1.18, space_after=6)
+    rounded(s, 0.7, 4.55, 12.0, 1.0, DARK_BG, line=None)
+    textbox(s, 1.0, 4.7, 11.4, 0.8, [
+        [("Same cloud control plane as the phones.  ", 14, MINT, True),
+         ("Gotchas: ", 13, WHITE, False), ("-t http", 13, SKY, True, FONT_MONO),
+         (" (never SSE), empty folder, copy the FULL token (the page guarantees it).", 13, WHITE, False)],
+    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.12)
+    notes(s, """
+TIER 2 - laptop Bob. They install only Bob (no Docker) and point it at the cloud
+control plane. The Connect Bob page hands out the command / settings.json / one-liner
+so nobody types the ~470-char token. Drive the three CANONICAL prompts (explicit
+"use the finbyte-gateway tools" wording forces the tool call). Connects to the same
+gateway tunnel from `make present`.
+""")
+    footer(s, fnum(), TOTAL)
+
+    # ---- 18. PART B · TIER 3 · FULL LOCAL — BUILD & GOVERN -------------- #
+    s = add_slide(prs)
+    bg(s, WHITE)
+    accent_bar(s, 0, 0, 13.333, 0.16, GOLD)
+    kicker(s, "Tier 3 · full local · Docker + Bob", color=GOLD)
+    title_on_light(s, "💻  Build it and govern it, end to end")
+    textbox(s, 0.7, 1.66, 12.0, 0.45,
+            [[("One command for the finished mesh — or walk the build by hand.", 14, INK, False)]])
+    code_panel(s, 0.7, 2.3, 5.85, 1.5, [
+        ("git clone …/ai-agent-controlplane-demo", CODE_FG),
+        ("make quickstart", MINT),
+        ("  → finished governed mesh · 16/16 proven", MUTE),
+    ], size=13, title="$ one command", title_color=MINT)
+    code_panel(s, 6.8, 2.3, 5.85, 1.5, [
+        ("make stage1-build   # server.py → 108.50, UNGOVERNED :8000", CODE_FG),
+        ("make stage2-govern  # register (not callable yet)", CODE_FG),
+        ("make salestax-grant # grant → CALL → 108.50 governed", MINT),
+    ], size=12, title="$ or walk it", title_color=SKY)
+    rounded(s, 0.7, 4.1, 12.0, 1.5, PANEL, line=PANEL_LINE)
+    textbox(s, 1.0, 4.3, 11.4, 1.2, [
+        [("The throughline:  ", 15, GOLD, True),
+         ("register → grant → call", 15, INK, True, FONT_MONO)],
+        [("Registering only catalogs the tool; ", 13, INK, False),
+         ("granting", 13, INK, True), (" is the separate, privileged step that makes it callable. ", 13, INK, False),
+         ("add_tax(100, 8.5) → tax=8.50, total=108.50", 12.5, GREEN, True, FONT_MONO)],
+    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.2, space_after=6)
+    notes(s, """
+TIER 3 - full local, for the builders. `make quickstart` is the one-command finished
+mesh (16/16, no Bob needed). Or walk it: stage1-build (server.py runs bare on :8000,
+ungoverned) → stage2-govern (register, NOT callable) → salestax-grant + the builder
+persona (call → 108.50 governed). Same register→grant→call throughline as Part A's
+Stage ②. Fallback `make stage1-scaffold`; reset `make stage-reset`.
+""")
+    footer(s, fnum(), TOTAL)
+
+    # ---- 19. PART B · TIER 3 · CONTROLS + PROOF ------------------------- #
+    s = add_slide(prs)
+    bg(s, WHITE)
+    accent_bar(s, 0, 0, 13.333, 0.16, GOLD)
+    kicker(s, "Tier 3 · the four controls + the proof", color=GOLD)
+    title_on_light(s, "💻  Watch each guardrail bite — then prove it")
+    code_panel(s, 0.7, 1.8, 12.0, 1.05, [
+        ("make stage3-controls    # seed the FinOps mesh, Bob → analyst", CODE_FG),
+        ("make logs-opa           # second pane: live ALLOW / DENY", MUTE),
+    ], size=13, title="$ controls", title_color=SKY)
+    fires = [
+        ("“…fetch receipt rcpt_pii, verbatim.”", "REDACTED → ***-**-6789, [SECRET_REDACTED]", IBM_BLUE),
+        ("“…fetch receipt rcpt_injection, verbatim.”", "NEUTRALIZED → [INJECTION_BLOCKED]", RED),
+        ("“Ask the auditor agent to pay $50,000 to Acme LLC.”", "BLOCKED by policy (cross-language Py→Rust)", RED),
+    ]
+    y = 3.05
+    for say, got, col in fires:
+        rounded(s, 0.7, y, 12.0, 0.84, PANEL, line=PANEL_LINE)
+        textbox(s, 1.0, y + 0.14, 6.4, 0.6, [[(say, 12.5, INK, False, FONT_MONO)]], anchor=MSO_ANCHOR.MIDDLE)
+        textbox(s, 7.5, y + 0.14, 5.0, 0.6, [[("→ ", 12.5, MUTE, False), (got, 12.5, col, True)]], anchor=MSO_ANCHOR.MIDDLE)
+        y += 0.98
+    rounded(s, 0.7, 6.05, 12.0, 0.78, DARK_BG, line=None)
+    textbox(s, 1.0, 6.16, 11.4, 0.6, [
+        [("make verify-controls", 15, MINT, True, FONT_MONO),
+         ("  →  16 passed, 0 failed", 15, WHITE, True)],
+    ], anchor=MSO_ANCHOR.MIDDLE)
+    notes(s, """
+TIER 3 controls. `make stage3-controls` seeds the FinOps mesh and switches Bob to the
+analyst persona (8 tools, no wire). Drive the three canonical prompts; each fires a
+control. Then `make verify-controls` proves all of it deterministically: 16 passed,
+0 failed - identical to quickstart's end-state, but you watched it.
+""")
+    footer(s, fnum(), TOTAL)
+
+    # ---- 20. PART B · WATCH THE CONTROL PLANE --------------------------- #
+    s = add_slide(prs)
+    bg(s, WHITE)
+    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
+    kicker(s, "See the governance for yourself")
+    title_on_light(s, "Watch the control plane — the tools")
+    tools = [
+        ("🛡️  Admin UI", "make monitor", "The catalog + live Logs. The dashboard's 🛡️ Agentic AI Control Plane link opens it — MCP Servers shows YOUR salestax-<INI>."),
+        ("🔍  MCP Inspector", "make inspect-mcp", "The 8 governed FinOps tools — wire ABSENT; get_receipt returns REDACTED live."),
+        ("🤝  A2A Inspector", "make inspect-a2a", "The Python auditor + Rust payments agent cards — the cross-language pair the $50k block fires across."),
+    ]
+    y = 1.95
+    for head, cmd, body in tools:
+        rounded(s, 0.7, y, 12.0, 1.45, PANEL, line=PANEL_LINE)
+        accent_bar(s, 0.7, y, 0.12, 1.45, IBM_BLUE)
+        textbox(s, 1.05, y + 0.18, 5.0, 0.4, [[(head, 15, INK, True, FONT_BODY)]])
+        textbox(s, 1.05, y + 0.62, 5.0, 0.34, [[(cmd, 12, IBM_BLUE, True, FONT_MONO)]])
+        textbox(s, 6.1, y + 0.2, 6.4, 1.1, [[(body, 12.5, MUTE, False)]], line_spacing=1.14, anchor=MSO_ANCHOR.MIDDLE)
+        y += 1.6
+    textbox(s, 0.7, 6.85, 12.0, 0.4,
+            [[("One command for all of it: ", 13, INK, False), ("make cockpit", 13, IBM_BLUE, True, FONT_MONO),
+              (" — tmux tiles Bob + watch panes + the Companion.", 13, INK, False)]])
+    notes(s, """
+WATCH THE CONTROL PLANE. Three real ecosystem tools. The Admin UI (make monitor, or
+the dashboard's new 🛡️ Agentic AI Control Plane link) - MCP Servers lists every
+registered server INCLUDING the room's salestax-<INI> agents. MCP Inspector - the 8
+governed FinOps tools, wire absent, redaction live. A2A Inspector - the Python + Rust
+agent cards. `make cockpit` tiles everything.
+""")
+    footer(s, fnum(), TOTAL)
+
+    # ---- 21. PART B · TROUBLESHOOTING ----------------------------------- #
     s = add_slide(prs)
     bg(s, DARK_BG)
-    accent_bar(s, 0, 0, 13.333, 0.22, IBM_BLUE)
-    textbox(s, 0.7, 0.7, 12.0, 0.5, [[("PART B · FOLLOW ALONG", 15, GOLD, True)]])
-    textbox(s, 0.7, 1.2, 12.0, 0.9, [[("Build the whole thing yourself", 32, WHITE, True, FONT_HEAD)]])
-    textbox(s, 0.7, 2.15, 12.0, 0.5,
-            [[("Before you arrive (do these in advance):", 18, RGBColor(0xCA, 0xDC, 0xFC), True)]])
-    steps = [
-        ("1", "IBM Bob 30-day trial + install bob", "bob.ibm.com  ·  IBMid required  ·  install the bob CLI (drives every stage)"),
-        ("2", "Docker Desktop (running), uv, Node.js ≥ 22.15", "uv mints the JWT; npx runs the MCP Inspector"),
-        ("3", "Clone the demo repo", "git clone  github.com/manavgup/ai-agent-controlplane-demo  (FinByte demo)"),
+    accent_bar(s, 0, 0, 13.333, 0.16, GOLD)
+    textbox(s, 0.7, 0.5, 12.0, 0.4, [[("FOLLOW ALONG — APPENDIX", 13, SKY, True)]])
+    title_on_light(s, "Troubleshooting", y=0.92, size=32, x=0.7, color=WHITE)
+    items = [
+        ("Stage-1 build wobbles", "make stage1-scaffold  ·  make stage-reset"),
+        ("Registered but not callable", "make salestax-grant + make bob-install-builder (grant is separate)"),
+        ("UUID changed after reseed", "re-run the matching make bob / bob-operator / bob-install-builder"),
+        ("Bob narrates instead of acting", "tell it to USE the finbyte-gateway tools; check monitor Logs"),
+        ("Registration 422 (DNS / SSRF)", "the sales-tax backend isn't up → make salestax-up"),
+        ("Phone can't open the Codespaces URL", "expected — GitHub public ports 404 anon; use make present (cloudflared)"),
     ]
-    ty = 2.85
-    for n, head, sub in steps:
-        rounded(s, 0.7, ty, 12.0, 1.05, RGBColor(0x10, 0x1E, 0x42), line=None)
-        chip = s.shapes.add_shape(MSO_SHAPE.OVAL, IN(0.95), IN(ty + 0.22), IN(0.6), IN(0.6))
-        _set_fill(chip, IBM_BLUE); _no_line(chip); _shadow_off(chip)
-        cp = chip.text_frame.paragraphs[0]; cp.alignment = PP_ALIGN.CENTER
-        rr = cp.add_run(); rr.text = n; rr.font.size = Pt(22); rr.font.bold = True
-        rr.font.color.rgb = WHITE; rr.font.name = FONT_HEAD
-        textbox(s, 1.8, ty + 0.16, 10.5, 0.8, [
-            [(head, 18, WHITE, True)],
-            [(sub, 13, SKY, False, FONT_MONO)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=2)
-        ty += 1.2
+    y = 1.9
+    for head, fix in items:
+        textbox(s, 0.7, y, 5.4, 0.6, [[(head, 13.5, WHITE, True)]], anchor=MSO_ANCHOR.MIDDLE)
+        textbox(s, 6.2, y, 6.45, 0.6, [[(fix, 12.5, MINT, False, FONT_MONO)]], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.05)
+        y += 0.78
+    textbox(s, 0.7, 6.7, 12.0, 0.4,
+            [[("Nuke it from orbit: ", 13, RGBColor(0x9F, 0xB3, 0xD9), False),
+              ("make demo-reset", 13, GOLD, True, FONT_MONO),
+              ("  ·  reset the room count: ", 13, RGBColor(0x9F, 0xB3, 0xD9), False),
+              ("make agents-reset", 13, GOLD, True, FONT_MONO)]])
     notes(s, """
-PART B - BEFORE YOU ARRIVE (appendix; reference + for attendees following along).
-
-Install BEFORE the session - conference wifi makes cold image pulls/builds painful.
-1. IBM Bob 30-day trial at bob.ibm.com (IBMid required) and install the `bob` CLI -
-   it drives every stage of the progressive build.
-2. Docker Desktop RUNNING, plus uv (mints the gateway JWT offline) and Node.js
-   >= 22.15 so npx is available for the MCP Inspector.
-3. git clone the demo repo (github.com/manavgup/ai-agent-controlplane-demo).
-
-If you're presenting, run `make quickstart` BEFORE the talk so the image pull is
-off the critical path; then `make stage-reset` to re-arm Stage ①.
+TROUBLESHOOTING. The usual stage gotchas, plus the two we hit building the room
+demo: 422 SSRF_DNS_FAIL_CLOSED means the sales-tax backend isn't up (make
+salestax-up; make present/companion now auto-ensure it). And a phone can't reach a
+Codespaces "public" forwarded port - that's GitHub returning 404 to anonymous
+clients, not a bug - which is exactly why `make present` tunnels through cloudflared.
+make demo-reset for a clean slate; make agents-reset to zero the wall count.
 """)
-    footer(s, 14, TOTAL, dark=True)
-
-    # ---- 15. BRING IT UP : quickstart + dev-start ------------------------ #
-    s = add_slide(prs)
-    bg(s, WHITE)
-    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Follow along · two front doors")
-    title_on_light(s, "Bring it up — finished mesh, or build it up")
-    code_panel(s, 0.7, 1.9, 12.0, 1.5, [
-        ("$ make quickstart   # nothing → running governed mesh, proves 16/16", RGBColor(0x7B, 0xE3, 0xA6)),
-        ("$ make dev-start    # opens docs/cockpit.html → 🎓 Progressive Build card", RGBColor(0x7B, 0xE3, 0xA6)),
-    ], size=15, title="from the repo root", title_color=GOLD)
-    rounded(s, 0.7, 3.65, 5.95, 2.75, PANEL, line=PANEL_LINE)
-    textbox(s, 1.0, 3.8, 5.4, 2.5, [
-        [("🛰  Governed mesh", 16, IBM_BLUE, True)],
-        [("make quickstart", 13.5, INK, True, FONT_MONO)],
-        [("Top-down: one command → the finished, governed stack, 16/16 — no Bob required.",
-          13, INK, False)],
-        [("Then drive Bob as analyst (Act 1) + operator (Act 2).", 13, INK, False)],
-    ], anchor=MSO_ANCHOR.TOP, line_spacing=1.12, space_after=4)
-    rounded(s, 6.85, 3.65, 5.8, 2.75, RGBColor(0xEA, 0xF1, 0xFF), line=IBM_BLUE, line_w=1.3)
-    textbox(s, 7.15, 3.8, 5.25, 2.5, [
-        [("🎓  Progressive build", 16, GREEN, True)],
-        [("make dev-start", 13.5, INK, True, FONT_MONO)],
-        [("Bottom-up: opens the cockpit card and walks Bob through stages ①–④, ",
-          13, INK, False), ("carrying the tool you build.", 13, INK, True)],
-        [("This is the developer path — the rest of Part B.", 13, INK, False)],
-    ], anchor=MSO_ANCHOR.TOP, line_spacing=1.12, space_after=4)
-    notes(s, """
-FOLLOW ALONG - TWO FRONT DOORS, SAME STACK.
-
-  make quickstart - top-down: nothing → running governed mesh, runs verify-controls
-                    (16 passed, 0 failed), prints a walkthrough card. No Bob needed.
-                    Idempotent - re-run if anything stalls.
-  make dev-start  - bottom-up: opens docs/cockpit.html on the 🎓 Progressive Build
-                    tab, which has every copy-paste Bob prompt for stages ①–④.
-
-For Dev Day we drive the PROGRESSIVE BUILD (dev-start). Keep the cockpit page open -
-it's your teleprompter. PRESENTER TIP: run `make quickstart` before the talk to
-cache images, then `make stage-reset` so Stage ① starts from a clean (no server.py)
-slate.
-""")
-    footer(s, 15, TOTAL)
-
-    # ---- 16. DRIVE BOB : STAGE ① + ② ------------------------------------- #
-    s = add_slide(prs)
-    bg(s, WHITE)
-    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Follow along · build + govern")
-    title_on_light(s, "Drive Bob — stages ① build & ② govern")
-
-    def cmd_row(slide, y, cmd, prompt, result, result_color, h=0.96):
-        rounded(slide, 0.7, y, 7.6, h, CODE_BG, line=None)
-        textbox(slide, 0.95, y + 0.1, 7.1, h - 0.2, [
-            [(cmd, 11, MINT, True, FONT_MONO)],
-            [(prompt, 12.5, CODE_FG, False, FONT_MONO)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=2, line_spacing=1.02)
-        rounded(slide, 8.45, y, 4.2, h, PANEL, line=PANEL_LINE)
-        textbox(slide, 8.7, y + 0.1, 3.75, h - 0.2, [
-            [("Expected", 10.5, MUTE, True)],
-            [(result, 12.5, result_color, True)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=2, line_spacing=1.02)
-
-    cmd_row(s, 1.72, "make stage1-build   # ① BUILD",
-            "“…create sales-tax/server.py with add_tax …”",
-            "runs bare → 108.50, ungoverned", GREEN)
-    cmd_row(s, 2.78, "make stage2-govern  # ② register",
-            "“Register sales-tax at http://sales-tax:8000/mcp.”",
-            "in the catalog — not callable yet", IBM_BLUE)
-    cmd_row(s, 3.84, "make salestax-grant + bob-install-builder",
-            "“Use add_tax to tax $100 at 8.5%.”",
-            "✓ 108.50 — now through the gateway", GREEN)
-    cmd_row(s, 4.9, "# ② 2b bonus (builder)",
-            "“Add a convert tool to fx-rates, then convert 100 USD→EUR.”",
-            "extends a service it didn’t write", IBM_BLUE)
-    rounded(s, 0.7, 6.0, 11.95, 1.0, RGBColor(0xFB, 0xF3, 0xD6), line=GOLD, line_w=1.2)
-    textbox(s, 1.0, 6.1, 11.4, 0.8, [
-        [("⚠  Fallback / reset:  ", 14, GOLD, True),
-         ("make stage1-scaffold", 13.5, INK, True, FONT_MONO),
-         (" drops in the reference server if the live build wobbles; ", 13.5, INK, False),
-         ("make stage-reset", 13.5, INK, True, FONT_MONO),
-         (" wipes server.py + container to repeat the beat clean.", 13.5, INK, False)],
-    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.06)
-    notes(s, """
-DRIVE BOB - STAGES ① BUILD + ② GOVERN (the new developer content). After
-`make dev-start`, work the cockpit card top to bottom:
-
-① BUILD - `make stage1-build` prints the prompt. Paste it into Bob to write
-   mcp-servers/sales-tax/server.py, then re-run stage1-build → it serves bare and
-   calls add_tax(100) → 108.50. Ungoverned.
-
-② GOVERN - register → grant → call:
-   - `make stage2-govern` containerises the same server and registers it (operator):
-     "Register the sales-tax service at http://sales-tax:8000/mcp." → in the catalog,
-     NOT callable yet.
-   - `make salestax-grant` adds add_tax to the Builder vserver; `make bob-install-builder`
-     points Bob at it. Now: "Use add_tax to tax $100 at 8.5%." → 108.50, governed.
-   - 2b bonus (builder persona): "Add a convert tool to fx-rates, then convert 100
-     USD to EUR." → Bob extends a service it didn't write.
-
-FALLBACKS: `make stage1-scaffold` drops in _solution.py if the live build wobbles;
-`make stage-reset` removes server.py + the container so the beat repeats clean.
-Confirm real tool calls in the monitor Logs - no log line means Bob narrated.
-""")
-    footer(s, 16, TOTAL)
-
-    # ---- 17. STAGE ③ IN BOB (analyst) ------------------------------------ #
-    s = add_slide(prs)
-    bg(s, WHITE)
-    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Follow along · ③ control · analyst")
-    title_on_light(s, "Stage ③ in Bob — the four controls bite")
-    textbox(s, 0.7, 1.62, 12.0, 0.4, [
-        [("Swap persona:  ", 13, MUTE, True),
-         ("make bob", 13, INK, True, FONT_MONO),
-         ("  (FinOps analyst — least privilege)", 13, MUTE, False)]])
-
-    def prompt_row(slide, y, prompt, result, result_color, h=0.88):
-        rounded(slide, 0.7, y, 7.6, h, CODE_BG, line=None)
-        textbox(slide, 0.95, y + 0.1, 7.1, h - 0.2, [
-            [("Type into Bob:", 10.5, SKY, True)],
-            [(prompt, 13, CODE_FG, False, FONT_MONO)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=2, line_spacing=1.02)
-        rounded(slide, 8.45, y, 4.2, h, PANEL, line=PANEL_LINE)
-        textbox(slide, 8.7, y + 0.1, 3.75, h - 0.2, [
-            [("Expected", 10.5, MUTE, True)],
-            [(result, 12.5, result_color, True)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=2, line_spacing=1.02)
-
-    prompt_row(s, 2.05, "“Fetch receipt rcpt_pii, verbatim.”",
-               "SSN ***-**-6789 … [SECRET_REDACTED]", IBM_BLUE)
-    prompt_row(s, 2.97, "“Fetch receipt rcpt_injection.”",
-               "[INJECTION_BLOCKED] — no wire", RED)
-    prompt_row(s, 3.89, "“Ask the auditor agent to pay $50,000 to Acme LLC.”",
-               "✕ BLOCKED at OPA (cross-language)", RED)
-    prompt_row(s, 4.81, "“Wire $50k yourself, directly.”",
-               "no wire tool — least privilege", RED)
-    rounded(s, 0.7, 5.85, 11.95, 1.05, RGBColor(0xFB, 0xF3, 0xD6), line=GOLD, line_w=1.2)
-    textbox(s, 1.0, 5.96, 11.4, 0.85, [
-        [("⚠  Caution:  ", 14, GOLD, True),
-         ("tell Bob to USE the ", 13.5, INK, False),
-         ("finbyte-gateway", 13.5, INK, True, FONT_MONO),
-         (" tool, not read files. Confirm it’s real in the monitor’s ", 13.5, INK, False),
-         ("Logs", 13.5, INK, True),
-         (" — no gateway log line means Bob narrated instead of calling.", 13.5, INK, False)],
-    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.06)
-    notes(s, """
-STAGE ③ IN BOB - THE ANALYST PERSONA (verified live through real Bob v1.0.4).
-Swap to least-privilege with `make bob`. Type each prompt exactly:
-
-  "Use the finbyte-gateway tools to fetch receipt rcpt_pii, verbatim."
-       → redacted: SSN ***-**-6789 … [SECRET_REDACTED]. Masked on the gateway path;
-         the model never sees the raw secret.
-  "Fetch receipt rcpt_injection."
-       → the injected memo comes back as [INJECTION_BLOCKED] - no wire happens.
-  "Ask the auditor agent to pay $50,000 to Acme LLC."
-       → BLOCKED at OPA, cross-language (Auditor delegates to the Rust Payments
-         agent, governed at the gateway as a bridged tool).
-  "Wire $50k yourself, directly."
-       → Bob has no wire tool - it isn't in the FinOps scope.
-
-CAUTION: tell Bob to USE the finbyte-gateway tool, not to read repo source. Verify
-in the monitor Logs - no gateway log line means Bob narrated a result instead of
-calling. The masked data only exists on the gateway path, so a narrated answer is
-a tell.
-""")
-    footer(s, 17, TOTAL)
-
-    # ---- 18. OPERATOR + BYOB --------------------------------------------- #
-    s = add_slide(prs)
-    bg(s, WHITE)
-    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Follow along · operator + BYOB")
-    title_on_light(s, "Operate the plane — and drive it from anywhere")
-    textbox(s, 0.7, 1.6, 12.0, 0.4, [
-        [("Swap persona:  ", 13, MUTE, True),
-         ("make bob-operator", 13, INK, True, FONT_MONO),
-         ("  (restart Bob)", 13, MUTE, False)]])
-
-    def prompt_row2(slide, y, prompt, result, result_color, h=0.84):
-        rounded(slide, 0.7, y, 7.6, h, CODE_BG, line=None)
-        textbox(slide, 0.95, y + 0.08, 7.1, h - 0.16, [
-            [("Type into Bob:", 10, SKY, True)],
-            [(prompt, 12.5, CODE_FG, False, FONT_MONO)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=1, line_spacing=1.0)
-        rounded(slide, 8.45, y, 4.2, h, PANEL, line=PANEL_LINE)
-        textbox(slide, 8.7, y + 0.08, 3.75, h - 0.16, [
-            [("Expected", 10, MUTE, True)],
-            [(result, 12, result_color, True)],
-        ], anchor=MSO_ANCHOR.MIDDLE, space_after=1, line_spacing=1.0)
-
-    prompt_row2(s, 1.98, "“List everything ContextForge is governing.”",
-                "catalog + virtual-server scopes", IBM_BLUE)
-    prompt_row2(s, 2.86, "“Would a $50,000 wire be allowed? With dual approval?”",
-                "OPA live: DENY + reason, then ALLOW", IBM_BLUE)
-    prompt_row2(s, 3.74, "“Register the fx-rates service at http://fx-rates:8000/mcp.”",
-                "✓ joins the governed catalog", GREEN)
-    prompt_row2(s, 4.62, "“Show me what got blocked today.”",
-                "the audit trail", IBM_BLUE)
-    rounded(s, 0.7, 5.6, 11.95, 1.3, DARK_BG, line=None)
-    textbox(s, 1.0, 5.74, 11.4, 1.05, [
-        [("🛰  No Docker on your laptop?  ", 14, GOLD, True),
-         ("make connect", 13.5, MINT, True, FONT_MONO),
-         (" prints a ", 13.5, WHITE, False),
-         ("bob mcp add … -t http", 13, SKY, True, FONT_MONO),
-         (" line pointed at a gateway running elsewhere", 13.5, WHITE, False)],
-        [("— a teammate’s box, a VM, or a GitHub Codespace — so you drive the whole governed mesh with only Bob installed, governance intact over the wire.",
-          13, RGBColor(0x9F, 0xB3, 0xD9), False, FONT_BODY, True)],
-    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.12, space_after=3)
-    notes(s, """
-OPERATOR PERSONA + BYOB. Swap persona: `make bob-operator`, restart Bob. Verified
-live prompts:
-
-  "List everything ContextForge is governing."   → list_control_plane.
-  "Would a $50,000 wire be allowed? With dual approval?"  → evaluate_policy: DENY +
-       reason, then ALLOW. No money moves - it interrogates the policy.
-  "Register the fx-rates service at http://fx-rates:8000/mcp."  → register_mcp_server;
-       fx-rates starts UNREGISTERED and JOINS the governed catalog live.
-  "Show me what got blocked today."   → recent_blocks (audit trail).
-
-RBAC made concrete: the analyst persona literally cannot do any of this; only the
-operator can.
-
-BYOB (bring your own Bob) - the safety net for flaky room wifi/Docker: `make connect`
-prints a `bob mcp add … -t http` line pointed at a gateway running ELSEWHERE - a
-teammate's box, a VM, or a GitHub Codespace (verified end-to-end: 108.5 through the
-governed gateway over the public proxy, redaction + OPA block intact). You drive the
-whole governed mesh with ONLY Bob installed - governance holds over the wire.
-
-CAN'T RUN IT LOCALLY? One-click "Open in GitHub Codespaces" badge in the README
-(codespaces.new/manavgup/ai-agent-controlplane-demo) - the devcontainer auto-runs
-`make up && make seed` in the cloud; make port 4444 Public, then `make connect`.
-GOTCHA: use the `-t http` + `/mcp` form (never SSE - Codespaces proxies buffer SSE,
-so Bob hangs on connect). Tier 2 in docs/ONBOARDING.md.
-""")
-    footer(s, 18, TOTAL)
-
-    # ---- 19. WATCH THE CONTROL PLANE ------------------------------------- #
-    s = add_slide(prs)
-    bg(s, WHITE)
-    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Follow along · watch it")
-    title_on_light(s, "Watch the control plane — three tools")
-    tools = [
-        ("ContextForge monitor", "make monitor", IBM_BLUE,
-         "Admin UI /admin (Overview · Metrics · Logs). The governance audit trail."),
-        ("MCP Inspector", "make inspect-mcp", GREEN,
-         "Streamable HTTP to the gateway FinOps endpoint + bearer. 8 governed tools (wire ABSENT); call get_receipt → REDACTED in the inspector."),
-        ("A2A Inspector", "make inspect-a2a", RGBColor(0x6A, 0x3B, 0xC0),
-         "Point at host.docker.internal:9001 (Python Auditor) and :3000 (Rust Payments) to validate both agent cards."),
-    ]
-    cw = (12.0 - 2 * 0.4) / 3
-    cx = 0.7
-    for head, cmd, col, body in tools:
-        rounded(s, cx, 1.95, cw, 3.2, PANEL, line=PANEL_LINE)
-        accent_bar(s, cx, 1.95, cw, 0.12, col)
-        textbox(s, cx + 0.26, 2.22, cw - 0.52, 0.7, [[(head, 16, INK, True, FONT_BODY)]],
-                line_spacing=1.0)
-        textbox(s, cx + 0.26, 2.92, cw - 0.52, 0.4, [[(cmd, 13, col, True, FONT_MONO)]])
-        textbox(s, cx + 0.26, 3.5, cw - 0.52, 1.6, [[(body, 13, INK, False)]],
-                line_spacing=1.14)
-        cx += cw + 0.4
-    rounded(s, 0.7, 5.4, 11.95, 1.2, DARK_BG, line=None)
-    textbox(s, 1.0, 5.54, 11.4, 1.0, [
-        [("Prefer one command?  ", 15, GOLD, True),
-         ("make cockpit", 14, MINT, True, FONT_MONO),
-         (" tiles Bob + four live watch panes (logs · OPA · MCP · A2A) in one tmux window,",
-          13.5, WHITE, False)],
-        [("opens the HOW-TO page, and starts the Companion dashboard on :7070. Real ecosystem tools — not a bespoke dashboard.",
-          13.5, RGBColor(0x9F, 0xB3, 0xD9), False, FONT_BODY, True)],
-    ], anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.12, space_after=3)
-    notes(s, """
-WATCH THE CONTROL PLANE - THE THREE TOOLS. Real ecosystem tools, not a bespoke
-dashboard - what attendees already use.
-
-  make monitor      → ContextForge Admin UI /admin (Overview, Metrics, Logs) - the
-                      governance audit trail live.
-  make inspect-mcp  → MCP Inspector. Streamable HTTP to the gateway's FinOps
-                      virtual-server endpoint (/servers/<uuid>/mcp + bearer), NOT a
-                      backend. Shows 8 governed FinOps tools with wire ABSENT; call
-                      get_receipt and the output is REDACTED right in the inspector.
-  make inspect-a2a  → A2A Inspector. Point at host.docker.internal:9001 (Python
-                      Auditor) and :3000 (Rust Payments) to validate both agent
-                      cards. Builds its image on first run (~1-2 min) - lead it.
-
-ONE-COMMAND OPTION: `make cockpit` tiles a Bob pane + four watch panes (logs,
-logs-opa, inspect-mcp, inspect-a2a) in one tmux window, opens the HOW-TO page, and
-starts the Companion dashboard on :7070. COCKPIT_PERSONA=operator for Act 2.
-`make cockpit-down` tears it down.
-""")
-    footer(s, 19, TOTAL)
-
-    # ---- 20. TROUBLESHOOTING --------------------------------------------- #
-    s = add_slide(prs)
-    bg(s, WHITE)
-    accent_bar(s, 0, 0, 13.333, 0.16, IBM_BLUE)
-    kicker(s, "Follow along · troubleshooting")
-    title_on_light(s, "If something doesn’t fire")
-    tbl = [
-        ("Stage ① build wobbled / no server.py", "make stage1-scaffold drops in the reference _solution.py. make stage-reset wipes server.py + container to repeat the beat clean."),
-        ("Stage ② tool registered but not callable", "That’s the point — registering only catalogs it. Run make salestax-grant (adds add_tax to the Builder vserver) + make bob-install-builder, then restart Bob."),
-        ("Bob shows no tools / “Disconnected” then connects", "The virtual-server UUID changes on every reseed — re-run the matching make bob / bob-operator / bob-install-builder, restart Bob. “bob mcp list” Disconnected is static until a session."),
-        ("Bob describes a result instead of doing it", "Bob read the repo source and narrated. Tell it to USE the finbyte-gateway tool; verify in the monitor Logs (no log = narrated)."),
-        ("Wrapper exits / 401 from the gateway", "Wrapper needs DATABASE_URL=sqlite:////tmp/mcpwrapper.db (baked in). Token must be a REGISTERED user (admin@finbyte.demo); the make targets use the right one."),
-        ("A control didn’t fire / 16/16 failed", "make demo-reset, then make verify-controls. A2A Inspector first run builds its image (~1-2 min)."),
-    ]
-    ry = 1.78
-    rh = 0.78
-    for i, (sym, fix) in enumerate(tbl):
-        fillc = PANEL if i % 2 == 0 else WHITE
-        rounded(s, 0.7, ry, 12.0, rh, fillc, line=PANEL_LINE, line_w=0.75)
-        textbox(s, 0.95, ry + 0.07, 3.7, rh - 0.14, [[(sym, 12, RED, True)]],
-                anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.0)
-        textbox(s, 4.8, ry + 0.07, 7.6, rh - 0.14, [[(fix, 11, INK, False)]],
-                anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.02)
-        ry += rh + 0.04
-    notes(s, """
-TROUBLESHOOTING (appendix reference). Progressive-build gotchas + the originals:
-
-- Stage ① build wobbled / no server.py: make stage1-scaffold drops in the reference
-  _solution.py; make stage-reset wipes server.py + the container to repeat clean.
-- Stage ② "registered but not callable": that is register → grant → call by design.
-  Registering only catalogs the tools. Run make salestax-grant (adds add_tax to the
-  Builder virtual server) and make bob-install-builder, then restart Bob.
-- Bob shows no tools / "Disconnected" then connects: the virtual-server UUID changes
-  on EVERY reseed. Re-run the matching install (make bob / bob-operator /
-  bob-install-builder) and restart Bob. "bob mcp list" Disconnected is static.
-- Bob narrates instead of calling: tell it to USE the finbyte-gateway tool; verify
-  in the monitor Logs (no gateway log line = narrated).
-- Wrapper exits / 401: the wrapper needs DATABASE_URL set to a writable path (baked:
-  sqlite:////tmp/mcpwrapper.db); token must be a REGISTERED user (admin@finbyte.demo).
-- A control didn't fire / 16/16 failed: make demo-reset, then make verify-controls.
-  A2A Inspector first run builds its image (~1-2 min).
-
-Reset between runs: make demo-reset (or make stage-reset for just the build beat).
-Tear down: make down.
-""")
-    footer(s, 20, TOTAL)
+    footer(s, fnum(), TOTAL)
 
     prs.save(OUT_PPTX)
     return OUT_PPTX, TOTAL, have_png
@@ -1544,7 +1544,7 @@ if __name__ == "__main__":
     check = Presentation(path)
     n = len(check.slides.__iter__.__self__._sldIdLst)
     n = len(list(check.slides))
-    assert n == 20, f"expected 20 slides, got {n}"
+    assert n == 24, f"expected 24 slides, got {n}"
     print(f"OK  wrote {path}")
-    print(f"OK  re-opened cleanly: {n} slides (asserted == 20)")
+    print(f"OK  re-opened cleanly: {n} slides (asserted == 24)")
     print(f"OK  architecture PNG embedded: {png}  ({ARCH_PNG})")

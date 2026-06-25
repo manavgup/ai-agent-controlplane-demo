@@ -30,77 +30,83 @@ the sales-tax stage-1→2 flow, and a real IBM Bob v1.0.4 session).
 
 ---
 
-## Part A — The Talk (~13 slides, the dev journey)
+## Part A — The Talk (~18 slides: Act 0 framing, then the dev journey)
 
 1. **Title** — "IBM Bob × ContextForge — Who's in charge of your agents?"
    (Bob Developer Day). Tagline: *build an agent tool with Bob, then watch it
    earn a control plane, one layer at a time.*
-2. **The problem** — *You just built an agent tool. Who's in charge of it?* In 30
-   seconds Bob stands up an MCP server that moves money — and it's wide open (no
-   token/policy/audit). Now it calls peers (A2A). MCP/A2A say how agents connect;
-   neither says who's allowed to do what, or proves it.
-3. **MCP vs A2A** — vertical (model→tools) vs horizontal (agent→agent); two
-   protocols, one missing layer. The same enforcement seam must sit on both.
-4. **The progressive build (spine)** — build → govern → use → control → mesh; the
-   inverse of `make quickstart`. ONE artifact carried the whole way; the
-   throughline is `register → grant → call`.
-5. **① Build** — Bob writes `mcp-servers/sales-tax/server.py` from scratch
-   (`make stage1-build`). Runs bare on `:8000`; `add_tax(100) → 108.50`. It
-   works — and it's totally ungoverned (no token/policy/audit). That exposure is
-   what Stage ② fixes, without changing a line.
-6. **② Govern** — `register → grant → call`. REGISTER (operator): the same server,
-   containerised onto the mesh, joins the catalog — *not callable yet*. GRANT
-   (privileged): add `add_tax` to a `Builder` virtual server — *a separate step;
-   this boundary is least-privilege*. CALL (builder): Bob calls the tool it built,
-   through the gateway → `108.50`. Mechanism folded in: enforced at
-   `tool_pre_invoke` / `tool_post_invoke`. 2b bonus: Bob extends a service it
-   didn't write (`fx-rates` gains `convert`).
-7. **Three personas** — builder (`make bob-install-builder`, calls your granted
-   tools) / analyst (`make bob`, 8 tools no wire) / operator (`make bob-operator`,
-   4 control-plane tools). Same binary, three actors — RBAC by which virtual
-   server the persona points at.
-8. **③ Control — Policy (OPA/Rego).** $50,000 wire BLOCKED; $5k or $50k+approval
-   ALLOWED; the SAME block fires on the bridged `a2a-payments` agent call.
-9. **③ Control — Data protection.** SSN/card/api-key masked before the model sees it.
-10. **③ Control — Prompt-injection.** Malicious receipt memo → `[INJECTION_BLOCKED]`.
-11. **③ Control — Least-privilege/RBAC + rate limits.** FinOps server has no
-    `wire`; only Treasury reaches it. Same grant boundary, deny side.
-12. **④ Mesh** — *you just built the quickstart.* The architecture diagram + the
-    deterministic proof (`make verify-controls → 16 passed, 0 failed`). Identical
-    to the `quickstart` end-state, but the room watched it get built. Watch it in
-    monitor / MCP Inspector / A2A Inspector.
-13. **Takeaways + also-in-the-box + CTA** — one throughline (build→govern→use);
-    `register → grant → call`; enforce at the hook (a2a governed too); three
-    personas; prove it (16/16 + audit log). Named-not-demoed: SSO/IdPs, Cedar,
-    federation, SIEM. CTA: IBM Bob trial + the repo; walk it with `make dev-start`.
+2. **AI Agent 101 — "What is an agent?"** — *(SVG `agent-101.svg` → `agent-101.png`)*
+   a central LLM "brain" hub wired to five traits: 🧠 reasoning/planning · 💾 memory ·
+   🛠️ tools/actions (executes tasks) · 📚 knowledge · 🎯 autonomy. The leap from
+   *answers* to *acts* is the power — and the risk: the moment it can act, someone
+   must be in charge of it.
+3. **MCP — the problem it solves** — every model↔tool integration was bespoke
+   (N×M glue). MCP standardizes the **vertical** seam (model → tools): speak it once,
+   reach any tool. Bob uses it for every server in the demo.
+4. **A2A — the problem + the result** — agents need to call *other* agents across
+   vendors/languages with no standard handshake. A2A standardizes the **horizontal**
+   seam (agent → agent). Result: the Python `auditor` ↔ Rust `payments` pair. Same
+   enforcement must sit on both seams.
+5. **Thesis — "Building agents is easy. Governing them is the hard part."** — Bob
+   stands up a money-moving server in 30 s, wide open. MCP/A2A say *how* agents
+   connect; neither says *who's allowed to do what*, or proves it. That missing layer
+   is the AI agent control plane — the rest of the talk earns one.
+6. **Architecture overview (the harness)** — the existing diagram, framed forward:
+   one checkpoint every tool call *and* every agent-to-agent call passes through.
+   "We build this by hand." (Bookends with slide 17.)
+7. **Three ways to follow along** — the chooser (moved up): 👀 phone (no install) ·
+   🧪 laptop Bob · 💻 full local. Scan now, follow from your seat; how-to in the appendix.
+8. **The progressive build (spine)** — build → govern → use → control → mesh; the
+   inverse of `make quickstart`. ONE artifact carried the whole way; the throughline
+   is `register → grant → call`.
+9. **① Build** — Bob writes `mcp-servers/sales-tax/server.py` from scratch
+   (`make stage1-build`). Runs bare on `:8000`; `add_tax(100) → 108.50`. Works — and
+   totally ungoverned. That exposure is what Stage ② fixes.
+10. **② Govern** — `register → grant → call`. REGISTER (operator) → catalog, *not
+    callable yet*; GRANT (privileged) → into a `Builder` vserver, *least-privilege*;
+    CALL (builder) → `108.50` through the gateway. Enforced at `tool_pre_invoke` /
+    `tool_post_invoke`. 2b: Bob extends `fx-rates` with `convert`.
+11. **Now the room builds agents (live)** — Bob just registered the sales-tax server;
+    now the room does too. Attendees scan the on-screen QR, name an agent with their
+    initials, register it — the projected `/wall` count climbs 0 → N, live. The
+    abstract `register` step becomes a shared moment.
+12. **Three personas** — builder / analyst / operator. Same binary, three actors —
+    RBAC by which virtual server the persona points at.
+13. **③ Control — Policy (OPA/Rego).** $50,000 wire BLOCKED; the SAME block fires on
+    the bridged `a2a-payments` agent call.
+14. **③ Control — Data protection.** SSN/card/api-key masked before the model sees it.
+15. **③ Control — Prompt-injection.** Malicious memo → `[INJECTION_BLOCKED]`.
+16. **③ Control — Least-privilege/RBAC + rate limits.** FinOps has no `wire`.
+17. **④ Mesh — "you just built this diagram"** — callback to slide 6: you earned every
+    layer by hand; identical to `quickstart`'s end-state. `make verify-controls →
+    16 passed, 0 failed`. Watch it in monitor / MCP Inspector / A2A Inspector.
+18. **Takeaways + also-in-the-box + CTA** — one throughline; `register → grant → call`;
+    enforce at the hook (a2a governed too); three personas; prove it (16/16 + audit).
+    CTA: IBM Bob trial + the repo.
 
-## Part B — Follow-Along Appendix (~7 slides), run LIVE
+## Part B — Follow-Along Appendix (~6 slides), run LIVE
 
-14. **Before you arrive** — IBM Bob trial + `bob` CLI; Docker (running), `uv`,
-    Node.js ≥ 22.15; clone the repo.
-15. **Bring it up — two front doors** — `make quickstart` (top-down: finished
-    governed mesh, 16/16, no Bob needed) and `make dev-start` (bottom-up: opens
-    `docs/cockpit.html` → 🎓 Progressive Build card with the copy-paste prompts).
-16. **Drive Bob — ① build & ② govern** — `make stage1-build` (write server.py →
-    108.50, ungoverned); `make stage2-govern` (register, not callable) →
-    `make salestax-grant` + `make bob-install-builder` (call → 108.50 governed);
-    2b `fx-rates` `convert`. Fallback `make stage1-scaffold`; reset `make stage-reset`.
-17. **Stage ③ in Bob (analyst)** — `make bob`; exact prompts: `rcpt_pii`
-    (redacted), `rcpt_injection` (neutralised), "ask the auditor agent to pay
-    $50,000" (blocked, cross-language), "wire $50k yourself" (no wire tool). Tell
-    Bob to USE the tool; verify in the monitor Logs.
-18. **Operator + BYOB** — `make bob-operator`; list / evaluate policy / register
-    fx-rates / recent blocks. Plus `make connect` — drive the whole governed mesh
-    from a teammate's box, a VM, or a GitHub Codespace with only Bob installed
-    (verified end-to-end).
-19. **Watch the control plane — the 3 tools** — `make monitor` (Admin UI),
-    `make inspect-mcp` (MCP Inspector → 8 governed tools, wire absent; get_receipt
-    → redacted), `make inspect-a2a` (Python + Rust agent cards). One-command:
-    `make cockpit` (tmux tiles Bob + 4 watch panes + HOW-TO + Companion :7070).
-20. **Troubleshooting** — stage-1 wobble → `make stage1-scaffold` / `make stage-reset`;
-    "registered but not callable" → `make salestax-grant` + `bob-install-builder`;
+The chooser now lives up front (Part A slide 7); the appendix is the detailed how-to.
+
+19. **T1 📱 Phone** — scan the QR → follow-along page → run the three governed
+    scenarios (PII redacted / injection neutralised / $50k blocked). No install.
+20. **T2 🧪 Laptop Bob** — install Bob → dashboard's 🔌 Connect Bob → copy the
+    command / download settings.json / one-liner (no token typing) → drive the
+    three canonical prompts → governed. Same cloud control plane.
+21. **T3 💻 Full local — build & govern** — `make quickstart` (finished, 16/16) or
+    walk ① `make stage1-build` (→108.50 ungoverned) → ② register→grant→call
+    (→108.50 governed).
+22. **T3 💻 Full local — controls + proof** — `make stage3-controls` + the three
+    analyst prompts + `make verify-controls` → 16 passed, 0 failed.
+23. **Watch the control plane** — `make monitor` / `make inspect-mcp` /
+    `make inspect-a2a` (or `make cockpit`); plus the dashboard's 🛡️ Agentic AI
+    Control Plane link → MCP Servers → your `salestax-<INI>` in the catalog.
+24. **Troubleshooting** — stage-1 wobble → `make stage1-scaffold` / `make stage-reset`;
+    registered-but-not-callable → `make salestax-grant` + `bob-install-builder`;
     UUID-changes-on-reseed → re-run the matching install; "Bob narrates" → tell it
-    to use the tool, check Logs; wrapper/401 gotchas; `make demo-reset`.
+    to USE the tool, check Logs; 422 `SSRF_DNS_FAIL_CLOSED` → `make salestax-up`;
+    phone can't reach a Codespaces public port → expected, presenter uses
+    `make present` (cloudflared). `make demo-reset` / `make agents-reset`.
 
 ---
 
