@@ -240,6 +240,25 @@ def s_policy_approved():
     )
 
 
+def s_policy_ceiling():
+    # the hard ceiling: even WITH full approval, a $150k wire is denied. No quorum
+    # majority and no dual approval can authorize it. Policy beats consensus.
+    name, args = _wire("Acme LLC", 150000, True)
+    r = rpc(name, args)
+    t, err = text_of(r)
+    return dict(
+        verdict="BLOCKED",
+        blocked=True,
+        headline=(
+            "$150,000 blocked by the hard ceiling — even WITH full approval "
+            "(policy beats consensus)"
+        ),
+        detail=err or t,
+        raw=r,
+        request={"name": name, "arguments": args},
+    )
+
+
 def s_pii():
     name, args = _receipt("rcpt_pii")
     r = rpc(name, args)
@@ -363,9 +382,14 @@ def s_quorum():
     a_rej = sum(1 for v in votes if v["vote"] == "reject")
     a_abs = sum(1 for v in votes if v["vote"] == "abstain")
 
-    # 3) the payoff: attempt the wire. OPA blocks it at the $10k cap regardless.
+    # 3) a strict majority to approve becomes the approval flag OPA requires.
+    quorum_approved = a_app > a_rej
     wire_name = "erp-payments-wire"
-    wire_args = {"payee": QUORUM_PAYEE, "amount": QUORUM_AMOUNT, "approval": False}
+    wire_args = {
+        "payee": QUORUM_PAYEE,
+        "amount": QUORUM_AMOUNT,
+        "approval": quorum_approved,
+    }
     wire = rpc(wire_name, wire_args)
     wtext, werr = text_of(wire)
     blocked = "Plugin Violation" in json.dumps(wire)
@@ -379,19 +403,27 @@ def s_quorum():
             else "  (no voter agents seeded — run `make seed`)"
         )
         + f"\n  agent tally: approve={a_app} reject={a_rej} abstain={a_abs}\n\n"
+        + f"  Quorum decision: {'APPROVED' if quorum_approved else 'REJECTED'} "
+        + f"({a_app}-{a_rej}) → used as the approval flag on the ${QUORUM_AMOUNT:,} wire\n"
         + (
-            f"  ${QUORUM_AMOUNT:,} wire attempted anyway → {werr or wtext}"
+            f"  Wire: ⛔ BLOCKED — {werr or wtext}"
             if blocked
-            else f"  wire result → {wtext or werr}"
+            else f"  Wire: ✅ {wtext or werr}"
         )
     )
+    if not blocked:
+        headline = f"The governed quorum APPROVED ({a_app}-{a_rej}) → the ${QUORUM_AMOUNT:,} wire executed"
+        verdict = "ALLOWED"
+    elif quorum_approved:
+        headline = f"Quorum APPROVED ({a_app}-{a_rej}) but policy blocked the wire — policy beats consensus"
+        verdict = "BLOCKED"
+    else:
+        headline = f"Quorum REJECTED ({a_app}-{a_rej}) → the ${QUORUM_AMOUNT:,} wire was blocked"
+        verdict = "BLOCKED"
     return dict(
-        verdict="BLOCKED" if blocked else "SEE RAW",
+        verdict=verdict,
         blocked=blocked,
-        headline=(
-            f"Agents {a_app}-{a_rej} — OPA blocked "
-            f"the ${QUORUM_AMOUNT:,} wire anyway (policy beats consensus)"
-        ),
+        headline=headline,
         detail=detail,
         raw=wire,
         request={"name": wire_name, "arguments": wire_args},
@@ -424,6 +456,7 @@ def s_quorum_a2a():
     a_abs = _gi(r"agent_abstain=(\d+)")
     voters = _gi(r"voters=(\d+)")
     blocked = "wire_blocked=true" in blob
+    q_approved = "quorum_approved=true" in blob
     seen = {}
     for n, v, r in re.findall(r"\[\[(room-[\w-]+)\|(\w+)\|([^\]\\]*)\]\]", blob):
         if n not in seen:
@@ -457,19 +490,32 @@ def s_quorum_a2a():
         "GOVERNED A2A AGENTS (the chair delegated to each, through the gateway):\n"
         + ("\n".join(agent_lines) if agent_lines else "  (chair reported no voters)")
         + f"\n  agent tally: approve={a_app} reject={a_rej} abstain={a_abs}\n\n"
-        + (
-            f"  $50,000 wire attempted by the chair → {wdetail}"
-            if blocked
-            else f"  wire result → {wdetail or 'see raw'}"
-        )
+        + f"  Quorum decision: {'APPROVED' if q_approved else 'REJECTED'} "
+        + f"({a_app}-{a_rej}) → used as the approval flag on the $50,000 wire\n"
+        + (f"  Wire: ⛔ BLOCKED — {wdetail}" if blocked else f"  Wire: ✅ {wdetail}")
     )
+    # outcome framing: the quorum authorizes within policy; the ceiling overrides.
+    if not blocked:
+        headline = (
+            f"The governed quorum APPROVED ({a_app}-{a_rej}) → the $50,000 wire "
+            "executed (within the $100k ceiling)"
+        )
+        verdict = "ALLOWED"
+    elif q_approved:
+        headline = (
+            f"The quorum APPROVED ({a_app}-{a_rej}), but policy still blocked the "
+            "wire — policy beats consensus"
+        )
+        verdict = "BLOCKED"
+    else:
+        headline = (
+            f"The quorum REJECTED ({a_app}-{a_rej}) → the $50,000 wire was blocked"
+        )
+        verdict = "BLOCKED"
     return dict(
-        verdict="BLOCKED" if blocked else "SEE RAW",
+        verdict=verdict,
         blocked=blocked,
-        headline=(
-            f"A chair AGENT ran it — discovered {voters} voters, delegated over A2A "
-            f"({a_app} approve / {a_rej} reject) — OPA still blocked the $50,000 wire"
-        ),
+        headline=headline,
         detail=detail,
         raw=resp,
         request={"name": name, "arguments": args},
@@ -480,6 +526,10 @@ SCENARIOS = {
     "baseline": ("Baseline — small reimbursement", s_baseline),
     "policy": ("#1 Policy — $50k wire (OPA amount cap)", s_policy),
     "policy_approved": ("#1 Policy — $50k WITH approval", s_policy_approved),
+    "policy_ceiling": (
+        "#1b Policy — $150k blocked even WITH approval",
+        s_policy_ceiling,
+    ),
     "pii": ("#2 Data protection — PII + secret", s_pii),
     "injection": ("#3 Prompt-injection — poisoned receipt", s_injection),
     "a2a": ("Cross-language A2A — Rust agent executes", s_a2a),
@@ -1240,7 +1290,7 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
 </div>
 <script>
 const SCEN=[["baseline","Baseline — small reimbursement"],["policy","#1 Policy — $50,000 wire (OPA amount cap)"],
- ["policy_approved","#1 Policy — $50,000 WITH dual approval"],["pii","#2 Data protection — PII + secret"],
+ ["policy_approved","#1 Policy — $50,000 WITH dual approval"],["policy_ceiling","#1b Policy — $150k blocked even WITH approval"],["pii","#2 Data protection — PII + secret"],
  ["injection","#3 Prompt-injection — poisoned receipt"],["a2a","Cross-language A2A — Rust agent executes"],
  ["quorum","Expense approval quorum — policy beats consensus"],
  ["quorum_a2a","Agent-orchestrated quorum — chair agent (A2A)"]];

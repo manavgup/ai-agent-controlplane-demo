@@ -112,33 +112,46 @@ class ChairAgent:
             # each _one catches its own errors, so gather never raises
             votes = list(await asyncio.gather(*[_one(n) for n in names]))
 
-            # 3) attempt the wire — OPA blocks it at the $10k cap regardless
+            # 3) tally — a strict majority to approve becomes the dual approval
+            #    OPA requires. (OPA still enforces the hard ceiling regardless.)
+            ap = sum(1 for _, _, v, _ in votes if v == "approve")
+            rj = sum(1 for _, _, v, _ in votes if v == "reject")
+            ab = sum(1 for _, _, v, _ in votes if v == "abstain")
+            quorum_approved = ap > rj
+
+            # 4) attempt the wire WITH the quorum's decision as the approval flag.
             wire_body = {
                 "jsonrpc": "2.0",
                 "id": 1,
                 "method": "tools/call",
                 "params": {
                     "name": "erp-payments-wire",
-                    "arguments": {"payee": payee, "amount": amount, "approval": False},
+                    "arguments": {
+                        "payee": payee,
+                        "amount": amount,
+                        "approval": quorum_approved,
+                    },
                 },
             }
             try:
                 wr = await client.post(f"{base}/rpc", headers=H, json=wire_body)
                 wblob = json.dumps(wr.json())
                 blocked = "Plugin Violation" in wblob
-                m = re.search(r"Wire amount [^\"\\]+", wblob)
-                wdetail = m.group(0) if m else ("blocked" if blocked else "executed")
+                if blocked:
+                    m = re.search(r"Wire amount [^\"\\]+", wblob)
+                    wdetail = m.group(0) if m else "blocked by policy"
+                else:
+                    wdetail = "wire executed (authorized by the quorum)"
             except Exception as e:  # noqa: BLE001
                 blocked = False
                 wdetail = f"wire error: {e}"
 
-        ap = sum(1 for _, _, v, _ in votes if v == "approve")
-        rj = sum(1 for _, _, v, _ in votes if v == "reject")
-        ab = sum(1 for _, _, v, _ in votes if v == "abstain")
         vote_line = " ".join(f"[[{n}|{v}|{r}]]" for n, _, v, r in votes)
         return (
             f"QUORUM agent_approve={ap} agent_reject={rj} agent_abstain={ab} "
-            f"wire_blocked={'true' if blocked else 'false'} voters={len(votes)}\n"
+            f"wire_blocked={'true' if blocked else 'false'} "
+            f"quorum_approved={'true' if quorum_approved else 'false'} "
+            f"voters={len(votes)}\n"
             f"{vote_line}\n"
             f"wire_detail: {wdetail}"
         )

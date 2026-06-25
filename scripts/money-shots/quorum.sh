@@ -29,9 +29,9 @@ printf '%s' "$rl" | grep -q "VOTE=approve" && ok "lenient voter APPROVES the \$5
 w=$(curl -s "${AUTH[@]}" -X POST "$GW/rpc" -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"erp-payments-wire","arguments":{"payee":"Acme LLC","amount":50000,"approval":false}}}')
 printf '%s' "$w" | grep -qF "Plugin Violation" && ok "\$50k wire BLOCKED despite the votes (policy beats consensus)" || no "wire should be blocked (got: $(printf '%s' "$w" | head -c 120))"
 
-echo "== A2A chair: an AGENT orchestrates the quorum (discovers + delegates), wire still blocked =="
-ch=$(curl -s "${AUTH[@]}" -X POST "$GW/rpc" -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"a2a-chair","arguments":{"message":{"role":"ROLE_USER","parts":[{"text":"Run the approval quorum for a $50000 wire to Acme LLC"}],"messageId":"qt-chair"}}}}')
-printf '%s' "$ch" | grep -q "wire_blocked=true" && ok "chair agent ran the quorum; OPA blocked the wire" || no "chair should block (got: $(printf '%s' "$ch" | head -c 160))"
+echo "== A2A chair: even an agent quorum can't authorize a wire over the hard ceiling =="
+ch=$(curl -s "${AUTH[@]}" -X POST "$GW/rpc" -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"a2a-chair","arguments":{"message":{"role":"ROLE_USER","parts":[{"text":"Run the approval quorum for a $150000 wire to Acme LLC"}],"messageId":"qt-chair"}}}}')
+printf '%s' "$ch" | grep -q "wire_blocked=true" && ok "chair quorum on \$150k BLOCKED by the hard ceiling (policy beats consensus)" || no "chair ceiling should block (got: $(printf '%s' "$ch" | head -c 160))"
 
 echo "  ── quorum: $PASS passed, $FAIL failed ──"
 [ "$FAIL" -eq 0 ] || exit 1

@@ -32,6 +32,9 @@ r=$(call erp-payments-wire '{"payee":"Corner Cafe","amount":5000,"approval":fals
 assert_contains "\$5k wire ALLOWED" "$r" '"status":"wired"'
 r=$(call erp-payments-wire '{"payee":"Acme LLC","amount":50000,"approval":true}')
 assert_contains "\$50k WITH approval ALLOWED" "$r" '"status":"wired"'
+r=$(call erp-payments-wire '{"payee":"Acme LLC","amount":150000,"approval":true}')
+assert_contains "\$150k BLOCKED even WITH approval (hard ceiling)" "$r" "Plugin Violation"
+assert_contains "ceiling block cites the hard ceiling" "$r" "hard ceiling"
 
 echo "== #1b Agent-mesh: OPA governs the bridged A2A payment call =="
 r=$(call a2a-payments '{"payee":"Acme LLC","amount":50000,"approval":false}')
