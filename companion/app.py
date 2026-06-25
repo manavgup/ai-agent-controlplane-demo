@@ -66,6 +66,11 @@ FIXED_VOTERS = {
 ATTENDEE_CAP = 60  # max attendee voter agents held in the catalog
 JOIN_FROZEN = False  # presenter freeze for joining (PRESENTER_KEY-guarded)
 
+CORPUS = (
+    {}
+)  # initials -> the attendee's private note (also written to the corpus MCP server)
+CORPUS_WRITE_URL = os.environ.get("CORPUS_WRITE_URL", "http://localhost:8010")
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS = os.path.join(ROOT, "docs")
 
@@ -810,6 +815,19 @@ def join():
         out["mcp_name"] = None
         out["mcp_error"] = str(e)
 
+    note = (request.values.get("note") or "").strip()[:2000]
+    if note:
+        CORPUS[initials] = note
+        try:
+            httpx.post(
+                f"{CORPUS_WRITE_URL}/set",
+                json={"owner": initials, "note": note},
+                timeout=10,
+            )
+        except Exception:
+            pass  # best-effort; the voter falls back to stance if the note isn't there
+    out["has_note"] = bool(note)
+
     out["voter_count"] = len(_voter_attendee_names())
     out["mcp_count"] = len(_mcp_names())
     out["ok"] = bool(out.get("voter_name"))  # success = at least joined the quorum
@@ -842,6 +860,11 @@ def joinfreeze():
         "off",
     )
     return jsonify({"ok": True, "frozen": JOIN_FROZEN})
+
+
+@app.route("/api/corpus/<owner>")
+def corpus_raw(owner):
+    return jsonify({"owner": owner, "note": CORPUS.get(_sanitize_initials(owner), "")})
 
 
 @app.route("/api/prompts")
@@ -1187,6 +1210,7 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
          <option value="strict">stance: strict</option>
          <option value="lenient">stance: lenient</option>
        </select>
+       <input id="note" maxlength="2000" placeholder="your private note / rule (e.g. reject over $20,000)" style="flex:1;min-width:220px">
        <button onclick="joinMesh()">Join the mesh ▶</button>
        <button class="ev" onclick="toggleJoinFreeze()" id="freezeBtn">🔒 Freeze</button>
        <span id="regout" class="small"></span>
@@ -1292,13 +1316,17 @@ let joinFrozen=false;
 async function joinMesh(){
  const ini=document.getElementById('ini').value;
  const stance=document.getElementById('stance').value;
+ const note=document.getElementById('note')?document.getElementById('note').value:'';
  const out=document.getElementById('regout'); out.textContent='joining…';
  try{
-   const r=await (await fetch('/api/join?initials='+encodeURIComponent(ini)+'&stance='+encodeURIComponent(stance),{method:'POST'})).json();
+   const r=await (await fetch('/api/join?initials='+encodeURIComponent(ini)+'&stance='+encodeURIComponent(stance)+'&note='+encodeURIComponent(note),{method:'POST'})).json();
    if(r.ok){
      let msg='✓ '+(r.voter_name||'')+' voted in the quorum';
      msg += r.mcp_name ? (' · MCP '+r.mcp_name+' in the catalog') : (' · MCP: '+(r.mcp_error||'skipped'));
-     out.textContent=msg; document.getElementById('ini').value=''; pollMesh();
+     if(r.has_note) msg += ' · note saved';
+     out.textContent=msg; document.getElementById('ini').value='';
+     const ni=document.getElementById('note'); if(ni)ni.value='';
+     pollMesh();
    } else out.textContent='⚠ '+(r.error||r.voter_error||'failed');
  }catch(e){out.textContent='⚠ '+e;}
 }
