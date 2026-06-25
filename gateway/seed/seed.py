@@ -30,6 +30,7 @@ MCP = {
 A2A = {
     "auditor": "http://auditor:9001/",
     "payments": "http://payments:3000/jsonrpc",
+    "chair": "http://chair:8000/",
 }
 
 # Fixed room voter agents for the quorum demo. Stance is encoded in the name and

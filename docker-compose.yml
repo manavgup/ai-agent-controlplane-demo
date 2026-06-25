@@ -94,6 +94,17 @@ services:
       - "3000:3000"   # exposed for the A2A inspector
     restart: unless-stopped
 
+  chair:
+    build: ./a2a-agents/chair
+    environment:
+      GATEWAY_URL: http://gateway:4444
+      GATEWAY_TOKEN: ${AUDITOR_TOKEN:-}
+    ports:
+      - "9200:8000"   # exposed for the A2A inspector + a host health probe
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
   room-agent:
     build: ./a2a-agents/room
     ports:
