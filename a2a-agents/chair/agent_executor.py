@@ -42,7 +42,9 @@ def parse_amount(text: str) -> float:
 
 
 def parse_payee(text: str) -> str:
-    m = re.search(r"to\s+([A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Z][A-Za-z0-9&.'-]*)*)", text or "")
+    m = re.search(
+        r"to\s+([A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Z][A-Za-z0-9&.'-]*)*)", text or ""
+    )
     return m.group(1).strip() if m else "Acme LLC"
 
 
