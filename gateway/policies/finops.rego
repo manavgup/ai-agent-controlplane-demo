@@ -6,9 +6,13 @@ import rego.v1
 # to /v1/data/mcpgateway and reads result.allow (bool) + result.deny ([]string).
 # tool args land at input.context.tool_args.* ; action is "tools.invoke.<tool>".
 #
-# Posture: ALLOW everything except a large wire/payment with no approval flag.
-# (Default-allow keeps every benign tool call working even though the PDP runs
-#  on every tool_pre_invoke; only the dangerous wire is denied.)
+# Two-tier wire posture:
+#   amount <  $10,000              -> auto-approve (allow)
+#   $10,000 <= amount < $100,000   -> needs approval=true (a governed QUORUM
+#                                     majority or dual approval can provide it)
+#   amount >= $100,000             -> HARD CEILING: always denied, even with
+#                                     approval=true. Policy beats consensus — not
+#                                     even a unanimous quorum can authorize it.
 
 default allow := false
 
@@ -29,17 +33,37 @@ amount := to_number(input.context.tool_args.amount) if {
 
 approved if input.context.tool_args.approval == true
 
-# The one thing we block: a >= $10,000 wire without an explicit approval flag.
-is_blocked_wire if {
+auto_approve_limit := 10000
+hard_ceiling := 100000
+
+# Hard ceiling: a wire at/above the ceiling is denied no matter what — approval
+# (from a quorum majority or otherwise) cannot override it.
+over_ceiling if {
 	is_wire_call
-	amount >= 10000
+	amount >= hard_ceiling
+}
+
+# Dual-approval band: a wire in [$10k, ceiling) needs an explicit approval flag.
+# The governed quorum supplies approval=true when its majority approves.
+needs_approval if {
+	is_wire_call
+	amount >= auto_approve_limit
+	amount < hard_ceiling
 	not approved
 }
 
 deny contains msg if {
-	is_blocked_wire
-	msg := sprintf("Wire amount %v exceeds the $10,000 auto-approve limit and requires dual approval (approval=true). FinByte T&E policy §2.", [amount])
+	over_ceiling
+	msg := sprintf("Wire amount %v exceeds the $%v hard ceiling and cannot be approved by a quorum or dual approval. FinByte T&E policy §3.", [amount, hard_ceiling])
 }
 
-# Allow anything that is not the blocked wire.
-allow if { not is_blocked_wire }
+deny contains msg if {
+	needs_approval
+	msg := sprintf("Wire amount %v requires approval (a quorum majority or dual approval, approval=true). FinByte T&E policy §2.", [amount])
+}
+
+# Allow anything that is neither over the ceiling nor missing required approval.
+allow if {
+	not over_ceiling
+	not needs_approval
+}

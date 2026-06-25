@@ -26,11 +26,25 @@ MCP = {
     "notify": "http://notify:8000/mcp",
     # operator surface (ContextForge's own management/observability as MCP tools)
     "controlplane": "http://controlplane:8000/mcp",
+    "corpus": "http://corpus:8000/mcp",
 }
 A2A = {
     "auditor": "http://auditor:9001/",
     "payments": "http://payments:3000/jsonrpc",
+    "chair": "http://chair:8000/",
 }
+
+# Fixed room voter agents for the quorum demo. Stance is encoded in the name and
+# read back by the Companion; all share the one room-agent backend (the ?agent=
+# query keeps each catalog URL unique). Seeded ONCE here so there is no live race.
+ROOM_BACKEND = "http://room-agent:8000/"
+ROOM_VOTERS = [
+    "room-strict-1",
+    "room-strict-2",
+    "room-lenient-1",
+    "room-lenient-2",
+    "room-random-1",
+]
 
 
 def api(method, path, **kw):
@@ -94,6 +108,27 @@ def main():
             },
         )
         print(f"[a2a] register {name}: {r.status_code} {r.text[:240]}")
+
+    # 2b) fixed room voter agents (quorum demo) -----------------------------
+    existing_a = {a.get("name") for a in jget("/a2a")}
+    for vname in ROOM_VOTERS:
+        if vname in existing_a:
+            print(f"[a2a] exists: {vname}")
+            continue
+        r = api(
+            "POST",
+            "/a2a",
+            json={
+                "agent": {
+                    "name": vname,
+                    "endpoint_url": f"{ROOM_BACKEND}?agent={vname}",
+                    "agent_type": "jsonrpc",
+                    "description": f"room voter ({vname})",
+                    "tags": ["finbyte", "room"],
+                }
+            },
+        )
+        print(f"[a2a] register {vname}: {r.status_code} {r.text[:160]}")
 
     # 3) discover tool ids (gateway may prefix names) -----------------------
     time.sleep(3)

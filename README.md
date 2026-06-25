@@ -81,6 +81,8 @@ Every tool call passes through two gateway plugin hooks. On **`tool_pre_invoke`*
 
 Baseline that works: _"Process expense `exp_clean` and reimburse it."_ — a clean $18.50 expense flows straight through.
 
+- **Expense approval quorum** — the room votes on a $50k wire from their phones (live local tally) while 5 governed A2A voter agents vote through the ContextForge gateway (each call authn'd + audited). OPA then blocks the wire regardless of either tally. **Policy beats consensus.**
+
 ---
 
 ## Two personas (RBAC)
