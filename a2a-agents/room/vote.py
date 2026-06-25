@@ -66,3 +66,56 @@ def decide_vote(text):
         parse_amount(text), parse_stance(text), seed=parse_seed(text)
     )
     return f"VOTE={vote} :: {reason}"
+
+
+def parse_threshold(note):
+    """First dollar figure in the note -> float (handles $, commas, trailing k).
+    Returns None if there is no number."""
+    m = re.search(r"\$?\s*([\d][\d,]*(?:\.\d+)?)\s*([kK])?", note or "")
+    if not m:
+        return None
+    val = float(m.group(1).replace(",", ""))
+    if m.group(2):  # 20k -> 20000
+        val *= 1000
+    return val
+
+
+def parse_owner(text):
+    """Owner initials from the agent name: room-<stance>-<initials> -> <initials>.
+    Fixed voters (room-strict-1) yield the numeric suffix."""
+    name = parse_seed(text)  # e.g. room-strict-MG  (or room-lenient-AB-2)
+    parts = name.split("-")
+    return parts[2] if len(parts) >= 3 else ""
+
+
+def vote_with_corpus(amount, stance, seed, note):
+    """Vote per the owner's note when it states a rule; otherwise fall back to stance.
+
+    Precedence: an explicit dollar cap (reject if amount >= cap) beats a bare
+    approve/reject keyword; with no usable rule, defer to the stance.
+    """
+    note = (note or "").strip()
+    if note:
+        try:
+            amt = float(amount)
+        except (TypeError, ValueError):
+            amt = 0.0
+        thr = parse_threshold(note)
+        if thr is not None:
+            if amt >= thr:
+                return "reject", f"owner's note: cap ${thr:,.0f}, ${amt:,.0f} is over"
+            return "approve", f"owner's note: ${amt:,.0f} under cap ${thr:,.0f}"
+        lowered = note.lower()
+        if any(k in lowered for k in ("reject", "block", "deny", "no ")):
+            return "reject", "owner's note says reject"
+        if any(k in lowered for k in ("approve", "allow", "yes")):
+            return "approve", "owner's note says approve"
+    return vote_expense(amount, stance, seed)
+
+
+def decide_with_corpus(text, note):
+    """message text + the owner's (governed) note -> 'VOTE=... :: reason'."""
+    vote, reason = vote_with_corpus(
+        parse_amount(text), parse_stance(text), parse_seed(text), note
+    )
+    return f"VOTE={vote} :: {reason}"
