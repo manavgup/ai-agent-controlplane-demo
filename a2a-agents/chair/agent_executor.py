@@ -7,6 +7,7 @@ the result, then attempts the wire (which OPA blocks). Returns the outcome as a
 single text artifact. Deterministic — no LLM. Mirrors a2a-agents/auditor.
 """
 
+import asyncio
 import json
 import os
 import re
@@ -67,8 +68,11 @@ class ChairAgent:
             except Exception:
                 names = []
 
-            # 2) delegate a vote to each voter THROUGH the gateway (governed)
-            for name in names:
+            # 2) delegate a vote to each voter THROUGH the gateway (governed),
+            #    CONCURRENTLY so the quorum scales to a roomful of attendee agents.
+            names = names[:75]  # defensive cap on fan-out width
+
+            async def _one(name):
                 stance = _stance_of(name)
                 prompt = (
                     f"Vote on expense. payee={payee} amount={amount:.0f} "
@@ -99,7 +103,10 @@ class ChairAgent:
                     )
                 except Exception:
                     vote = "abstain"
-                votes.append((name, stance, vote))
+                return (name, stance, vote)
+
+            # each _one catches its own errors, so gather never raises
+            votes = list(await asyncio.gather(*[_one(n) for n in names]))
 
             # 3) attempt the wire — OPA blocks it at the $10k cap regardless
             wire_body = {
