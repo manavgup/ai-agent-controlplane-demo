@@ -16,6 +16,7 @@ import concurrent.futures
 import io
 import json
 import os
+import re
 import subprocess
 
 import httpx
@@ -377,6 +378,87 @@ def s_quorum():
     )
 
 
+def s_quorum_a2a():
+    """Agent-orchestrated quorum: the Companion sends ONE A2A message to the chair
+    agent, which discovers the voters and delegates to each through the gateway,
+    then attempts the wire. Shows genuine agent->agent A2A, all governed."""
+    crowd_approve = sum(1 for v in CROWD.values() if v == "approve")
+    crowd_reject = len(CROWD) - crowd_approve
+
+    name = "a2a-chair"
+    args = {
+        "message": {
+            "role": "ROLE_USER",
+            "parts": [
+                {"text": "Run the approval quorum for a $50000 wire to Acme LLC"}
+            ],
+            "messageId": "companion-chair",
+        }
+    }
+    resp = rpc(name, args, timeout=30)
+    blob = json.dumps(resp)
+
+    def _gi(pat):
+        m = re.search(pat, blob)
+        return int(m.group(1)) if m else 0
+
+    a_app = _gi(r"agent_approve=(\d+)")
+    a_rej = _gi(r"agent_reject=(\d+)")
+    a_abs = _gi(r"agent_abstain=(\d+)")
+    voters = _gi(r"voters=(\d+)")
+    blocked = "wire_blocked=true" in blob
+    seen = {}
+    for n, v in re.findall(r"(room-[\w-]+)=(approve|reject|abstain)", blob):
+        if n not in seen:
+            seen[n] = v
+    wm = re.search(r"Wire amount [^\"\\]+", blob)
+    wdetail = wm.group(0) if wm else ""
+    chair_ok = "QUORUM" in blob or voters > 0 or bool(seen)
+
+    if not chair_ok:
+        t, err = text_of(resp)
+        return dict(
+            verdict="SEE RAW",
+            blocked=False,
+            headline="Chair agent did not respond — is the chair service up? (try `make seed`)",
+            detail=(
+                "The Companion sent an A2A message to a2a-chair but got no QUORUM "
+                "artifact back.\n\n" + (t or err or "")
+            ),
+            raw=resp,
+            request={"name": name, "arguments": args},
+        )
+
+    agent_lines = [
+        f"  {n:<16} {_stance_of(n):<8} → {v}" for n, v in sorted(seen.items())
+    ]
+    detail = (
+        "CHAIN: Companion → [A2A] → Chair agent → discovered "
+        f"{voters} voters → [A2A through the gateway] → 5 voters → tally → wire\n\n"
+        f"ROOM (phones): approve={crowd_approve}  reject={crowd_reject}  "
+        f"(of {len(CROWD)} voters)\n\n"
+        "GOVERNED A2A AGENTS (the chair delegated to each, through the gateway):\n"
+        + ("\n".join(agent_lines) if agent_lines else "  (chair reported no voters)")
+        + f"\n  agent tally: approve={a_app} reject={a_rej} abstain={a_abs}\n\n"
+        + (
+            f"  $50,000 wire attempted by the chair → {wdetail}"
+            if blocked
+            else f"  wire result → {wdetail or 'see raw'}"
+        )
+    )
+    return dict(
+        verdict="BLOCKED" if blocked else "SEE RAW",
+        blocked=blocked,
+        headline=(
+            f"A chair AGENT ran it — discovered {voters} voters, delegated over A2A "
+            f"({a_app} approve / {a_rej} reject) — OPA still blocked the $50,000 wire"
+        ),
+        detail=detail,
+        raw=resp,
+        request={"name": name, "arguments": args},
+    )
+
+
 SCENARIOS = {
     "baseline": ("Baseline — small reimbursement", s_baseline),
     "policy": ("#1 Policy — $50k wire (OPA amount cap)", s_policy),
@@ -385,6 +467,10 @@ SCENARIOS = {
     "injection": ("#3 Prompt-injection — poisoned receipt", s_injection),
     "a2a": ("Cross-language A2A — Rust agent executes", s_a2a),
     "quorum": ("Expense approval quorum — policy beats consensus", s_quorum),
+    "quorum_a2a": (
+        "Agent-orchestrated quorum — a chair agent runs it (A2A)",
+        s_quorum_a2a,
+    ),
 }
 
 
@@ -885,7 +971,8 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
 const SCEN=[["baseline","Baseline — small reimbursement"],["policy","#1 Policy — $50,000 wire (OPA amount cap)"],
  ["policy_approved","#1 Policy — $50,000 WITH dual approval"],["pii","#2 Data protection — PII + secret"],
  ["injection","#3 Prompt-injection — poisoned receipt"],["a2a","Cross-language A2A — Rust agent executes"],
- ["quorum","Expense approval quorum — policy beats consensus"]];
+ ["quorum","Expense approval quorum — policy beats consensus"],
+ ["quorum_a2a","Agent-orchestrated quorum — chair agent (A2A)"]];
 const grid=document.getElementById('grid');
 SCEN.forEach(([k,label])=>{
  const c=document.createElement('div');c.className='card';
