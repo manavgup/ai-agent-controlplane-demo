@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A2A Quorum — Evidence (policy beats consensus)</title>
+<style>
+ :root{--ibm:#0F62FE;--ok:#24a148;--block:#da1e28;--bg:#161616;--card:#21262d;--mut:#8d8d8d;--line:#30363d}
+ *{box-sizing:border-box}
+ body{margin:0;background:var(--bg);color:#f4f4f4;font-family:'IBM Plex Sans',-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55}
+ .wrap{max-width:1040px;margin:0 auto;padding:40px 24px 80px}
+ header h1{font-size:30px;margin:0 0 6px}
+ header .thesis{font-size:18px;color:#c6c6c6;margin:0 0 18px}
+ .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+ .badge{font-size:12px;font-family:'IBM Plex Mono',monospace;border:1px solid var(--line);border-radius:20px;padding:4px 12px;color:#c6c6c6}
+ .badge.ok{border-color:var(--ok);color:#56d364}
+ .badge.block{border-color:var(--block);color:#ff7b72}
+ .badge.ibm{border-color:var(--ibm);color:#79b8ff}
+ .lead{background:linear-gradient(90deg,rgba(15,98,254,.14),rgba(105,41,196,.14));border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:22px 0 36px}
+ .lead b{color:#fff}
+ .flow{font-family:'IBM Plex Mono',monospace;font-size:13px;color:#adbac7;margin-top:10px;white-space:pre-wrap}
+ figure{margin:0 0 44px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+ figure img{width:100%;display:block;border-bottom:1px solid var(--line);background:#0d1117}
+ figcaption{padding:16px 20px}
+ figcaption .n{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#79b8ff;border:1px solid var(--line);border-radius:6px;padding:1px 8px;margin-right:8px}
+ figcaption h2{font-size:18px;margin:10px 0 6px}
+ figcaption p{margin:6px 0;color:#c6c6c6;font-size:15px}
+ figcaption .proves{color:#56d364;font-weight:600}
+ code{background:#0d1117;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#e6edf3}
+ h2.sec{font-size:22px;margin:48px 0 14px;padding-top:18px;border-top:1px solid var(--line)}
+ ol.test{font-size:15px} ol.test li{margin:10px 0}
+ pre{background:#0d1117;border:1px solid var(--line);border-radius:8px;padding:14px;overflow:auto;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#e6edf3}
+ .foot{color:var(--mut);font-size:13px;margin-top:40px;border-top:1px solid var(--line);padding-top:16px}
+ a{color:#79b8ff}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <header>
+  <h1>A2A Quorum — live evidence</h1>
+  <p class="thesis">The room votes from their phones, real A2A agents vote through the gateway, and the control plane overrules them all. <b>Policy beats consensus.</b></p>
+  <div class="badges">
+   <span class="badge ibm">IBM Bob × ContextForge</span>
+   <span class="badge ok">unit tests 11/11</span>
+   <span class="badge ok">controls 19/19</span>
+   <span class="badge block">$50k wire BLOCKED</span>
+   <span class="badge">branch a2a-quorum-demo · PR #24</span>
+  </div>
+ </header>
+
+ <div class="lead">
+  <b>What you're looking at:</b> a captured run of the new demo beat against the live stack
+  (gateway :4444 + OPA + 5 governed A2A voter agents + the Flask Companion on :7070).
+  Ten people voted from the room, seven said "pay it." Five real agents voted through the
+  control plane and split 2–3. The gateway still refused the $50,000 wire — because an OPA
+  policy, not a vote, decides. It ships in two modes: a deterministic
+  <b>Companion-driven</b> fan-out (the robust stage default), and an
+  <b>agent-orchestrated</b> path where a real chair agent discovers the voters and
+  delegates over A2A (the stronger "A2A in action" beat — card 02·A2A below).
+  <div class="flow">phones → Companion (local tally)        ┐
+5 governed A2A agents → gateway /rpc   ┼─→ tally shown ─→ $50k wire attempted ─→ OPA: DENY</div>
+ </div>
+
+ <figure>
+  <img src="img/01-dashboard.png" alt="Companion dashboard">
+  <figcaption>
+   <span class="n">01</span><span style="color:#8d8d8d;font-size:13px">the Companion dashboard (:7070)</span>
+   <h2>The room is voting; the agents are registered</h2>
+   <p>Top bar: <code>Room vote on the $50k wire — ✅ 7 approve · ⛔ 3 reject</code>, fed by phones tapping Approve/Reject. The vote is recorded locally — no writes to the gateway catalog.</p>
+   <p>Left sidebar under <b>A2A AGENTS</b>: the five governed voters <code>room-strict-1/2</code>, <code>room-lenient-1/2</code>, <code>room-random-1</code> are live in ContextForge's catalog, alongside <code>auditor</code> and <code>payments</code>.</p>
+   <p class="proves">Proves: crowd participation + real A2A agents in the governed registry.</p>
+  </figcaption>
+ </figure>
+
+ <figure>
+  <img src="img/02-quorum-card.png" alt="Quorum result card — BLOCKED">
+  <figcaption>
+   <span class="n">02</span><span style="color:#8d8d8d;font-size:13px">the quorum scenario result</span>
+   <h2>The headline beat: BLOCKED anyway</h2>
+   <p><code>Room 7-3, agents 2-3 — OPA blocked the $50,000 wire anyway (policy beats consensus)</code>.</p>
+   <p>The five agents genuinely disagree through the gateway: the two <b>strict</b> reject, the two <b>lenient</b> approve, the <b>random</b> one rejects → agent tally 2 approve / 3 reject. Then the wire is attempted and comes back: <code>Plugin Violation: Wire amount 50000 exceeds the $10,000 auto-approve limit… FinByte T&E policy §2.</code></p>
+   <p class="proves">Proves: consensus (room or agents) does not override policy.</p>
+  </figcaption>
+ </figure>
+
+ <figure style="border-color:#1f6feb">
+  <img src="img/07-quorum-a2a-card.png" alt="Agent-orchestrated quorum — chair agent runs it">
+  <figcaption>
+   <span class="n">02·A2A</span><span style="color:#8d8d8d;font-size:13px">the agent-orchestrated variant</span>
+   <h2>"A2A in action": an agent orchestrates the agents</h2>
+   <p>The same beat, but no app loop. The Companion sends <b>one A2A message</b> to a real <b>chair agent</b>; the chair then <b>discovers</b> the five voters from ContextForge's <code>/a2a</code> registry and <b>delegates</b> a vote to each — every hop through the gateway, governed and audited:</p>
+   <p style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#adbac7"><code>Companion → [A2A] → Chair agent → discover voters → [A2A via gateway] → 5 voters → tally → wire → OPA DENY</code></p>
+   <p>The card's <code>CHAIN:</code> line shows it live: discover 5 → delegate over A2A → agents split 2-3 → wire blocked. This is genuine agent→agent delegation (discover → delegate → aggregate → act), not the Companion fanning out.</p>
+   <p class="proves">Proves: real A2A orchestration — an agent discovers peers and delegates over the protocol — and the control plane still has the final say.</p>
+  </figcaption>
+ </figure>
+
+ <figure>
+  <img src="img/03-quorum-evidence.png" alt="Evidence panel — OPA decision + gateway logs">
+  <figcaption>
+   <span class="n">03</span><span style="color:#8d8d8d;font-size:13px">click "Evidence" on the card</span>
+   <h2>The receipts: this was a real policy decision</h2>
+   <p>① the exact JSON-RPC the gateway received (<code>erp-payments-wire</code>, $50,000, approval false). ② the <b>OPA decision log</b> — <code>allow: false</code> with the deny reason. ③ the gateway control-plane ERROR log for the blocked call. ④ the raw response carrying <code>plugin_error_code: WIRE_POLICY_DENY</code> from <code>FinByteGuard</code>.</p>
+   <p class="proves">Proves: the block came from OPA + the gateway plugin, not a hardcoded demo string.</p>
+  </figcaption>
+ </figure>
+
+ <figure>
+  <img src="img/04-wall.png" alt="Projector wall — live vote count">
+  <figcaption>
+   <span class="n">04</span><span style="color:#8d8d8d;font-size:13px">the projector wall (/wall)</span>
+   <h2>The room sees itself participate</h2>
+   <p>A big live counter of votes cast on the $50,000 wire, with each voter's initials landing as a chip (freshest highlighted). This is what goes on the big screen during the talk.</p>
+   <p class="proves">Proves: the audience-facing, non-coder-friendly surface works.</p>
+  </figcaption>
+ </figure>
+
+ <figure>
+  <img src="img/05-qr.png" alt="QR join page">
+  <figcaption>
+   <span class="n">05</span><span style="color:#8d8d8d;font-size:13px">the join QR (/qr)</span>
+   <h2>How the room gets in: scan, no install</h2>
+   <p>Attendees scan this to open the follow-along page on their phone and vote. With <code>make present</code> this is served over a public cloudflared tunnel so any phone on any network can join.</p>
+   <p class="proves">Proves: zero-friction entry for a non-coder audience.</p>
+  </figcaption>
+ </figure>
+
+ <h2 class="sec">How to test it yourself</h2>
+ <ol class="test">
+  <li>Bring up the stack and seed it (includes the 5 voter agents):
+   <pre>make up &amp;&amp; make seed
+docker compose up -d --build room-agent   # if not already running</pre>
+   On Podman/macOS, prefix with <code>DOCKER_BUILDKIT=0</code>. If a base-image pull fails with an auth error, run <code>docker logout docker.io</code> and retry.</li>
+  <li>Prove the controls headlessly (no browser):
+   <pre>make verify-controls     # → RESULT: 19 passed, 0 failed
+make verify-quorum       # → quorum: 3 passed, 0 failed</pre></li>
+  <li>Unit-test the pure voting logic:
+   <pre>cd a2a-agents/room &amp;&amp; uv run --with pytest pytest test_vote.py -q   # → 11 passed</pre></li>
+  <li>Drive it live: <pre>make companion</pre> then open <code>http://localhost:7070</code>. Type initials, tap Approve/Reject, then click <b>Run</b> on the "Expense approval quorum" card → BLOCKED with the vote breakdown. Click <b>Evidence</b> for the OPA log. Open <code>/wall</code> on a second screen. There are two quorum cards: the Companion-driven one and <b>"Agent-orchestrated quorum — chair agent (A2A)"</b> where a real agent runs it.</li>
+  <li>See the raw A2A protocol (agent cards + the JSON-RPC <code>Task</code>/<code>Artifact</code> envelope): <pre>make inspect-a2a</pre> opens the official a2a-inspector; point it at the chair (<code>:9200</code>) or a voter (<code>:9100</code>) to fetch its agent card and send a live message.</li>
+  <li>Test from a phone / a room: <pre>make present</pre> opens public tunnels and your browser to the join QR. Scan it from a phone and vote. For a public room set <code>PRESENTER_KEY=…</code> so attendees can't freeze the vote (you open the dashboard at <code>/?k=&lt;key&gt;</code>).</li>
+  <li>Poke the API directly:
+   <pre>curl -s -X POST "localhost:7070/api/vote?initials=ME&amp;choice=approve"
+curl -s localhost:7070/api/run/quorum | python3 -m json.tool   # verdict: BLOCKED</pre></li>
+ </ol>
+
+ <div class="foot">
+  Generated from a live run on 2026-06-24 · branch <code>a2a-quorum-demo</code> ·
+  spec + plan in <code>docs/superpowers/</code> · screenshots in <code>docs/evidence/a2a-quorum/img/</code>.
+ </div>
+</div>
+</body>
+</html>
