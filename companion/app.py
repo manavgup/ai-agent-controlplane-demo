@@ -310,7 +310,9 @@ def _vote_one(name):
         f"approval=false stance={stance} agent={name}."
     )
     resp = rpc(
-        f"a2a-{name}",
+        # the gateway lowercases tool names; attendee voters have uppercase
+        # initials (room-strict-MG), so lowercase to match the tool.
+        f"a2a-{name.lower()}",
         {
             "message": {
                 "role": "ROLE_USER",

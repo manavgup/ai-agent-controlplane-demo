@@ -83,7 +83,9 @@ class ChairAgent:
                     "id": 1,
                     "method": "tools/call",
                     "params": {
-                        "name": f"a2a-{name}",
+                        # the gateway lowercases tool names; attendee agents have
+                        # uppercase initials (room-strict-MG), so lowercase to match.
+                        "name": f"a2a-{name.lower()}",
                         "arguments": {
                             "message": {
                                 "role": "ROLE_USER",
