@@ -62,7 +62,7 @@ r=$(call a2a-payments '{"message":{"role":"ROLE_USER","parts":[{"text":"Execute 
 assert_contains "Rust agent executed the payment" "$r" "Payment executed"
 
 echo "== A2A quorum (policy beats consensus) =="
-if bash "$(dirname "$0")/quorum.sh"; then PASS=$((PASS+3)); else FAIL=$((FAIL+1)); fi
+if bash "$(dirname "$0")/quorum.sh"; then PASS=$((PASS+4)); else FAIL=$((FAIL+1)); fi
 
 echo
 echo "──────────────────────────────────────────"
