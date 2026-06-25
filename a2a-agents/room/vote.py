@@ -82,10 +82,12 @@ def parse_threshold(note):
 
 def parse_owner(text):
     """Owner initials from the agent name: room-<stance>-<initials> -> <initials>.
-    Fixed voters (room-strict-1) yield the numeric suffix."""
+    Fixed voters (room-strict-1) yield the numeric suffix. Strips trailing
+    punctuation, since the caller's prompt ends '... agent=room-strict-MG.'"""
     name = parse_seed(text)  # e.g. room-strict-MG  (or room-lenient-AB-2)
     parts = name.split("-")
-    return parts[2] if len(parts) >= 3 else ""
+    raw = parts[2] if len(parts) >= 3 else ""
+    return "".join(ch for ch in raw if ch.isalnum())
 
 
 def vote_with_corpus(amount, stance, seed, note):
