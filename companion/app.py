@@ -567,6 +567,17 @@ def _stance_of(name):
     return "random"
 
 
+def _mesh_agents():
+    """All room-* voter agents currently in the /a2a registry, with their stance —
+    the live mesh the chair discovers and convenes."""
+    out = []
+    for a in _a2a_agents():
+        n = a.get("name", "") if isinstance(a, dict) else ""
+        if n.startswith("room-"):
+            out.append({"name": n, "stance": _stance_of(n), "label": n[len("room-") :]})
+    return sorted(out, key=lambda x: x["name"])
+
+
 def _sanitize_initials(s):
     s = "".join(ch for ch in (s or "").upper() if ch.isalnum())[:5]
     return s or "ANON"
@@ -844,6 +855,7 @@ def mesh():
             "mcp_count": len(_mcp_names()),
             "frozen": JOIN_FROZEN,
             "recent": recent,
+            "agents": _mesh_agents(),
         }
     )
 
@@ -1371,11 +1383,15 @@ WALL = r"""<!doctype html><html><head><meta charset="utf-8">
  .chip{font-family:'IBM Plex Mono',monospace;font-size:2.2vw;font-weight:700;padding:.6vh 1.4vw;border-radius:999px;
    background:#161c33;border:1px solid #2a335c;color:#cfe0ff}
  .chip.fresh{background:#24a148;color:#fff;border-color:#24a148}
+ .chip.strict{background:#3a1418;border-color:#da1e28;color:#ffb3b8}
+ .chip.lenient{background:#0d2818;border-color:#24a148;color:#6fdc8c}
+ .chip.random{background:#332a0d;border-color:#b28600;color:#f1c21b}
+ .chip .st{opacity:.7;font-size:.8em;margin-left:.4em}
  .ctx{position:fixed;bottom:3vh;font-size:1.6vw;color:#5a6b8c}
 </style></head><body>
  <div class="eyebrow">IBM Bob × ContextForge</div>
  <div class="num" id="n">0</div>
- <div class="label">voting agents the room joined to the governed mesh — live</div>
+ <div class="label">A2A voting agents discovered in the governed mesh — live</div>
  <div class="chips" id="chips"></div>
  <div class="ctx">vote on the dashboard → watch the tally climb here</div>
 <script>
@@ -1384,10 +1400,11 @@ WALL = r"""<!doctype html><html><head><meta charset="utf-8">
   try{
    const a=await (await fetch('/api/mesh')).json();
    const n=document.getElementById('n');
-   if(last!==null && a.voter_count>last){n.classList.add('bump'); setTimeout(()=>n.classList.remove('bump'),260);}
-   n.textContent=a.voter_count; last=a.voter_count;
+   const agents=a.agents||[];
+   if(last!==null && agents.length>last){n.classList.add('bump'); setTimeout(()=>n.classList.remove('bump'),260);}
+   n.textContent=agents.length; last=agents.length;
    const c=document.getElementById('chips');
-   c.innerHTML=(a.recent||[]).map((x,i)=>`<span class="chip${i===0?' fresh':''}">${(x+'').replace(/[<>&]/g,'')}</span>`).join('');
+   c.innerHTML=agents.map(g=>`<span class="chip ${g.stance}">${(g.label+'').replace(/[<>&]/g,'')}<span class="st">${g.stance}</span></span>`).join('');
   }catch(e){}
  }
  tick(); setInterval(tick, 2000);
