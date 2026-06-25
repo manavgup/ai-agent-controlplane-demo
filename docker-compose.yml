@@ -47,6 +47,11 @@ services:
   expense-db:
     build: ./mcp-servers/expense-db
     restart: unless-stopped
+  corpus:
+    build: ./mcp-servers/corpus
+    ports:
+      - "8010:8000"   # host port so the Companion can POST notes to /set
+    restart: unless-stopped
   erp-payments:
     build: ./mcp-servers/erp-payments
     restart: unless-stopped

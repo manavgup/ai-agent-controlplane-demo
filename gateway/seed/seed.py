@@ -26,6 +26,7 @@ MCP = {
     "notify": "http://notify:8000/mcp",
     # operator surface (ContextForge's own management/observability as MCP tools)
     "controlplane": "http://controlplane:8000/mcp",
+    "corpus": "http://corpus:8000/mcp",
 }
 A2A = {
     "auditor": "http://auditor:9001/",
