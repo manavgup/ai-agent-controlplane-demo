@@ -47,6 +47,12 @@ CROWD_CAP = 500  # hard cap on distinct voters held in memory
 # shared dashboard URL can't freeze/unfreeze the room; the presenter opens /?k=<key>.
 PRESENTER_KEY = os.environ.get("PRESENTER_KEY", "").strip()
 
+# ── MCP-server registration (restored): attendees register their OWN sales-tax MCP
+# server with ContextForge, so the governed catalog grows live. Distinct from the
+# A2A voter agents (room-*) used by the quorum — these are MCP tool servers.
+MCP_PREFIX = "salestax"
+MCP_BACKEND_URL = os.environ.get("AGENT_BACKEND_URL", "http://sales-tax:8000/mcp")
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS = os.path.join(ROOT, "docs")
 
@@ -557,6 +563,42 @@ def _sanitize_initials(s):
     return s or "ANON"
 
 
+# ── MCP-server registration helpers (restored) ──────────────────────────────
+def _mcp_gateways():
+    """Registered MCP backends (ContextForge calls them 'gateways')."""
+    try:
+        g = httpx.get(f"{GW}/gateways", headers=H, timeout=10).json()
+        return g if isinstance(g, list) else []
+    except Exception:
+        return []
+
+
+def _mcp_names(gws=None):
+    """Names of the sales-tax MCP servers the room registered this session."""
+    gws = _mcp_gateways() if gws is None else gws
+    return [
+        g.get("name", "")
+        for g in gws
+        if isinstance(g, dict) and g.get("name", "").startswith(MCP_PREFIX + "-")
+    ]
+
+
+def _mcp_initials_of(name):
+    """salestax-MG -> MG ; salestax-MG-2 -> MG."""
+    raw = name[len(MCP_PREFIX) + 1 :].split("-")[0] if "-" in name else name
+    return "".join(ch for ch in raw if ch.isalnum())[:8]
+
+
+def _mcp_unique_name(initials, existing):
+    base = f"{MCP_PREFIX}-{initials}"
+    if base not in existing:
+        return base
+    i = 2
+    while f"{base}-{i}" in existing:
+        i += 1
+    return f"{base}-{i}"
+
+
 @app.route("/api/vote", methods=["GET", "POST"])
 def vote():
     """Record one local crowd vote (approve/reject) on the $50k wire. No gateway
@@ -615,6 +657,66 @@ def freeze():
         "off",
     )
     return jsonify({"ok": True, "frozen": CROWD_FROZEN})
+
+
+@app.route("/api/register-mcp", methods=["GET", "POST"])
+def register_mcp():
+    """Register a uniquely-named sales-tax MCP server with ContextForge, so the
+    governed catalog (and the live count) climbs. Dedup the name; retry on collision."""
+    initials = _sanitize_initials(
+        request.values.get("initials") or request.values.get("ini")
+    )
+    last_err = None
+    for _ in range(10):
+        existing = {g.get("name", "") for g in _mcp_gateways()}
+        name = _mcp_unique_name(initials, existing)
+        # ContextForge enforces a UNIQUE url per gateway, so carry the unique name as a
+        # query suffix: the url string is unique, the backend ignores it and serves /mcp.
+        sep = "&" if "?" in MCP_BACKEND_URL else "?"
+        agent_url = f"{MCP_BACKEND_URL}{sep}agent={name}"
+        try:
+            r = httpx.post(
+                f"{GW}/gateways",
+                headers=H,
+                timeout=30,
+                json={
+                    "name": name,
+                    "url": agent_url,
+                    "transport": "STREAMABLEHTTP",
+                    "description": f"sales-tax MCP server registered by {initials}",
+                },
+            )
+            if r.status_code < 300:
+                return jsonify(
+                    {
+                        "ok": True,
+                        "name": name,
+                        "initials": initials,
+                        "count": len(_mcp_names()),
+                    }
+                )
+            last_err = f"{r.status_code} {r.text[:160]}"
+            blob = r.text.lower()
+            if r.status_code != 409 and "already exists" not in blob:
+                if "dns" in blob or "ssrf" in blob:
+                    last_err = "sales-tax backend unreachable — run `make salestax-up`"
+                break
+        except Exception as e:
+            last_err = str(e)
+            break
+    return (
+        jsonify(
+            {"ok": False, "error": last_err or "register failed", "initials": initials}
+        ),
+        502,
+    )
+
+
+@app.route("/api/mcp-agents")
+def mcp_agents():
+    names = _mcp_names()
+    recent = [_mcp_initials_of(n) for n in names][-14:][::-1]
+    return jsonify({"count": len(names), "recent": recent})
 
 
 @app.route("/api/prompts")
@@ -936,6 +1038,7 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
 </style></head><body>
 <header>
  <!--CPLINK-->
+ <a class="cplink" href="http://localhost:8090" target="_blank" title="Run `make inspect-a2a` first">🔍 Inspect A2A agent cards →</a>
  <h1>FinByte Control-Plane Companion <span class="small">— ContextForge governing the agent mesh, live</span></h1>
  <div class="sub"><span class="pill">IBM Bob</span><span class="pill">ContextForge</span><span class="pill">MCP + A2A</span>
    Keep this open beside Bob: every tool/agent call Bob makes flows through the gateway shown here.
@@ -957,6 +1060,12 @@ PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
        <button onclick="castVote('reject')" style="background:var(--block)">⛔ Reject</button>
        <button class="ev" onclick="toggleFreeze()" id="freezeBtn">🔒 Freeze</button>
        <span id="regout" class="small"></span>
+     </div>
+     <div class="roomreg" style="margin-top:8px">
+       <span class="roomcount">🛠️ MCP servers registered by the room: <b id="mcpN">—</b></span>
+       <input id="mcpini" maxlength="5" placeholder="your initials" autocapitalize="characters" onkeydown="if(event.key==='Enter')registerMcp()">
+       <button onclick="registerMcp()">Register my MCP server ▶</button>
+       <span id="mcpout" class="small"></span>
      </div>
      <a class="wall-link qr-link" href="/qr" target="_blank">📲 Join QR</a>
      <a class="wall-link" href="/wall" target="_blank">📺 Open wall</a>
@@ -1065,9 +1174,26 @@ async function pollCrowd(){
    document.getElementById('freezeBtn').textContent = a.frozen ? '🔓 Unfreeze' : '🔒 Freeze';
  }catch(e){}
 }
+async function registerMcp(){
+ const ini=document.getElementById('mcpini').value;
+ const out=document.getElementById('mcpout'); out.textContent='registering…';
+ try{
+   const r=await (await fetch('/api/register-mcp?initials='+encodeURIComponent(ini),{method:'POST'})).json();
+   if(r.ok){out.textContent='✓ '+r.name+' — MCP servers: '+r.count; document.getElementById('mcpini').value=''; pollMcp();}
+   else out.textContent='⚠ '+(r.error||'failed');
+ }catch(e){out.textContent='⚠ '+e;}
+}
+async function pollMcp(){
+ try{
+   const a=await (await fetch('/api/mcp-agents')).json();
+   const el=document.getElementById('mcpN'); if(el)el.textContent=a.count;
+ }catch(e){}
+}
 loadState();
 pollCrowd();
 setInterval(pollCrowd, 2000);
+pollMcp();
+setInterval(pollMcp, 3000);
 </script></body></html>"""
 
 
