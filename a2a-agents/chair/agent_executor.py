@@ -98,14 +98,16 @@ class ChairAgent:
                 try:
                     rr = await client.post(f"{base}/rpc", headers=H, json=body)
                     blob = json.dumps(rr.json())
-                    vote = (
-                        "approve"
-                        if "VOTE=approve" in blob
-                        else ("reject" if "VOTE=reject" in blob else "abstain")
+                    m = re.search(
+                        r"VOTE=(approve|reject|abstain)\s*::\s*([^\"\\]+)", blob
                     )
+                    if m:
+                        vote, reason = m.group(1), m.group(2).strip()
+                    else:
+                        vote, reason = "abstain", "no response"
                 except Exception:
-                    vote = "abstain"
-                return (name, stance, vote)
+                    vote, reason = "abstain", "error"
+                return (name, stance, vote, reason)
 
             # each _one catches its own errors, so gather never raises
             votes = list(await asyncio.gather(*[_one(n) for n in names]))
@@ -130,10 +132,10 @@ class ChairAgent:
                 blocked = False
                 wdetail = f"wire error: {e}"
 
-        ap = sum(1 for _, _, v in votes if v == "approve")
-        rj = sum(1 for _, _, v in votes if v == "reject")
-        ab = sum(1 for _, _, v in votes if v == "abstain")
-        vote_line = " ".join(f"{n}={v}" for n, _, v in votes)
+        ap = sum(1 for _, _, v, _ in votes if v == "approve")
+        rj = sum(1 for _, _, v, _ in votes if v == "reject")
+        ab = sum(1 for _, _, v, _ in votes if v == "abstain")
+        vote_line = " ".join(f"[[{n}|{v}|{r}]]" for n, _, v, r in votes)
         return (
             f"QUORUM agent_approve={ap} agent_reject={rj} agent_abstain={ab} "
             f"wire_blocked={'true' if blocked else 'false'} voters={len(votes)}\n"

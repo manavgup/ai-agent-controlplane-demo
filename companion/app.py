@@ -425,9 +425,9 @@ def s_quorum_a2a():
     voters = _gi(r"voters=(\d+)")
     blocked = "wire_blocked=true" in blob
     seen = {}
-    for n, v in re.findall(r"(room-[\w-]+)=(approve|reject|abstain)", blob):
+    for n, v, r in re.findall(r"\[\[(room-[\w-]+)\|(\w+)\|([^\]\\]*)\]\]", blob):
         if n not in seen:
-            seen[n] = v
+            seen[n] = (v, r.strip())
     wm = re.search(r"Wire amount [^\"\\]+", blob)
     wdetail = wm.group(0) if wm else ""
     chair_ok = "QUORUM" in blob or voters > 0 or bool(seen)
@@ -446,9 +446,11 @@ def s_quorum_a2a():
             request={"name": name, "arguments": args},
         )
 
-    agent_lines = [
-        f"  {n:<16} {_stance_of(n):<8} → {v}" for n, v in sorted(seen.items())
-    ]
+    agent_lines = []
+    for n in sorted(seen):
+        v, r = seen[n]
+        mark = " 📝" if r.startswith("owner's note") else "   "
+        agent_lines.append(f"  {n:<16} {_stance_of(n):<8} → {v:<8}{mark} {r}")
     detail = (
         "CHAIN: Companion → [A2A] → Chair agent → discovered "
         f"{voters} voters → [A2A through the gateway] → {voters} voters → tally → wire\n\n"

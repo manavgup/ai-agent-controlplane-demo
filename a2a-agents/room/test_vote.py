@@ -118,3 +118,9 @@ def test_parse_owner_strips_trailing_period():
     # the chair/companion prompt ends "... agent=room-strict-MG."
     assert parse_owner("amount=50000 stance=strict agent=room-strict-MG.") == "MG"
     assert parse_owner("agent=room-strict-1.") == "1"
+
+
+def test_parse_threshold_ignores_masked_card_prefers_dollar():
+    # PII-redacted note: the masked card's last 4 must not become the cap
+    note = "my card ****-****-****-1111, reject anything over $20,000"
+    assert parse_threshold(note) == 20000

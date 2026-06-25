@@ -69,9 +69,16 @@ def decide_vote(text):
 
 
 def parse_threshold(note):
-    """First dollar figure in the note -> float (handles $, commas, trailing k).
-    Returns None if there is no number."""
-    m = re.search(r"\$?\s*([\d][\d,]*(?:\.\d+)?)\s*([kK])?", note or "")
+    """The note's spending cap -> float (handles $, commas, trailing k).
+
+    Prefer an explicit $-amount (the rule) over stray digits — e.g. a PII-masked
+    card '****-****-****-1111' must not be read as a $1,111 cap. Returns None if
+    there is no number at all.
+    """
+    note = note or ""
+    m = re.search(r"\$\s*([\d][\d,]*(?:\.\d+)?)\s*([kK])?", note)  # $-prefixed first
+    if not m:
+        m = re.search(r"([\d][\d,]*(?:\.\d+)?)\s*([kK])?", note)  # then any number
     if not m:
         return None
     val = float(m.group(1).replace(",", ""))
