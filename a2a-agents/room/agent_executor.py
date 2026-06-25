@@ -11,7 +11,6 @@ reads the owner's private note from the corpus MCP server *through the gateway*
 Fixed voters (room-strict-1) have a numeric suffix → no note → fall back to stance.
 """
 
-import json
 import os
 
 import httpx

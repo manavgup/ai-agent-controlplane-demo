@@ -396,7 +396,7 @@ def s_quorum():
 
     agent_lines = [f"  {v['agent']:<16} {v['stance']:<8} → {v['vote']}" for v in votes]
     detail = (
-        f"GOVERNED A2A AGENTS (through the gateway):\n"
+        "GOVERNED A2A AGENTS (through the gateway):\n"
         + (
             "\n".join(agent_lines)
             if agent_lines
