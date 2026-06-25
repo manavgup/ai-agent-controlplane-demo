@@ -32,6 +32,9 @@ r=$(call erp-payments-wire '{"payee":"Corner Cafe","amount":5000,"approval":fals
 assert_contains "\$5k wire ALLOWED" "$r" '"status":"wired"'
 r=$(call erp-payments-wire '{"payee":"Acme LLC","amount":50000,"approval":true}')
 assert_contains "\$50k WITH approval ALLOWED" "$r" '"status":"wired"'
+r=$(call erp-payments-wire '{"payee":"Acme LLC","amount":150000,"approval":true}')
+assert_contains "\$150k BLOCKED even WITH approval (hard ceiling)" "$r" "Plugin Violation"
+assert_contains "ceiling block cites the hard ceiling" "$r" "hard ceiling"
 
 echo "== #1b Agent-mesh: OPA governs the bridged A2A payment call =="
 r=$(call a2a-payments '{"payee":"Acme LLC","amount":50000,"approval":false}')
@@ -60,6 +63,9 @@ assert_absent "FinOps hides the raw wire tool" "$ftools" "erp-payments-wire"
 echo "== Cross-language A2A: Rust Payments agent executes via gateway =="
 r=$(call a2a-payments '{"message":{"role":"ROLE_USER","parts":[{"text":"Execute payment of $5000 to Corner Cafe"}],"messageId":"m-verify"}}')
 assert_contains "Rust agent executed the payment" "$r" "Payment executed"
+
+echo "== A2A quorum (policy beats consensus) =="
+if bash "$(dirname "$0")/quorum.sh"; then PASS=$((PASS+4)); else FAIL=$((FAIL+1)); fi
 
 echo
 echo "──────────────────────────────────────────"

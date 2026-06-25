@@ -47,6 +47,11 @@ services:
   expense-db:
     build: ./mcp-servers/expense-db
     restart: unless-stopped
+  corpus:
+    build: ./mcp-servers/corpus
+    ports:
+      - "8010:8000"   # host port so the Companion can POST notes to /set
+    restart: unless-stopped
   erp-payments:
     build: ./mcp-servers/erp-payments
     restart: unless-stopped
@@ -92,4 +97,24 @@ services:
     build: ./a2a-agents/payments
     ports:
       - "3000:3000"   # exposed for the A2A inspector
+    restart: unless-stopped
+
+  chair:
+    build: ./a2a-agents/chair
+    environment:
+      GATEWAY_URL: http://gateway:4444
+      GATEWAY_TOKEN: ${AUDITOR_TOKEN:-}
+    ports:
+      - "9200:8000"   # exposed for the A2A inspector + a host health probe
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  room-agent:
+    build: ./a2a-agents/room
+    environment:
+      GATEWAY_URL: http://gateway:4444
+      GATEWAY_TOKEN: ${AUDITOR_TOKEN:-}
+    ports:
+      - "9100:8000"   # exposed for the A2A inspector + a host health probe
     restart: unless-stopped
