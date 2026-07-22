@@ -29,4 +29,22 @@ for g in gws if isinstance(gws, list) else []:
         except Exception:
             pass
 print(f"removed {n} room agent(s) (salestax-*) — count reset to 0")
+
+# a join registers BOTH a salestax-* MCP server AND a room-* A2A voter; clear
+# the attendee voters too, keeping the 5 fixed quorum seeds
+SEEDS = {"room-strict-1", "room-strict-2", "room-lenient-1", "room-lenient-2", "room-random-1"}
+v = 0
+try:
+    agents = httpx.get(base + "/a2a", headers=H, timeout=15).json()
+except Exception:
+    agents = []
+for a in agents if isinstance(agents, list) else []:
+    name = a.get("name", "") if isinstance(a, dict) else ""
+    if name.startswith("room-") and name not in SEEDS:
+        try:
+            httpx.request("DELETE", base + "/a2a/" + a["id"], headers=H, timeout=15)
+            v += 1
+        except Exception:
+            pass
+print(f"removed {v} attendee voter(s) (room-*, seeds kept) — wall voter count reset")
 PY

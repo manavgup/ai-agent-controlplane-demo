@@ -8,7 +8,22 @@ changes. The audience never sees a JWT or a UUID — those are backstage.
 
 ---
 
-## 🚀 Fire up ContextForge from Codespaces (the thing I keep forgetting)
+## 🚀 Fire up — LAPTOP + ngrok (THE path — validated 2026-07-22)
+
+Everything runs on this laptop; phones reach it through the reserved ngrok domain
+(`obstruct-sweat-elephant.ngrok-free.dev` — fixed, so the QR never changes).
+
+```bash
+make present-ngrok      # one shot: runtime → stack+seed → sales-tax → tunnel → companion → opens /qr
+make agents-reset       # once, before doors open (re-zeroes the room counter)
+```
+
+- **Project** the tab it opens: `http://127.0.0.1:7070/qr`. Attendees scan → follow.html.
+- Anything looks wrong at any point (QR 404, registration 422, tunnel dead): **re-run `make present-ngrok`** — it's idempotent, only restarts the dead layer, won't wipe the room.
+- ⚠️ **NEVER open the public ngrok URL in a browser on this laptop** — Cisco Umbrella (IBM MDM) blocks it and it looks like an outage. Everything you show is `127.0.0.1`.
+- Phones see a one-tap ngrok "Visit Site" interstitial — that's normal (free tier).
+
+## 🚑 Fallback: fire up from Codespaces (older path — cloudflared rate-limited a real room; use only if the laptop dies)
 
 The whole governed mesh runs in the cloud; the devcontainer does the work for you.
 
