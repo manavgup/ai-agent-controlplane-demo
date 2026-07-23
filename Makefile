@@ -218,6 +218,16 @@ companion: salestax-ensure ## Run the browser companion dashboard on :7070 (auto
 present: ## THE presenter command for a ROOM: opens public cloudflared tunnels (phones reach it on any network — works around Codespaces ports that 404 anonymous clients), runs the Companion pointed at them, opens your browser to the join QR. Ctrl-C tears it all down.
 	@bash scripts/present.sh
 
+present-ngrok: ## Demo-day one-shot for the LAPTOP + ngrok reserved-domain room setup (stable QR, no cloudflared rate limits). Idempotent — safe to re-run mid-demo.
+	@bash scripts/present-ngrok.sh
+
+fresh: ## Clean slate for a dry run: kill companion+tunnel, stop the stack, bring EVERYTHING back up (present-ngrok), zero the room counters. ~3 min.
+	-@pkill -f 'companion/app.py' 2>/dev/null || true
+	-@pkill -f 'ngrok http' 2>/dev/null || true
+	@$(MAKE) --no-print-directory clean
+	@$(MAKE) --no-print-directory present-ngrok
+	@$(MAKE) --no-print-directory agents-reset
+
 companion-connect: ## Local/same-network presenter command: makes Codespaces ports public + ensures sales-tax + serves the dashboard, /connect and the join QR on :7070. For a public room (anonymous phones) use 'make present' instead.
 	@$(MAKE) --no-print-directory ports-public
 	@EXPOSE_CONNECT=1 $(MAKE) companion
