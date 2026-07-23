@@ -22,6 +22,12 @@ make agents-reset       # once, before doors open (re-zeroes the room counter)
 - Anything looks wrong at any point (QR 404, registration 422, tunnel dead): **re-run `make present-ngrok`** — it's idempotent, only restarts the dead layer, won't wipe the room.
 - ⚠️ **NEVER open the public ngrok URL in a browser on this laptop** — Cisco Umbrella (IBM MDM) blocks it and it looks like an outage. Everything you show is `127.0.0.1`.
 - Phones see a one-tap ngrok "Visit Site" interstitial — that's normal (free tier).
+- **Tier-2 (Bob on attendee laptops) works with no extra steps:** `present-ngrok` also opens a
+  cloudflared quick tunnel for the gateway (:4444) and hands it to the Companion, so `/connect`
+  generates room-ready `bob mcp add` commands automatically. The gateway URL is random per run —
+  that's fine, attendees copy it live from `/connect`; never put it on a slide. (Why not a second
+  ngrok tunnel? Free tier pools extra http tunnels onto the SAME static domain — phones would
+  round-robin into the gateway.)
 
 ## 🚑 Fallback: fire up from Codespaces (older path — cloudflared rate-limited a real room; use only if the laptop dies)
 
